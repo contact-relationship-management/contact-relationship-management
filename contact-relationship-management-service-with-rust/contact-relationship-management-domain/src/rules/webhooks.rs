@@ -27,7 +27,7 @@ pub fn retry_delay_seconds(failed_attempts: i32) -> Option<i64> {
         return None;
     }
     // One delay for each attempt but the last, so every attempt before MAX_ATTEMPTS has one.
-    let index = usize::try_from(failed_attempts.max(1) - 1).unwrap_or(0);
+    let index = usize::try_from(failed_attempts.max(1).checked_sub(1)?).ok()?;
     DELAYS.get(index).copied()
 }
 
@@ -249,6 +249,25 @@ pub fn body(
         "data": { "entity": entity, "kind": kind, "pid": pid },
     })
     .to_string()
+}
+
+/// The bytes a hex string names (`"0aff"` is `[10, 255]`); `None` for an odd length or a character
+/// that is not a hex digit, a sign included.
+#[must_use]
+pub fn unhex(text: &str) -> Option<Vec<u8>> {
+    let digit = |byte: u8| {
+        char::from(byte)
+            .to_digit(16)
+            .and_then(|d| u8::try_from(d).ok())
+    };
+    if !text.len().is_multiple_of(2) {
+        return None;
+    }
+    let (pairs, _) = text.as_bytes().as_chunks::<2>();
+    pairs
+        .iter()
+        .map(|&[high, low]| digit(high)?.checked_mul(16)?.checked_add(digit(low)?))
+        .collect()
 }
 
 #[cfg(test)]

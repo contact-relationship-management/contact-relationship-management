@@ -46,7 +46,8 @@ pub fn now() -> Timestamp {
 }
 
 fn shifted(host: Timestamp, offset: SignedDuration) -> Timestamp {
-    host + offset
+    // CLOCK-1: a corrected time that is out of range is not a time; the host's own is used.
+    host.checked_add(offset).unwrap_or(host)
 }
 
 /// The database's clock minus the host's, as last measured; zero before the first measurement.
@@ -56,22 +57,26 @@ pub fn offset() -> SignedDuration {
 }
 
 fn set_offset(offset: SignedDuration) {
-    // Whole milliseconds toward zero, as `chrono`'s `num_milliseconds` gave them; a gap too large
-    // for an `i64` of milliseconds (some 292 million years) is held at the largest.
-    let ms = i64::try_from(offset.as_millis()).unwrap_or(if offset.is_negative() {
-        i64::MIN
-    } else {
-        i64::MAX
-    });
-    OFFSET_MS.store(ms, Ordering::Relaxed);
+    // Whole milliseconds toward zero, as `chrono`'s `num_milliseconds` gave them. CLOCK-2: a gap
+    // too large for an `i64` of milliseconds (some 292 million years) is no measurement, so the
+    // offset in use stays as it was.
+    if let Ok(ms) = i64::try_from(offset.as_millis()) {
+        OFFSET_MS.store(ms, Ordering::Relaxed);
+    }
 }
 
 /// The gap, from a database reading `database` taken between host readings `sent` and
 /// `received`: the database read its clock, at best guess, halfway between.
 #[must_use]
 pub fn gap(sent: Timestamp, database: Timestamp, received: Timestamp) -> SignedDuration {
-    let midpoint = sent + (received - sent) / 2;
-    database - midpoint
+    // CLOCK-3: a gap that cannot be worked out is no gap: the database's clock is taken as the host's.
+    received
+        .duration_since(sent)
+        .checked_div(2)
+        .and_then(|half| sent.checked_add(half))
+        .map_or(SignedDuration::ZERO, |midpoint| {
+            database.duration_since(midpoint)
+        })
 }
 
 /// Measure the gap once and use it from now on.

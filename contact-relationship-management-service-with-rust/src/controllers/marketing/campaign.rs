@@ -6,6 +6,7 @@ use super::{
     contacts, debug_handler, deliveries, evaluate_segment, format, lifecycle, mail, streaming,
     tokens, unprocessable,
 };
+use crate::arith::Tally;
 use sqlx::PgConnection;
 
 use crate::controllers::PidPath;
@@ -320,7 +321,7 @@ pub(super) async fn deliver_one(
             Some("contact is no longer available"),
         )
         .await?;
-        outcome.suppressed += 1;
+        outcome.suppressed = outcome.suppressed.tally(1);
         return Ok(());
     };
     let decision = crate::consent_profiles::decide(
@@ -345,12 +346,12 @@ pub(super) async fn deliver_one(
             Some("consent profile blocked the send at send time"),
         )
         .await?;
-        outcome.suppressed += 1;
+        outcome.suppressed = outcome.suppressed.tally(1);
         return Ok(());
     }
     if let Some(reason) = skip_reason(&mut conn, contact.pid, audience).await? {
         deliveries::settle(&mut *conn, item.id, "suppressed", None, Some(reason)).await?;
-        outcome.suppressed += 1;
+        outcome.suppressed = outcome.suppressed.tally(1);
         return Ok(());
     }
     let (message_id, provider_id) = if sender.needs_address() {
@@ -381,7 +382,7 @@ pub(super) async fn deliver_one(
     .execute(&mut *txn)
     .await?;
     txn.commit().await?;
-    outcome.sent += 1;
+    outcome.sent = outcome.sent.tally(1);
     Ok(())
 }
 
@@ -405,7 +406,7 @@ async fn send_mail(
             Some("no address on file"),
         )
         .await?;
-        outcome.no_address += 1;
+        outcome.no_address = outcome.no_address.tally(1);
         return Ok(None);
     };
     let unsubscribe_url = crate::unsubscribe::current().map(|u| u.url(contact.pid, campaign.pid));
@@ -421,7 +422,7 @@ async fn send_mail(
     else {
         let why = "permanent: the email template is gone";
         deliveries::settle(&mut *conn, delivery_id, "failed", None, Some(why)).await?;
-        outcome.failed += 1;
+        outcome.failed = outcome.failed.tally(1);
         return Ok(None);
     };
     let message = mail::Message {
@@ -443,7 +444,7 @@ async fn send_mail(
                 Some(&error.describe()),
             )
             .await?;
-            outcome.failed += 1;
+            outcome.failed = outcome.failed.tally(1);
             Ok(None)
         }
     }
@@ -654,6 +655,12 @@ async fn close_batch(
     // provider's events count them as they come, so they are never written back from this run.
     let simulated = done && sender.is_simulated();
     let mut txn = pool.begin().await?;
+    // A simulated run reports three fifths opened and a quarter clicked.
+    let (opened, clicked) = recipients
+        .checked_mul(3)
+        .and_then(|n| n.checked_div(5))
+        .zip(recipients.checked_div(4))
+        .ok_or_else(|| crate::arith::overflow("campaign_engagement"))?;
     let row = sqlx::query_as!(
         campaigns::Model,
         "UPDATE campaigns SET recipients = $2, \
@@ -669,8 +676,8 @@ async fn close_batch(
         recipients,
         done,
         simulated,
-        recipients * 3 / 5,
-        recipients / 4,
+        opened,
+        clicked,
     )
     .fetch_one(&mut *txn)
     .await?;
@@ -869,9 +876,14 @@ pub(super) async fn campaign_funnel(
         std::collections::BTreeMap::new();
     for deal in &attributed_deals {
         if deal.currency.eq_ignore_ascii_case(&campaign.currency) {
-            same_currency_revenue = same_currency_revenue.saturating_add(deal.amount_minor);
+            same_currency_revenue = same_currency_revenue
+                .checked_add(deal.amount_minor)
+                .ok_or_else(|| crate::arith::overflow("same_currency_revenue"))?;
         } else {
-            *other_currency.entry(deal.currency.clone()).or_insert(0) += deal.amount_minor;
+            let slot = other_currency.entry(deal.currency.clone()).or_insert(0);
+            *slot = slot
+                .checked_add(deal.amount_minor)
+                .ok_or_else(|| crate::arith::overflow("other_currency_revenue"))?;
         }
     }
     // With `convert=true`, revenue in other currencies is converted into the campaign's currency
@@ -899,7 +911,9 @@ pub(super) async fn campaign_funnel(
             .collect();
         let (total, rates, unconverted) =
             crate::controllers::fx_rates::convert_dated(&ctx, &campaign.currency, &foreign).await?;
-        same_currency_revenue = same_currency_revenue.saturating_add(total);
+        same_currency_revenue = same_currency_revenue
+            .checked_add(total)
+            .ok_or_else(|| crate::arith::overflow("same_currency_revenue"))?;
         other_currency = unconverted
             .iter()
             .map(|u| (u.currency.clone(), u.amount_minor))
@@ -919,7 +933,9 @@ pub(super) async fn campaign_funnel(
         )
         .await?;
         let converted = done.rows.first().map_or(0, |row| row.1);
-        same_currency_revenue = same_currency_revenue.saturating_add(converted);
+        same_currency_revenue = same_currency_revenue
+            .checked_add(converted)
+            .ok_or_else(|| crate::arith::overflow("same_currency_revenue"))?;
         let left: std::collections::BTreeSet<&str> = done
             .unconverted
             .iter()
@@ -948,7 +964,8 @@ pub(super) async fn campaign_funnel(
         ),
         None => (None, Vec::new(), Vec::new()),
     };
-    let roi = analytics::roi(same_currency_revenue, campaign.cost_minor);
+    let roi = analytics::roi(same_currency_revenue, campaign.cost_minor)
+        .ok_or_else(|| crate::arith::overflow("campaign_roi"))?;
     // Cost, revenue and ROI are commercial and masked; counts and structure stay.
     let mut campaign = serde_json::json!(campaign);
     if masked {

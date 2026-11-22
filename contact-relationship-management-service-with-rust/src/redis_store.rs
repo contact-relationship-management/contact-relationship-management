@@ -100,7 +100,7 @@ impl Shared {
         expires_at: Timestamp,
     ) -> Result<(), redis::RedisError> {
         let key = format!("{GRANT_PREFIX}{subject}");
-        let secs = (expires_at - crate::clock::now()).as_secs();
+        let secs = expires_at.duration_since(crate::clock::now()).as_secs();
         if secs <= 0 {
             return Ok(());
         }

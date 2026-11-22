@@ -64,7 +64,11 @@ impl NameCache {
     /// The name for `urn`, unless it has expired (an expired entry is dropped).
     fn get(&mut self, urn: &str, now: Instant) -> Option<String> {
         let (name, stored) = self.entries.get(urn)?;
-        if now.saturating_duration_since(*stored) < self.ttl {
+        // CACHE-2: an entry whose age cannot be measured is stale.
+        if now
+            .checked_duration_since(*stored)
+            .is_some_and(|age| age < self.ttl)
+        {
             return Some(name.clone());
         }
         self.entries.remove(urn);
@@ -74,8 +78,10 @@ impl NameCache {
     fn insert(&mut self, urn: String, name: String, now: Instant) {
         if self.entries.len() >= self.capacity && !self.entries.contains_key(&urn) {
             let ttl = self.ttl;
-            self.entries
-                .retain(|_, (_, stored)| now.saturating_duration_since(*stored) < ttl);
+            self.entries.retain(|_, (_, stored)| {
+                now.checked_duration_since(*stored)
+                    .is_some_and(|age| age < ttl)
+            });
             if self.entries.len() >= self.capacity {
                 let oldest = self
                     .entries
@@ -425,11 +431,14 @@ pub async fn active_workers() -> Result<Vec<UpstreamWorker>, String> {
     let client = bridge_client()?;
     let mut workers = Vec::new();
     for page in 0..MAX_WORKER_PAGES {
+        let offset = page
+            .checked_mul(WORKER_PAGE)
+            .ok_or_else(|| "the worker list is too long to page".to_string())?;
         let response = with_credential(
             client.get(format!(
                 "{}/api/workers?status=active&fields={WORKER_FIELDS}&limit={WORKER_PAGE}&offset={}",
                 base.trim_end_matches('/'),
-                page * WORKER_PAGE
+                offset
             )),
             &base,
             settings.worker_service_token.as_deref(),

@@ -15,7 +15,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::time::{Date, Timestamp, days as whole_days};
+use crate::time::{Date, Timestamp};
 use serde::{Deserialize, Serialize};
 
 /// The channels consent is held on (decision 7). Only `email` is sent; the others are recorded.
@@ -890,7 +890,7 @@ pub fn basis(
                 .iter()
                 .filter(|item| item.kind == "won_deal" && item.at <= now)
                 .filter(concerns)
-                .map(|item| (item, item.at + whole_days(window)))
+                .filter_map(|item| Some((item, item.at.checked_add_days(window)?)))
                 .filter(|(_, expires)| *expires > now)
                 .max_by_key(|(_, expires)| *expires)
                 .map(|(item, expires_at)| Basis::SoftOptIn {
@@ -907,7 +907,7 @@ pub fn basis(
                 rules
                     .expiry_days
                     .get(&item.kind)
-                    .map(|days| (item, item.at + whole_days(*days)))
+                    .and_then(|days| Some((item, item.at.checked_add_days(*days)?)))
             })
             .filter(|(_, expires)| *expires > now)
             .max_by_key(|(_, expires)| *expires)
@@ -984,6 +984,7 @@ pub fn example_profiles() -> Vec<ExampleProfile> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::time::test_operators::test_days as whole_days;
     use jiff::SignedDuration;
 
     fn day(y: i16, m: i8, d: i8) -> Date {

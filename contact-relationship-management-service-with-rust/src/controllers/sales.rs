@@ -128,7 +128,9 @@ async fn score_lead<'e>(
     .fetch_one(db)
     .await?;
     let now = crate::clock::now();
-    let days_since_last = activity.last.map(|at| crate::time::whole_days(now - at));
+    let days_since_last = activity
+        .last
+        .map(|at| crate::time::whole_days(now.duration_since(at)));
     let facts = scoring::LeadFacts {
         source: lead.source.clone(),
         campaign_attributed: lead.campaign_pid.is_some(),
@@ -139,7 +141,8 @@ async fn score_lead<'e>(
         campaign_click: lead.campaign_click,
         unsubscribed: lead.unsubscribed,
     };
-    Ok(scoring::score(&facts, &scoring::Weights::default()))
+    scoring::score(&facts, &scoring::Weights::default())
+        .ok_or_else(|| crate::arith::overflow("lead_score"))
 }
 
 /// What a new lead is made from.

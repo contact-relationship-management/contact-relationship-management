@@ -5,6 +5,7 @@ use super::{
     WindowQuery, activities, auth, conditional, days_or, deals, debug_handler, forecast_snapshots,
     leads, parse_instant, record_rejection,
 };
+use crate::arith::Tally;
 use crate::db;
 use crate::models::rows;
 
@@ -200,7 +201,7 @@ pub(super) async fn stale_deals(
             )
             .ok()?;
             let entered = last_move.get(&deal.pid).copied().unwrap_or(deal.created_at);
-            let days_in_stage = crate::time::whole_days(now - entered);
+            let days_in_stage = crate::time::whole_days(now.duration_since(entered));
             let masked = obligations.iter().any(|o| o == "mask");
             Some((
                 days_in_stage,
@@ -254,7 +255,9 @@ pub(super) async fn followups(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today + crate::time::days(30);
+    let horizon = today
+        .checked_add_days(30)
+        .ok_or_else(|| crate::arith::overflow("horizon"))?;
     let rows: Vec<activities::Model> =
         rows::open_dated_activities(db::pool(&ctx), query.kind.as_deref()).await?;
     let view = |activity: &activities::Model| Followup {
@@ -268,7 +271,7 @@ pub(super) async fn followups(
         overdue_days: activity
             .due_on
             .filter(|due| *due < today)
-            .map(|due| crate::time::whole_days(today - due)),
+            .map(|due| crate::time::whole_days(today.duration_since(due))),
     };
     let mut overdue: Vec<&activities::Model> = rows
         .iter()
@@ -287,7 +290,10 @@ pub(super) async fn followups(
             .actor_ref
             .clone()
             .unwrap_or_else(|| "unattributed".to_string());
-        *per_recorder.entry(key).or_default() += 1;
+        {
+            let slot = &mut *per_recorder.entry(key).or_default();
+            *slot = slot.tally(1);
+        }
     }
     Ok(conditional(
         &headers,
@@ -358,7 +364,7 @@ pub(super) async fn pipeline_hygiene(
             });
         }
         let untouched = match last_touch("deal", deal.pid) {
-            Some(at) => crate::time::whole_days(now - at) > threshold,
+            Some(at) => crate::time::whole_days(now.duration_since(at)) > threshold,
             None => true,
         };
         if untouched {
@@ -374,8 +380,8 @@ pub(super) async fn pipeline_hygiene(
         .filter(|l| matches!(l.status.as_str(), "new" | "contacted"))
     {
         let untouched = match last_touch("lead", lead.pid) {
-            Some(at) => crate::time::whole_days(now - at) > threshold,
-            None => crate::time::whole_days(now - lead.created_at) > threshold,
+            Some(at) => crate::time::whole_days(now.duration_since(at)) > threshold,
+            None => crate::time::whole_days(now.duration_since(lead.created_at)) > threshold,
         };
         if untouched {
             findings.push(HygieneFinding {
@@ -425,7 +431,11 @@ pub(super) async fn executive(
         .from
         .as_deref()
         .and_then(|raw| parse_instant(raw, false))
-        .unwrap_or(to - crate::time::days(30));
+        .unwrap_or(
+            // SALES-WINDOW-1: with no start given the window is 30 days; a start that cannot be
+            // computed is the end, an empty window, not a made-up date.
+            to.checked_sub_days(30).unwrap_or(to),
+        );
     let in_window = |at: crate::time::Timestamp| at >= from && at <= to;
 
     // Only the deals closed in the window.
@@ -440,16 +450,21 @@ pub(super) async fn executive(
         .filter(|d| d.closed_at.is_some_and(&in_window))
     {
         if deal.won {
-            won += 1;
+            won = won.tally(1);
             let entry = won_value.entry(deal.currency.clone()).or_default();
-            *entry = entry.saturating_add(deal.amount_minor);
+            *entry = entry
+                .checked_add(deal.amount_minor)
+                .ok_or_else(|| crate::arith::overflow("won_value"))?;
         } else {
-            lost += 1;
+            lost = lost.tally(1);
             let reason = deal
                 .lost_reason
                 .clone()
                 .unwrap_or_else(|| "(no reason recorded)".to_string());
-            *lost_reasons.entry(reason).or_default() += 1;
+            {
+                let slot = &mut *lost_reasons.entry(reason).or_default();
+                *slot = slot.tally(1);
+            }
         }
     }
     let pool = db::pool(&ctx);

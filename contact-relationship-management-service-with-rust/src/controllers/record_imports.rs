@@ -6,6 +6,7 @@
 //! goes to the person service and is kept nowhere here). A new contact has no consent, and an
 //! import starts no workflows.
 
+use crate::arith::Tally;
 use std::collections::HashMap;
 
 use axa::prelude::*;
@@ -281,7 +282,7 @@ async fn analyse_accounts(
     let mut reports = Vec::with_capacity(table.rows.len());
     let mut rows = Vec::with_capacity(table.rows.len());
     for (offset, cells) in table.rows.iter().enumerate() {
-        let number = offset + 1;
+        let number = offset.tally(1);
         match rules::judge_account(cells, &columns, table.headers.len()) {
             Err(reason) => {
                 reports.push(invalid(number, reason));
@@ -591,7 +592,7 @@ fn select_rows<T>(
     for (report, row) in reports.iter().zip(judged) {
         let Some(row) = row else { continue };
         if skip_likely_duplicates && !report.likely_duplicates.is_empty() {
-            skipped += 1;
+            skipped = skipped.tally(1);
         } else {
             keep.push(row);
         }
@@ -631,7 +632,7 @@ async fn commit_contacts(
                 Ok(urn) => resolved.push((row, urn)),
                 Err(why) => {
                     tracing::warn!(%why, "contact import: person lookup failed");
-                    failed += 1;
+                    failed = failed.tally(1);
                 }
             }
         }
@@ -646,12 +647,12 @@ async fn commit_contacts(
             .fetch_one(&mut *txn)
             .await?;
             if held {
-                existing += 1;
+                existing = existing.tally(1);
                 continue;
             }
             made.push(insert_contact(&mut txn, &caller, import, row, urn).await?);
         }
-        created += made.len();
+        created = created.tally(made.len());
         sqlx::query!(
             "UPDATE record_imports SET created_pids = created_pids || $2::jsonb WHERE pid = $1",
             import,
@@ -708,7 +709,7 @@ async fn commit_accounts(
                 Ok(urn) => resolved.push((row, urn)),
                 Err(why) => {
                     tracing::warn!(%why, "account import: organization lookup failed");
-                    failed += 1;
+                    failed = failed.tally(1);
                 }
             }
         }
@@ -723,12 +724,12 @@ async fn commit_accounts(
             .fetch_one(&mut *txn)
             .await?;
             if held {
-                existing += 1;
+                existing = existing.tally(1);
                 continue;
             }
             made.push(insert_account(&mut txn, &caller, import, row, urn).await?);
         }
-        created += made.len();
+        created = created.tally(made.len());
         sqlx::query!(
             "UPDATE record_imports SET created_pids = created_pids || $2::jsonb WHERE pid = $1",
             import,
@@ -853,7 +854,10 @@ async fn undo_import(
         )
         .await?;
     }
-    let kept = all.len() - removed.len();
+    let kept = all
+        .len()
+        .checked_sub(removed.len())
+        .ok_or_else(|| crate::arith::overflow("kept"))?;
     sqlx::query!(
         "UPDATE record_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",

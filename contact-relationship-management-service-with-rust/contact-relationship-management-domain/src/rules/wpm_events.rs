@@ -52,16 +52,6 @@ pub fn sign(secret: &[u8], timestamp: i64, body: &[u8]) -> String {
     format!("t={timestamp},v1={hex}")
 }
 
-fn unhex(text: &str) -> Option<Vec<u8>> {
-    if !text.len().is_multiple_of(2) || !text.is_ascii() {
-        return None;
-    }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).ok())
-        .collect()
-}
-
 /// Whether `header` is a fresh, correct signature of `body`: a `t=` within [`TOLERANCE_SECS`] of
 /// `now`, and a `v1=` that is the HMAC of `"<t>.<body>"`, compared in constant time. Anything
 /// missing, repeated or malformed fails.
@@ -83,10 +73,14 @@ pub fn verify(secret: &[u8], header: &str, body: &[u8], now: i64) -> bool {
     let Ok(sent_at) = t.parse::<i64>() else {
         return false;
     };
-    if (now - sent_at).abs() > TOLERANCE_SECS {
+    if now
+        .checked_sub(sent_at)
+        .and_then(i64::checked_abs)
+        .is_none_or(|age| age > TOLERANCE_SECS)
+    {
         return false;
     }
-    let Some(given) = unhex(v1) else {
+    let Some(given) = super::webhooks::unhex(v1) else {
         return false;
     };
     tag(secret, t, body).is_some_and(|mac| mac.verify_slice(&given).is_ok())

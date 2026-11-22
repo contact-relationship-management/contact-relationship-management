@@ -80,7 +80,7 @@ fn bench_scoring(c: &mut Criterion) {
             b.iter(|| {
                 leads
                     .iter()
-                    .map(|l| scoring::score(l, &weights).score)
+                    .map(|l| scoring::score(l, &weights).unwrap().score)
                     .sum::<i32>()
             });
         });
@@ -212,6 +212,7 @@ fn bench_audit_chain(c: &mut Criterion) {
                         hash: Some(&hashes[i]),
                     }
                 }));
+                let verdict = verdict.unwrap();
                 assert!(verdict.ok());
                 verdict.rows
             });
@@ -255,13 +256,17 @@ fn bench_imports(c: &mut Criterion) {
 fn bench_attribution(c: &mut Criterion) {
     let mut rng = Lcg(6);
     let campaigns: Vec<Uuid> = (0..12).map(|_| rng.uuid()).collect();
-    let closed = start() + contact_relationship_management_domain::time::days(90);
+    let closed = start().checked_add_days(90).unwrap();
     let mut group = c.benchmark_group("attribution");
     for touches in [5_usize, 50, 500] {
         let list: Vec<_> = (0..touches)
             .map(|_| attribution::Touch {
                 campaign: campaigns[rng.next(campaigns.len())],
-                at: start() + SignedDuration::from_hours(i64::try_from(rng.next(90 * 24)).unwrap()),
+                at: start()
+                    .checked_add(SignedDuration::from_hours(
+                        i64::try_from(rng.next(90 * 24)).unwrap(),
+                    ))
+                    .unwrap(),
             })
             .collect();
         for (name, model) in [
@@ -293,7 +298,7 @@ fn bench_fx(c: &mut Criterion) {
                 from: from.to_string(),
                 to: "GBP".to_string(),
                 ppb: 500_000_000 + i64::try_from(rng.next(1_000_000_000)).unwrap(),
-                effective_on: first_day + contact_relationship_management_domain::time::days(day),
+                effective_on: first_day.checked_add_days(day).unwrap(),
                 source: "bench".to_string(),
             });
         }

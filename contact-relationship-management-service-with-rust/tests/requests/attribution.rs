@@ -219,7 +219,7 @@ async fn won_revenue_is_shared_among_the_campaigns_that_touched_the_buyer() {
 
         // The date range is on the day a deal closed: all of them closed today.
         let yesterday = (contact_relationship_management::clock::now()
-            - contact_relationship_management::time::days(1))
+            - contact_relationship_management::time::test_operators::test_days(1))
         .date_utc();
         let none: Value = request
             .get(&format!("/api/attribution?to={yesterday}"))

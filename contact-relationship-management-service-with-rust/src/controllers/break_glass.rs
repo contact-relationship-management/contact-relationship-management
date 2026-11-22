@@ -86,7 +86,8 @@ async fn grant(
     let (reason, minutes) = rules::validate_request(&payload.reason, payload.minutes)
         .map_err(|e| invalid_field(e.field(), &e.to_string()))?;
     let now = crate::clock::now();
-    let expires_at = rules::expiry(now, minutes);
+    let expires_at =
+        rules::expiry(now, minutes).ok_or_else(|| crate::arith::overflow("break_glass_expiry"))?;
     let pid = Uuid::new_v4();
     let mut txn = db::pool(&ctx).begin().await?;
     sqlx::query!(

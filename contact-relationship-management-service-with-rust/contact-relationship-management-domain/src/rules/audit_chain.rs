@@ -92,7 +92,7 @@ impl Verdict {
 
 /// Verify rows ordered by ascending id.
 #[must_use]
-pub fn verify<'a>(rows: impl IntoIterator<Item = Stored<'a>>) -> Verdict {
+pub fn verify<'a>(rows: impl IntoIterator<Item = Stored<'a>>) -> Option<Verdict> {
     let mut verdict = Verdict {
         rows: 0,
         legacy_rows: 0,
@@ -102,13 +102,13 @@ pub fn verify<'a>(rows: impl IntoIterator<Item = Stored<'a>>) -> Verdict {
     let mut expected_prev = String::new();
     let mut chained = false;
     for row in rows {
-        verdict.rows += 1;
+        verdict.rows = verdict.rows.checked_add(1)?;
         let Some(stored) = row.hash else {
             if chained {
                 verdict.first_break = Some((row.link.id, "unchained row after the chain began"));
-                return verdict;
+                return Some(verdict);
             }
-            verdict.legacy_rows += 1;
+            verdict.legacy_rows = verdict.legacy_rows.checked_add(1)?;
             continue;
         };
         chained = true;
@@ -117,21 +117,26 @@ pub fn verify<'a>(rows: impl IntoIterator<Item = Stored<'a>>) -> Verdict {
                 row.link.id,
                 "previous-hash link broken (row deleted or reordered)",
             ));
-            return verdict;
+            return Some(verdict);
         }
         if hash(&row.link) != stored {
             verdict.first_break = Some((row.link.id, "row content does not match its hash"));
-            return verdict;
+            return Some(verdict);
         }
         expected_prev = stored.to_string();
         verdict.head = Some(expected_prev.clone());
     }
-    verdict
+    Some(verdict)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The rules answer `None` on overflow; most tests are about the figures.
+    fn verify<'a>(rows: impl IntoIterator<Item = Stored<'a>>) -> Verdict {
+        super::verify(rows).unwrap()
+    }
 
     struct Row {
         id: i64,

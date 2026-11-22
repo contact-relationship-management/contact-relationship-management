@@ -12,7 +12,7 @@ use super::{a_person, a_user, seed_pipeline};
 
 fn ago(days: i64) -> String {
     (contact_relationship_management::clock::now()
-        - contact_relationship_management::time::days(days))
+        - contact_relationship_management::time::test_operators::test_days(days))
     .to_rfc3339()
 }
 
@@ -186,7 +186,7 @@ async fn the_activity_views_report_the_touches_they_were_given() {
         assert_eq!(delta("per_kind", "task"), 0);
         assert_eq!(delta("sentiment", "positive"), 1);
         assert_eq!(delta("sentiment", "neutral"), 1);
-        let month = |days: i64| (contact_relationship_management::clock::now() - contact_relationship_management::time::days(days)).strftime_utc("%Y-%m").to_string();
+        let month = |days: i64| (contact_relationship_management::clock::now() - contact_relationship_management::time::test_operators::test_days(days)).strftime_utc("%Y-%m").to_string();
         let w1_this_month = after["per_recorder_month"]
             .as_object()
             .unwrap()

@@ -49,12 +49,12 @@ pub fn suggest(ticket_title: &str, articles: &[(String, Option<String>, String)]
         .filter_map(|(index, (title, keywords, body))| {
             let headline = words(&format!("{title} {}", keywords.as_deref().unwrap_or("")));
             let text = words(body);
-            let (mut score, mut matched) = (0, Vec::new());
+            let (mut score, mut matched) = (0_u32, Vec::new());
             for word in &wanted {
                 if headline.contains(word) {
-                    score += HEADLINE_WEIGHT;
+                    score = score.checked_add(HEADLINE_WEIGHT)?;
                 } else if text.contains(word) {
-                    score += BODY_WEIGHT;
+                    score = score.checked_add(BODY_WEIGHT)?;
                 } else {
                     continue;
                 }

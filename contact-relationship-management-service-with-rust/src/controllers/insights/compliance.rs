@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, HeaderMap, Response, Result, State, accounts, conditional, contacts,
     days_or, debug_handler,
 };
+use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -73,13 +74,18 @@ pub(super) async fn dpo(
 ) -> Result<Response> {
     let window_days = days_or(query.days, 30);
     let now = crate::clock::now();
-    let since = now - crate::time::days(window_days);
+    let since = now
+        .checked_sub_days(window_days)
+        .ok_or_else(|| crate::arith::overflow("since"))?;
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let mut coverage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for contact in &contact_rows {
-        *coverage
-            .entry(contact.marketing_consent.as_str())
-            .or_default() += 1;
+        {
+            let slot = coverage
+                .entry(contact.marketing_consent.as_str())
+                .or_default();
+            *slot = slot.tally(1);
+        }
     }
     let withdrawals_in_window =
         super::rollup::withdrawals_since(crate::db::pool(&ctx), since).await?;
@@ -138,7 +144,9 @@ pub(super) async fn consent_by_account(
 ) -> Result<Response> {
     let window = days_or(query.days, 30);
     let now = crate::clock::now();
-    let since = now - crate::time::days(window);
+    let since = now
+        .checked_sub_days(window)
+        .ok_or_else(|| crate::arith::overflow("since"))?;
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let withdrawals = super::rollup::withdrawals_by_account(crate::db::pool(&ctx), since).await?;
@@ -151,9 +159,12 @@ pub(super) async fn consent_by_account(
                 .iter()
                 .filter(|c| c.account_pid == Some(account.pid))
             {
-                *coverage
-                    .entry(contact.marketing_consent.as_str())
-                    .or_default() += 1;
+                {
+                    let slot = coverage
+                        .entry(contact.marketing_consent.as_str())
+                        .or_default();
+                    *slot = slot.tally(1);
+                }
             }
             ConsentAccount {
                 pid: account.pid,

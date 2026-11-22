@@ -7,6 +7,7 @@
 //!
 //! The sweep runs on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, does [`subject_attrs`].
 
+use crate::arith::Tally;
 use std::collections::BTreeMap;
 
 use serde::Serialize;
@@ -210,9 +211,9 @@ pub async fn sweep(pool: &PgPool) -> axa::Result<Outcome> {
         .rows_affected();
         if inserted == 1 {
             if readable {
-                outcome.created += 1;
+                outcome.created = outcome.created.tally(1);
             } else {
-                outcome.suppressed += 1;
+                outcome.suppressed = outcome.suppressed.tally(1);
             }
         }
     }

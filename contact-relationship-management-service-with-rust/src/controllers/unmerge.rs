@@ -13,6 +13,7 @@
 //! merge's are, and a filled field's clearing from [`FILLABLE`]: every name comes from those
 //! lists, every value is bound, and they are reviewed by hand. Every other statement is checked.
 
+use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::prelude::*;
@@ -85,7 +86,8 @@ async fn restore_moved(
     let mut left = Map::new();
     let mut put = |key: &str, ids: usize, back: usize| {
         restored.insert(key.to_string(), json!(back));
-        left.insert(key.to_string(), json!(ids - back));
+        // `null`, not zero, when more came back than were taken: the figure is unknown.
+        left.insert(key.to_string(), json!(ids.checked_sub(back)));
     };
     for (key, table, column, condition, id) in MOVES {
         let moved = ledger_ids(&ledger.moved, key);
@@ -152,22 +154,24 @@ async fn restore_dropped(
     let mut enrolments = 0;
     for row in rows("nurture_enrollments") {
         // The row as the merge dropped it, deleted or not: its own `deleted_at` is put back.
-        enrolments += sqlx::query_scalar!(
-            "UPDATE nurture_enrollments t SET deleted_at = r.deleted_at, status = r.status, \
+        enrolments = enrolments.tally(
+            sqlx::query_scalar!(
+                "UPDATE nurture_enrollments t SET deleted_at = r.deleted_at, status = r.status, \
              next_due_at = r.next_due_at \
              FROM jsonb_populate_record(NULL::nurture_enrollments, $1::jsonb) r \
              WHERE t.pid = r.pid AND t.contact_pid = $2 RETURNING t.pid",
-            row,
-            ledger.merged_pid,
-        )
-        .fetch_all(&mut *txn)
-        .await?
-        .len();
+                row,
+                ledger.merged_pid,
+            )
+            .fetch_all(&mut *txn)
+            .await?
+            .len(),
+        );
     }
     out.insert("nurture_enrollments".into(), json!(enrolments));
     let mut seats = 0;
     for row in rows("working_group_members") {
-        seats += sqlx::query_scalar!(
+        seats = seats.tally(sqlx::query_scalar!(
             "INSERT INTO working_group_members (created_at, updated_at, group_pid, contact_pid) \
              SELECT r.created_at, r.updated_at, r.group_pid, r.contact_pid \
              FROM jsonb_populate_record(NULL::working_group_members, $1::jsonb) r \
@@ -177,7 +181,7 @@ async fn restore_dropped(
         )
         .fetch_all(&mut *txn)
         .await?
-        .len();
+        .len());
     }
     out.insert("working_group_members".into(), json!(seats));
     Ok(out)

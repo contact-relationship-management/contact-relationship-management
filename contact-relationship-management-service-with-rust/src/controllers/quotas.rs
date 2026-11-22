@@ -8,6 +8,7 @@
 //! Everything runs on `sqlx` (CRM-D24, CRM-T206); the attainment read, [`standings`], since
 //! CRM-T215, with the organization's zone bound in place of written into its SQL.
 
+use crate::arith::Tally;
 use std::collections::BTreeMap;
 
 use crate::time::Date;
@@ -288,7 +289,9 @@ async fn set_quota(
     }
     if payload.period_to < payload.period_from {
         problems.push_field("period_to", "the period ends before it starts");
-    } else if crate::time::whole_days(payload.period_to - payload.period_from) >= MAX_PERIOD_DAYS {
+    } else if crate::time::whole_days(payload.period_to.duration_since(payload.period_from))
+        >= MAX_PERIOD_DAYS
+    {
         problems.push_field(
             "period_to",
             format!("a period is at most {MAX_PERIOD_DAYS} days"),
@@ -877,7 +880,14 @@ async fn credited_deals(
         )
         .fetch_optional(pool)
         .await?;
-        let mine = mine.map(|part| part.saturating_sub(clawed.unwrap_or(0)).max(0));
+        let mine = mine
+            .map(|part| {
+                part.checked_sub(clawed.unwrap_or(0))
+                    .ok_or_else(|| crate::arith::overflow("credit_after_clawback"))
+                    // CLAWBACK-1 (CRM-R68): a clawback takes from the credit, never below nothing.
+                    .map(|left| left.max(0))
+            })
+            .transpose()?;
         if let Some(part) = mine.filter(|p| *p > 0) {
             credited.push((deal.currency, part));
         }
@@ -914,11 +924,15 @@ pub(super) async fn standings(
         let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
         for (c, credited) in credited_deals(pool, &owner, from, to).await? {
             if c == currency {
-                revenue = revenue.saturating_add(credited);
-                deals += 1;
+                revenue = revenue
+                    .checked_add(credited)
+                    .ok_or_else(|| crate::arith::overflow("revenue"))?;
+                deals = deals.tally(1);
             } else {
                 let slot: &mut i64 = other.entry(c).or_default();
-                *slot = slot.saturating_add(credited);
+                *slot = slot
+                    .checked_add(credited)
+                    .ok_or_else(|| crate::arith::overflow("other_revenue"))?;
             }
         }
         let tiers: Option<Vec<Tier>> = q
@@ -944,7 +958,8 @@ pub(super) async fn standings(
             revenue_minor: revenue,
             won_deals: deals,
             attainment: quota::attainment(quota_minor, revenue),
-            remaining_minor: quota::remaining(quota_minor, revenue),
+            remaining_minor: quota::remaining(quota_minor, revenue)
+                .ok_or_else(|| crate::arith::overflow("quota_remaining"))?,
             other_currencies: other,
             plan: q.plan_name,
             commission_minor,

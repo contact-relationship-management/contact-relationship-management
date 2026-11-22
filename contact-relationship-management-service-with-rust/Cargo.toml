@@ -125,6 +125,8 @@ path = "src/bin/main.rs"
 required-features = []
 
 [dev-dependencies]
+# Operators on instants for the unit tests only (production code uses `checked_*`).
+contact-relationship-management-domain = { path = "contact-relationship-management-domain", features = ["postgres", "test-support"] }
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
 authentication-verifier = { version = "0.9.3", default-features = false, features = ["test-idp"] }

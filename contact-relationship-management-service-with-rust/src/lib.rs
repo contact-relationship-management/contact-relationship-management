@@ -37,7 +37,8 @@
     clippy::unreachable,
     clippy::todo,
     clippy::unimplemented,
-    clippy::indexing_slicing
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects
 )]
 #![cfg_attr(
     test,
@@ -46,12 +47,16 @@
         clippy::expect_used,
         clippy::panic,
         clippy::unreachable,
-        clippy::indexing_slicing
+        clippy::indexing_slicing,
+        clippy::arithmetic_side_effects
     )
 )]
 // New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;
 // the lint's replacement needs a typed empty array for each case.
 #![cfg_attr(test, allow(clippy::assert_is_empty))]
+// The spec writes a declared floor as `checked_*` plus `unwrap_or(FLOOR)`, citing its declaration, and
+// not as `saturating_*` (RCA-INT-4, RCA-NONE-2); clippy would have the latter.
+#![allow(clippy::manual_saturating_arithmetic)]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 // The hand-written OpenAPI document is one large nested `json!` literal.
@@ -63,6 +68,7 @@
 pub use contact_relationship_management_domain::{rules, time};
 
 pub mod app;
+pub mod arith;
 pub mod attachments;
 pub mod auth;
 pub mod break_glass;

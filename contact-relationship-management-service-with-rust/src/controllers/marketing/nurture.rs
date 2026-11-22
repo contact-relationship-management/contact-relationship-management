@@ -6,6 +6,7 @@ use super::{
     nurture_enrollments, nurture_sequences, nurture_steps, streaming, tokens, unprocessable,
     with_unsubscribe,
 };
+use crate::arith::Tally;
 use sqlx::PgConnection;
 
 use crate::controllers::PidPath;
@@ -192,7 +193,11 @@ pub(crate) async fn enrol_in(
     else {
         return Ok(None);
     };
-    let due = crate::clock::now() + jiff::SignedDuration::from_hours(i64::from(first.delay_hours));
+    let due = crate::clock::now()
+        .checked_add(jiff::SignedDuration::from_hours(i64::from(
+            first.delay_hours,
+        )))
+        .ok_or_else(|| crate::arith::overflow("due"))?;
     let pid = Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO nurture_enrollments (pid, sequence_pid, contact_pid, current_step, \
@@ -354,18 +359,23 @@ pub(super) async fn exit_enrollment(
 
 /// Where an enrolment goes past the step just sent: the next step (due after its delay) or
 /// `completed`, as `(current_step, next_due_at, status)`; and whether it completed.
+/// The next `(current_step, next_due_at, status)` of an enrolment, and whether it completed.
+pub(super) type Advanced = ((i32, Option<DateTimeWithTimeZone>, &'static str), bool);
+
 pub(super) fn advance_enrollment(
     row: &nurture_enrollments::Model,
     steps: &[nurture_steps::Model],
     now: DateTimeWithTimeZone,
-) -> ((i32, Option<DateTimeWithTimeZone>, &'static str), bool) {
-    let next_index = row.current_step + 1;
+) -> Option<Advanced> {
+    let next_index = row.current_step.checked_add(1)?;
     match steps.get(usize::try_from(next_index).unwrap_or(usize::MAX)) {
         Some(next_step) => {
-            let next_due = now + jiff::SignedDuration::from_hours(i64::from(next_step.delay_hours));
-            ((next_index, Some(next_due), "active"), false)
+            let next_due = now.checked_add(jiff::SignedDuration::from_hours(i64::from(
+                next_step.delay_hours,
+            )))?;
+            Some(((next_index, Some(next_due), "active"), false))
         }
-        None => ((next_index, None, "completed"), true),
+        None => Some(((next_index, None, "completed"), true)),
     }
 }
 
@@ -459,11 +469,11 @@ pub(super) async fn advance_nurture(
     for enrollment in due {
         match advance_one(pool, &sender, &caller, enrollment, now).await? {
             Step::Sent { finished } => {
-                sent += 1;
-                completed += u64::from(finished);
+                sent = sent.tally(1);
+                completed = completed.tally(u64::from(finished));
             }
-            Step::Completed => completed += 1,
-            Step::Held => held += 1,
+            Step::Completed => completed = completed.tally(1),
+            Step::Held => held = held.tally(1),
             Step::Skipped => {}
         }
     }
@@ -584,7 +594,8 @@ async fn advance_one(
         Some(serde_json::json!({ "step": step.position, "message_id": message_id })),
     )
     .await?;
-    let ((current_step, next_due_at, status), finished) = advance_enrollment(&row, &steps, now);
+    let ((current_step, next_due_at, status), finished) =
+        advance_enrollment(&row, &steps, now).ok_or_else(|| crate::arith::overflow("next_step"))?;
     sqlx::query!(
         "UPDATE nurture_enrollments SET current_step = $2, next_due_at = $3, status = $4 \
          WHERE id = $1 AND deleted_at IS NULL",

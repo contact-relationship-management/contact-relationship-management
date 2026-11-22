@@ -8,6 +8,7 @@
 //! currency, and the contacts' names are written in more than one order and script, some with
 //! the given and family names stored and some with the display name only.
 
+use crate::arith::Tally;
 use axa::prelude::*;
 use axa::task::{TaskInfo, Vars};
 use uuid::Uuid;
@@ -100,15 +101,18 @@ impl Task for Seed {
                 account,
                 format!("organization:{}", Uuid::new_v4()),
                 format!("person:{}", Uuid::new_v4()),
-                format!("Demo Account {:02}", index + 1),
+                format!("Demo Account {:02}", index.tally(1)),
                 tier,
             )
             .execute(&mut *txn)
             .await?;
             account_pids.push(account);
             for c in 0..3 {
-                let Some(&(display, given, family)) =
-                    CONTACT_NAMES.get((index * 3 + c) % CONTACT_NAMES.len().max(1))
+                let Some(&(display, given, family)) = index
+                    .checked_mul(3)
+                    .and_then(|n| n.checked_add(c))
+                    .and_then(|n| n.checked_rem(CONTACT_NAMES.len()))
+                    .and_then(|at| CONTACT_NAMES.get(at))
                 else {
                     continue;
                 };
@@ -169,7 +173,8 @@ impl Task for Seed {
             let stage_index = i % 5;
             let closed = stage_index >= 3;
             let (Some(&account_pid), Some(&stage_pid)) = (
-                account_pids.get(i % account_pids.len().max(1)),
+                i.checked_rem(account_pids.len())
+                    .and_then(|at| account_pids.get(at)),
                 stage_pids.get(stage_index),
             ) else {
                 continue;
@@ -183,7 +188,7 @@ impl Task for Seed {
                 format!("person:{}", Uuid::new_v4()),
                 pipeline,
                 stage_pid,
-                format!("Demo Deal {:02}", i + 1),
+                format!("Demo Deal {:02}", i.tally(1)),
                 amount_minor,
                 currency,
                 crate::time::Date::from_ymd(2026, 9, 30),
@@ -225,7 +230,7 @@ impl Task for Seed {
                  VALUES ($1, $2, $3, $4, 'initech.example', $5, false, false, $6)",
                 Uuid::new_v4(),
                 if i % 2 == 0 { "web" } else { "referral" },
-                format!("Demo Lead {:02}", i + 1),
+                format!("Demo Lead {:02}", i.tally(1)),
                 format!("lead{i}@initech.example"),
                 if i % 2 == 0 { 10 } else { 30 },
                 status,

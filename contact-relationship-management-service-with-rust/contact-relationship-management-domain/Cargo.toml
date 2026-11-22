@@ -22,6 +22,9 @@ default = []
 # Read and write `time::Timestamp` and `time::Date` as Postgres `timestamptz` and `date` (sqlx). The
 # impls must live beside the types; the service turns this on, and the rules never use it.
 postgres = ["dep:sqlx"]
+# `+` and `-` on instants and days, and `test_days`, for the unit tests of a crate that uses this one.
+# Production code has no such operators (spec/arithmetic/index.md); only a `dev-dependency` turns this on.
+test-support = []
 
 [dependencies]
 base64 = { version = "0.23" }

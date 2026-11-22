@@ -10,6 +10,7 @@
 //! event's signature instead. The fourth asks WPM which contacts are its workers today, to find
 //! those the events never told of (CRM-R94).
 
+use crate::arith::Tally;
 use std::collections::BTreeMap;
 
 use axa::prelude::*;
@@ -198,7 +199,8 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
         workers
             .iter()
             .map(|w| (w.department.as_str(), w.person_ref.as_deref())),
-    );
+    )
+    .ok_or_else(|| crate::arith::overflow("team_import"))?;
     let mut skipped = Vec::new();
     let who = owner_of(&caller)?;
     let mut txn = db::pool(&ctx).begin().await?;
@@ -389,7 +391,7 @@ async fn apply_handoff(
             employments::end(&mut *txn, *pid, &h.organization_ref).await?
         };
         if done {
-            changed += 1;
+            changed = changed.tally(1);
             Audit::record_on(
                 txn,
                 "contact",
@@ -552,7 +554,7 @@ async fn record_worker(
         None => LastEvent::None,
     };
     if rules::decide(true, last) != Action::Record {
-        view.left_by_event += 1;
+        view.left_by_event = view.left_by_event.tally(1);
         return Ok(());
     }
     for pid in employments::contacts_of(&mut *txn, person_ref).await? {
@@ -560,7 +562,7 @@ async fn record_worker(
             employments::record(&mut *txn, pid, person_ref, organization_ref, today, source)
                 .await?;
         if recorded {
-            view.recorded += 1;
+            view.recorded = view.recorded.tally(1);
             Audit::record_on(
                 &mut *txn,
                 "contact",
@@ -577,7 +579,7 @@ async fn record_worker(
             )
             .await?;
         } else {
-            view.already_paused += 1;
+            view.already_paused = view.already_paused.tally(1);
         }
     }
     Ok(())

@@ -52,7 +52,7 @@ fn number(s: &str, min: usize, max: usize) -> Option<(&str, i64)> {
     for digit in s.as_bytes().iter().take(digits) {
         value = value
             .checked_mul(10)?
-            .checked_add(i64::from(digit - b'0'))?;
+            .checked_add(i64::from(digit.checked_sub(b'0')?))?;
     }
     Some((&s[digits..], value))
 }
@@ -66,7 +66,7 @@ fn field(s: &str, width: usize) -> Option<(&str, i64)> {
 fn year(s: &str) -> Option<(&str, i64)> {
     let s = s.trim_start();
     if let Some(rest) = s.strip_prefix('-') {
-        number(rest, 1, usize::MAX).map(|(rest, value)| (rest, -value))
+        number(rest, 1, usize::MAX).and_then(|(rest, value)| Some((rest, value.checked_neg()?)))
     } else if let Some(rest) = s.strip_prefix('+') {
         number(rest, 1, usize::MAX)
     } else {
@@ -110,9 +110,10 @@ pub fn date_ymd(text: &str) -> Option<Date> {
 /// A fraction of a second after its `.`: at least one digit, any after the ninth dropped.
 fn nanoseconds(s: &str) -> Option<(&str, i32)> {
     let (rest, value) = number(s, 1, 9)?;
-    let scale = 10_i64.pow(9 - u32::try_from(s.len() - rest.len()).ok()?);
+    let taken = u32::try_from(s.len().checked_sub(rest.len())?).ok()?;
+    let scale = 10_i64.checked_pow(9_u32.checked_sub(taken)?)?;
     let rest = rest.trim_start_matches(|c: char| c.is_ascii_digit());
-    Some((rest, i32::try_from(value * scale).ok()?))
+    Some((rest, i32::try_from(value.checked_mul(scale)?).ok()?))
 }
 
 /// An offset as `chrono`'s `scan::timezone_offset` read one for these two readers: `Z`, or a sign
@@ -132,7 +133,9 @@ fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
     let two = |s: &str, first: std::ops::RangeInclusive<u8>| -> Option<i32> {
         match *s.as_bytes() {
             [a, b, ..] if first.contains(&a) && b.is_ascii_digit() => {
-                Some(i32::from(a - b'0') * 10 + i32::from(b - b'0'))
+                i32::from(a.checked_sub(b'0')?)
+                    .checked_mul(10)?
+                    .checked_add(i32::from(b.checked_sub(b'0')?))
             }
             _ => None,
         }
@@ -145,8 +148,17 @@ fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
         s.strip_prefix(':')?
     };
     let minutes = two(s, b'0'..=b'5')?;
-    let seconds = hours * 3600 + minutes * 60;
-    Some((&s[2..], if negative { -seconds } else { seconds }))
+    let seconds = hours
+        .checked_mul(3600)?
+        .checked_add(minutes.checked_mul(60)?)?;
+    Some((
+        &s[2..],
+        if negative {
+            seconds.checked_neg()?
+        } else {
+            seconds
+        },
+    ))
 }
 
 /// The instant, from fields `chrono` would have accepted: an offset under a day, and a leap second

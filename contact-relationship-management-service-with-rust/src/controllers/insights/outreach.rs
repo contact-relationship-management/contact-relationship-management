@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, Deserialize, HeaderMap, Response, Result, State, Uuid, accounts,
     conditional, contacts, days_or, deals, debug_handler, memberships, pipeline_stages, tickets,
 };
+use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -182,8 +183,8 @@ pub(super) async fn cadence(
         .iter()
         .map(|contact| {
             let days = last_contact_touch.get(&contact.pid).map_or_else(
-                || crate::time::whole_days(now - contact.created_at),
-                |at| crate::time::whole_days(now - *at),
+                || crate::time::whole_days(now.duration_since(contact.created_at)),
+                |at| crate::time::whole_days(now.duration_since(*at)),
             );
             (
                 days,
@@ -203,8 +204,8 @@ pub(super) async fn cadence(
         .iter()
         .map(|account| {
             let days = last_account_touch.get(&account.pid).map_or_else(
-                || crate::time::whole_days(now - account.created_at),
-                |at| crate::time::whole_days(now - *at),
+                || crate::time::whole_days(now.duration_since(account.created_at)),
+                |at| crate::time::whole_days(now.duration_since(*at)),
             );
             (
                 days,
@@ -250,7 +251,9 @@ pub(super) async fn engagement(
 ) -> Result<Response> {
     let window = days_or(query.days, 90);
     let now = crate::clock::now();
-    let since = now - crate::time::days(window);
+    let since = now
+        .checked_sub_days(window)
+        .ok_or_else(|| crate::arith::overflow("since"))?;
     let groups = super::rollup::engagement_counts(crate::db::pool(&ctx), since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
@@ -260,16 +263,25 @@ pub(super) async fn engagement(
     let mut total = 0usize;
     for group in groups {
         let count = usize::try_from(group.count).unwrap_or(0);
-        total += count;
+        total = total.tally(count);
         let recorder = group
             .actor_ref
             .unwrap_or_else(|| "unattributed".to_string());
-        *per_recorder_month
-            .entry(format!("{recorder} {}", group.month))
-            .or_default() += count;
-        *per_kind.entry(group.kind).or_default() += count;
+        {
+            let slot = per_recorder_month
+                .entry(format!("{recorder} {}", group.month))
+                .or_default();
+            *slot = slot.tally(count);
+        }
+        {
+            let slot = &mut *per_kind.entry(group.kind).or_default();
+            *slot = slot.tally(count);
+        }
         let key = group.sentiment.unwrap_or_else(|| "unrecorded".to_string());
-        *sentiment.entry(key).or_default() += count;
+        {
+            let slot = &mut *sentiment.entry(key).or_default();
+            *slot = slot.tally(count);
+        }
     }
     Ok(conditional(
         &headers,
@@ -430,15 +442,20 @@ pub(super) async fn members(
             *entry = at;
         }
         if touch.open_next > 0 {
-            *open_followups.entry(account_pid).or_default() +=
-                usize::try_from(touch.open_next).unwrap_or(0);
+            {
+                let slot = open_followups.entry(account_pid).or_default();
+                *slot = slot.tally(usize::try_from(touch.open_next).unwrap_or(0));
+            }
         }
     }
     let mut open_tickets: std::collections::BTreeMap<Uuid, usize> =
         std::collections::BTreeMap::new();
     for ticket in &ticket_rows {
         if let Some(account_pid) = ticket.account_pid {
-            *open_tickets.entry(account_pid).or_default() += 1;
+            {
+                let slot = &mut *open_tickets.entry(account_pid).or_default();
+                *slot = slot.tally(1);
+            }
         }
     }
     let mut rows: Vec<MemberAccount> = Vec::new();
@@ -449,12 +466,12 @@ pub(super) async fn members(
             .filter(|c| c.account_pid == Some(account.pid))
             .count();
         let days = last_touch.get(&account.pid).map_or_else(
-            || crate::time::whole_days(now - account.created_at),
-            |at| crate::time::whole_days(now - *at),
+            || crate::time::whole_days(now.duration_since(account.created_at)),
+            |at| crate::time::whole_days(now.duration_since(*at)),
         );
         let is_silent = days > threshold;
         if is_silent {
-            silent += 1;
+            silent = silent.tally(1);
         }
         let membership = membership_of.get(&account.pid).map(|m| MemberMembership {
             status: m.status.clone(),

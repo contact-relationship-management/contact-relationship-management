@@ -303,7 +303,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
             let r = run(
                 db::pool(&ctx),
                 &recorder,
-                start + contact_relationship_management::time::days(2 * n),
+                start + contact_relationship_management::time::test_operators::test_days(2 * n),
             )
             .await
             .unwrap();
@@ -315,7 +315,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
         let after = run(
             db::pool(&ctx),
             &recorder,
-            start + contact_relationship_management::time::days(30),
+            start + contact_relationship_management::time::test_operators::test_days(30),
         )
         .await
         .unwrap();
@@ -336,7 +336,7 @@ async fn a_failing_receiver_is_retried_with_backoff_and_then_the_delivery_is_dea
             db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now()
-                + contact_relationship_management::time::days(31),
+                + contact_relationship_management::time::test_operators::test_days(31),
         )
         .await
         .unwrap();
@@ -386,7 +386,7 @@ async fn a_410_disables_the_subscription_cancels_what_is_queued_and_is_audited()
             db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now()
-                + contact_relationship_management::time::days(1),
+                + contact_relationship_management::time::test_operators::test_days(1),
         )
         .await
         .unwrap();
@@ -468,7 +468,7 @@ async fn a_rotated_secret_signs_beside_the_old_one_for_a_day() {
             db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now()
-                + contact_relationship_management::time::days(2),
+                + contact_relationship_management::time::test_operators::test_days(2),
         )
         .await
         .unwrap();
@@ -532,7 +532,7 @@ async fn erasing_a_contact_cancels_its_queued_deliveries() {
         let later = run(
             db::pool(&ctx),
             &recorder,
-            start + contact_relationship_management::time::days(1),
+            start + contact_relationship_management::time::test_operators::test_days(1),
         )
         .await
         .unwrap();
@@ -594,7 +594,7 @@ async fn a_removed_subscription_sends_nothing_more_and_keeps_its_log() {
             db::pool(&ctx),
             &recorder,
             contact_relationship_management::clock::now()
-                + contact_relationship_management::time::days(1),
+                + contact_relationship_management::time::test_operators::test_days(1),
         )
         .await
         .unwrap();

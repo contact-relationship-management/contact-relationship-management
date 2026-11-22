@@ -96,9 +96,11 @@ fn time_of(text: &str) -> Option<Time> {
 /// One or two ASCII digits at the start of `text`, and what follows them.
 fn digits(text: &str) -> Option<(i8, &str)> {
     let count = text.bytes().take(2).take_while(u8::is_ascii_digit).count();
-    let value = text[..count].bytes().fold(0_i8, |value, digit| {
-        value * 10 + i8::try_from(digit - b'0').unwrap_or(0)
-    });
+    let value = text[..count].bytes().try_fold(0_i8, |value, digit| {
+        value
+            .checked_mul(10)?
+            .checked_add(i8::try_from(digit.checked_sub(b'0')?).ok()?)
+    })?;
     (count > 0).then(|| (value, &text[count..]))
 }
 
@@ -210,7 +212,7 @@ impl Calendar {
                     if remaining <= room {
                         return begin.checked_add(SignedDuration::from_secs(remaining)).ok();
                     }
-                    remaining -= room;
+                    remaining = remaining.checked_sub(room)?;
                 }
             }
             date = date.tomorrow().ok()?;
@@ -222,8 +224,8 @@ impl Calendar {
     /// The seconds of working time between two instants (zero when `to` is not after `from`).
     /// Counted over at most the search horizon, so a longer span is cut short rather than refused.
     #[must_use]
-    pub fn working_seconds_between(&self, from: Timestamp, to: Timestamp) -> i64 {
-        let mut total = 0;
+    pub fn working_seconds_between(&self, from: Timestamp, to: Timestamp) -> Option<i64> {
+        let mut total = 0_i64;
         let mut date = self.tz.to_datetime(from).date();
         let last = self.tz.to_datetime(to).date();
         for _ in 0..HORIZON_DAYS {
@@ -239,14 +241,14 @@ impl Calendar {
                     };
                     let (begin, end) = (opens.max(from), closes.min(to));
                     if end > begin {
-                        total += end.duration_since(begin).as_secs();
+                        total = total.checked_add(end.duration_since(begin).as_secs())?;
                     }
                 }
             }
             let Ok(next) = date.tomorrow() else { break };
             date = next;
         }
-        total
+        Some(total)
     }
 
     /// The instant a local clock time on `date` names: the earlier of two when the clock goes back
@@ -514,7 +516,7 @@ mod tests {
     #[test]
     fn working_time_between_two_instants_skips_nights_weekends_and_holidays() {
         let c = office("UTC", &["2026-07-08"]);
-        let between = |a, b| c.working_seconds_between(utc(a), utc(b));
+        let between = |a, b| c.working_seconds_between(utc(a), utc(b)).unwrap();
         // Inside one day.
         assert_eq!(
             between("2026-07-06T10:00:00Z", "2026-07-06T11:30:00Z"),
@@ -546,7 +548,11 @@ mod tests {
         let start = utc("2026-07-06T15:00:00Z");
         for seconds in [60, 3600, 5 * 3600, 20 * 3600, 33 * 3600 + 17] {
             let end = c.add_working_seconds(start, seconds).unwrap();
-            assert_eq!(c.working_seconds_between(start, end), seconds, "{seconds}");
+            assert_eq!(
+                c.working_seconds_between(start, end).unwrap(),
+                seconds,
+                "{seconds}"
+            );
         }
     }
 }

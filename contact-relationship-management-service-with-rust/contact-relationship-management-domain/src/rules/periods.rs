@@ -95,24 +95,29 @@ pub fn caller_zone(named: Option<&str>, periods: &Periods) -> TimeZone {
 
 /// The calendar year a fiscal year containing `day` starts in, and its quarter (1 to 4).
 #[must_use]
-pub fn fiscal_position(day: Date, start_month: u32) -> (i32, u32) {
+pub fn fiscal_position(day: Date, start_month: u32) -> Option<(i32, u32)> {
     let month = u32::from(day.month().unsigned_abs()); // 1 to 12
-    let shift = (month + 12 - start_month) % 12; // months since the fiscal year began
+    // Months since the fiscal year began.
+    let shift = month
+        .checked_add(12)?
+        .checked_sub(start_month)?
+        .checked_rem(12)?;
     let year = if month >= start_month {
         i32::from(day.year())
     } else {
-        i32::from(day.year()) - 1
+        i32::from(day.year()).checked_sub(1)?
     };
-    (year, shift / 3 + 1)
+    Some((year, shift.checked_div(3)?.checked_add(1)?))
 }
 
 /// A fiscal year's label: `2026`, or `2026/27` when it does not start in January.
 #[must_use]
-pub fn fiscal_year_label(start_year: i32, start_month: u32) -> String {
+pub fn fiscal_year_label(start_year: i32, start_month: u32) -> Option<String> {
     if start_month == 1 {
-        start_year.to_string()
+        Some(start_year.to_string())
     } else {
-        format!("{start_year}/{:02}", (start_year + 1).rem_euclid(100))
+        let next = start_year.checked_add(1)?.checked_rem_euclid(100)?;
+        Some(format!("{start_year}/{next:02}"))
     }
 }
 
@@ -172,7 +177,8 @@ pub fn fiscal_quarter_expr(column: &str, periods: &Periods) -> String {
 /// The local time moved back by the months before the fiscal year starts, so its calendar year
 /// and quarter are the fiscal ones.
 fn shifted(column: &str, periods: &Periods) -> String {
-    let months = periods.fiscal_start_month.saturating_sub(1);
+    // PERIOD-1: January starts the fiscal year no earlier than the calendar one, so no months.
+    let months = periods.fiscal_start_month.checked_sub(1).unwrap_or(0);
     if months == 0 {
         local(column, periods)
     } else {
@@ -183,6 +189,13 @@ fn shifted(column: &str, periods: &Periods) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fiscal_position(day: Date, start_month: u32) -> (i32, u32) {
+        super::fiscal_position(day, start_month).unwrap()
+    }
+    fn fiscal_year_label(start_year: i32, start_month: u32) -> String {
+        super::fiscal_year_label(start_year, start_month).unwrap()
+    }
 
     fn day(y: i16, m: i8, d: i8) -> Date {
         Date::new(y, m, d).unwrap()

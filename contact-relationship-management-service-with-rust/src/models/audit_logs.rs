@@ -138,7 +138,8 @@ impl Model {
             Self,
             "SELECT created_at, updated_at, id, entity, entity_pid, action, actor, snapshot, prev_hash, hash FROM audit_logs WHERE created_at >= $1 ORDER BY id DESC LIMIT $2",
             since,
-            limit.saturating_mul(10), // headroom before the in-app filter
+            // HEADROOM-1: ten times the page, before the in-app filter; out of range, the page itself.
+            limit.checked_mul(10).unwrap_or(limit),
         )
         .fetch_all(pool)
         .await?;
@@ -196,19 +197,22 @@ pub async fn verify_chain(pool: &PgPool) -> Result<audit_chain::Verdict, sqlx::E
             )
         })
         .collect();
-    Ok(audit_chain::verify(rows.iter().zip(&prepared).map(
-        |(row, (pid, prev, snapshot))| audit_chain::Stored {
-            link: audit_chain::Link {
-                id: row.id,
-                prev_hash: prev,
-                entity: &row.entity,
-                entity_pid: pid,
-                action: &row.action,
-                actor: row.actor.as_deref(),
-                snapshot: snapshot.as_deref(),
-                created_micros: row.created_at.as_microsecond(),
-            },
-            hash: row.hash.as_deref(),
-        },
-    )))
+    audit_chain::verify(
+        rows.iter()
+            .zip(&prepared)
+            .map(|(row, (pid, prev, snapshot))| audit_chain::Stored {
+                link: audit_chain::Link {
+                    id: row.id,
+                    prev_hash: prev,
+                    entity: &row.entity,
+                    entity_pid: pid,
+                    action: &row.action,
+                    actor: row.actor.as_deref(),
+                    snapshot: snapshot.as_deref(),
+                    created_micros: row.created_at.as_microsecond(),
+                },
+                hash: row.hash.as_deref(),
+            }),
+    )
+    .ok_or_else(|| sqlx::Error::Protocol("the audit chain could not be counted".into()))
 }

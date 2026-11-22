@@ -4,6 +4,7 @@ use super::{
     AppContext, Audit, IntoResponse, Path, Response, Result, State, Uuid, apply_consent_in,
     debug_handler, deliveries, format, tokens,
 };
+use crate::arith::Tally;
 
 use axa::extract::Query;
 use sqlx::{PgConnection, PgPool};
@@ -434,7 +435,7 @@ pub(super) async fn provider_webhook(
     let mut recorded = 0_u32;
     for outcome in &outcomes {
         if apply_event(&mut txn, &outcome.message_id, outcome.event).await? == "recorded" {
-            recorded += 1;
+            recorded = recorded.tally(1);
         }
     }
     txn.commit().await?;

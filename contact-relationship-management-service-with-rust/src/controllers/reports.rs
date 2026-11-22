@@ -225,7 +225,8 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     // A group with only a few records behind it is a few people (or a few deals' amounts): leave it
     // out, and say how many were, so a short table is not mistaken for a complete one (CRM-R78).
     let min_cell_size = crate::settings::current().min_cell_size;
-    let (cells, suppressed) = rules::suppress(cells, min_cell_size, spec.convert_to.is_some());
+    let (cells, suppressed) = rules::suppress(cells, min_cell_size, spec.convert_to.is_some())
+        .ok_or_else(|| crate::arith::overflow("report_cells"))?;
     let Conversion {
         mut rows,
         rate_date,

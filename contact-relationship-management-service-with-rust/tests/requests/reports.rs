@@ -97,7 +97,8 @@ async fn records_are_counted_by_a_field_a_tag_and_a_date_range() {
             json!({ "kind": "contact", "group_by": "status", "from": today, "to": today })
         );
         assert_eq!(rows(&in_range), [("active".to_string(), 3)]);
-        let last_year = today - contact_relationship_management::time::days(400);
+        let last_year =
+            today - contact_relationship_management::time::test_operators::test_days(400);
         let out = run!(
             &request,
             json!({ "kind": "contact", "group_by": "status", "to": last_year })

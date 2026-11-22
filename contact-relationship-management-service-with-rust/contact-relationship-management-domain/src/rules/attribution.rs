@@ -3,8 +3,6 @@
 //!
 //! Pure and DB-free. The shares of one deal add up to its amount exactly, to the minor unit.
 
-#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
-
 use std::collections::BTreeMap;
 
 use crate::time::Timestamp;
@@ -550,7 +548,7 @@ mod tests {
         let closed = closed();
         let at = |days: i64, campaign: u128| Touch {
             campaign: id(campaign),
-            at: closed - crate::time::days(days),
+            at: closed - crate::time::test_operators::test_days(days),
         };
         let touches = [at(14, 1), at(0, 2)];
         // Seven days: 14 days is two half-lives, so 1 : 4 of 10,000.
@@ -596,7 +594,7 @@ mod tests {
         let closed = closed();
         let at = |days: i64, campaign: u128| Touch {
             campaign: id(campaign),
-            at: closed - crate::time::days(days),
+            at: closed - crate::time::test_operators::test_days(days),
         };
         let touches = [at(14, 1), at(7, 2), at(0, 3)];
         let shares = credit(Model::TimeDecay, 7000, &touches, closed);
@@ -620,7 +618,7 @@ mod tests {
         // A touch after the close counts as just happened, not as a negative age.
         let after = Touch {
             campaign: id(4),
-            at: closed + crate::time::days(2),
+            at: closed + crate::time::test_operators::test_days(2),
         };
         assert_eq!(
             credit(Model::TimeDecay, 10, &[after], closed),

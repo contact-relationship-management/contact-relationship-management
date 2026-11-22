@@ -79,7 +79,7 @@ async fn a_reminder_fires_once_fires_again_for_a_new_time_and_is_read_by_its_rec
         let contact = seed_contact!(&request, "Reminded").await;
 
         // Not yet due, not a task, and finished tasks make nothing.
-        let future = (contact_relationship_management::clock::now() + contact_relationship_management::time::days(1)).to_rfc3339();
+        let future = (contact_relationship_management::clock::now() + contact_relationship_management::time::test_operators::test_days(1)).to_rfc3339();
         let _later = task!(request, contact, me, future);
         let done = task!(request, contact, me, an_hour_ago());
         request

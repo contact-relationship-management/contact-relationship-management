@@ -7,6 +7,7 @@
 //! Everything runs on `sqlx` (CRM-D24, CRM-T205); [`put_team`], which the WPM import in
 //! `bridges.rs` also calls, takes the caller's transaction since CRM-T216.
 
+use crate::arith::Tally;
 use std::collections::BTreeMap;
 
 use crate::time::Date;
@@ -279,17 +280,25 @@ async fn team_attainment(
         let mut other: BTreeMap<String, i64> = BTreeMap::new();
         for s in &mine {
             let slot = per.entry(s.currency.clone()).or_default();
-            slot.0 = slot.0.saturating_add(s.quota_minor);
-            slot.1 = slot.1.saturating_add(s.revenue_minor);
-            slot.2 += s.won_deals;
-            slot.3 += 1;
+            slot.0 = slot
+                .0
+                .checked_add(s.quota_minor)
+                .ok_or_else(|| crate::arith::overflow("team_quota"))?;
+            slot.1 = slot
+                .1
+                .checked_add(s.revenue_minor)
+                .ok_or_else(|| crate::arith::overflow("team_revenue"))?;
+            slot.2 = slot.2.tally(s.won_deals);
+            slot.3 = slot.3.tally(1);
         }
         // A worker's revenue in a currency the team has a quota in is already counted there.
         for s in &mine {
             for (code, minor) in &s.other_currencies {
                 if !per.contains_key(code) {
                     let slot = other.entry(code.clone()).or_default();
-                    *slot = slot.saturating_add(*minor);
+                    *slot = slot
+                        .checked_add(*minor)
+                        .ok_or_else(|| crate::arith::overflow("team_other_revenue"))?;
                 }
             }
         }
@@ -306,17 +315,20 @@ async fn team_attainment(
             currencies: per
                 .into_iter()
                 .map(
-                    |(currency, (quota_minor, revenue_minor, won_deals, workers))| TeamCurrency {
-                        currency,
-                        quota_minor,
-                        revenue_minor,
-                        won_deals,
-                        attainment: analytics::ratio(revenue_minor, quota_minor),
-                        remaining_minor: quota::remaining(quota_minor, revenue_minor),
-                        workers,
+                    |(currency, (quota_minor, revenue_minor, won_deals, workers))| {
+                        Ok(TeamCurrency {
+                            currency,
+                            quota_minor,
+                            revenue_minor,
+                            won_deals,
+                            attainment: analytics::ratio(revenue_minor, quota_minor),
+                            remaining_minor: quota::remaining(quota_minor, revenue_minor)
+                                .ok_or_else(|| crate::arith::overflow("quota_remaining"))?,
+                            workers,
+                        })
                     },
                 )
-                .collect(),
+                .collect::<Result<Vec<_>>>()?,
             other_currencies: other,
         });
     }

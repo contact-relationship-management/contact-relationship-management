@@ -1,6 +1,7 @@
 //! Support insights: the SLA register and per-assignee workload.
 
 use super::{AppContext, HeaderMap, Response, Result, State, conditional, debug_handler, tickets};
+use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -50,7 +51,9 @@ pub(super) async fn sla_register(
     headers: HeaderMap,
 ) -> Result<Response> {
     let now = crate::clock::now();
-    let at_risk_horizon = now + jiff::SignedDuration::from_hours(4);
+    let at_risk_horizon = now
+        .checked_add(jiff::SignedDuration::from_hours(4))
+        .ok_or_else(|| crate::arith::overflow("at_risk_horizon"))?;
     let open: Vec<tickets::Model> =
         crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut breaches: Vec<(i64, Breach)> = Vec::new();
@@ -62,7 +65,7 @@ pub(super) async fn sla_register(
             .clone()
             .unwrap_or_else(|| "unassigned".to_string());
         let entry = workload.entry(key).or_default();
-        entry.0 += 1;
+        entry.0 = entry.0.tally(1);
         let mut worst_overdue: Option<(&str, i64)> = None;
         // A ticket waiting for the customer has a stopped clock, so it is not running toward a
         // deadline (CRM-R55); one that was already late when paused stays late.
@@ -73,16 +76,16 @@ pub(super) async fn sla_register(
         ] {
             let Some(due) = due else { continue };
             if due < now {
-                let hours = (now - due).as_hours();
+                let hours = now.duration_since(due).as_hours();
                 if worst_overdue.is_none_or(|(_, worst)| hours > worst) {
                     worst_overdue = Some((which, hours));
                 }
             } else if ticket.paused_at.is_none() && due <= at_risk_horizon {
-                entry.2 += 1;
+                entry.2 = entry.2.tally(1);
             }
         }
         if let Some((which, hours)) = worst_overdue {
-            entry.1 += 1;
+            entry.1 = entry.1.tally(1);
             breaches.push((
                 hours,
                 Breach {

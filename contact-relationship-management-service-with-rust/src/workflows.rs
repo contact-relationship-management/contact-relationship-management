@@ -9,6 +9,7 @@
 //! On `sqlx` since CRM-T215 (CRM-D24): a run takes the triggering write's connection, and its
 //! savepoint is SQL.
 
+use crate::arith::Tally;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -462,8 +463,10 @@ async fn act(
             // (CRM-T179).
             let due = match *due_in_days {
                 Some(d) => Some(
-                    crate::controllers::organization::organization_today(&mut *txn).await?
-                        + crate::time::days(i64::from(d)),
+                    crate::controllers::organization::organization_today(&mut *txn)
+                        .await?
+                        .checked_add_days(i64::from(d))
+                        .ok_or_else(|| crate::arith::overflow("due_date"))?,
                 ),
                 None => None,
             };
@@ -699,7 +702,7 @@ async fn set_field(
     fire(
         txn,
         &Event::contact("contact_updated", row.pid),
-        ctx.depth + 1,
+        ctx.depth.tally(1),
         Some(ctx.by),
     )
     .await?;
@@ -833,14 +836,14 @@ pub async fn dry_run(db: &mut PgConnection, workflow: &Workflow) -> Result<DryRu
         samples: Vec::new(),
     };
     for row in rows.iter().take(SCHEDULE_SCAN) {
-        out.examined += 1;
+        out.examined = out.examined.tally(1);
         let Some((contact, tier)) = load(&mut *db, *row).await? else {
             continue;
         };
         if !meets(&workflow.conditions, &contact, tier) {
             continue;
         }
-        out.would_fire += 1;
+        out.would_fire = out.would_fire.tally(1);
         if out.samples.len() < SAMPLES {
             let mut steps = Vec::new();
             for action in &workflow.actions {
@@ -876,11 +879,11 @@ async fn dry_run_leads(db: &mut PgConnection, workflow: &Workflow) -> Result<Dry
     };
     let mut turn = 0_i64;
     for lead in rows.iter().take(SCHEDULE_SCAN) {
-        out.examined += 1;
+        out.examined = out.examined.tally(1);
         if !Target::Lead(Box::new(lead.clone())).meets(&workflow.conditions) {
             continue;
         }
-        out.would_fire += 1;
+        out.would_fire = out.would_fire.tally(1);
         let mut steps = Vec::new();
         for action in &workflow.actions {
             steps.push(match action {
@@ -895,9 +898,9 @@ async fn dry_run_leads(db: &mut PgConnection, workflow: &Workflow) -> Result<Dry
                             loads.push(open_load(&mut *db, worker).await?);
                         }
                     }
-                    let chosen =
-                        pick(strategy, pool.len(), cursor + turn, &loads).and_then(|i| pool.get(i));
-                    turn += 1;
+                    let chosen = pick(strategy, pool.len(), cursor.tally(turn), &loads)
+                        .and_then(|i| pool.get(i));
+                    turn = turn.tally(1);
                     chosen.map_or_else(
                         || step(action, "would_skip", "the pool is empty"),
                         |w| step(action, "would_do", format!("would go to {w} ({strategy})")),
@@ -930,7 +933,7 @@ pub async fn run_due(pool: &PgPool) -> Result<u64> {
     let mut made = 0;
     for workflow in enabled(pool, "schedule").await? {
         match tick(pool, &workflow).await {
-            Ok(n) => made += n,
+            Ok(n) => made = made.tally(n),
             Err(error) => {
                 tracing::warn!(%error, workflow = %workflow.pid, "scheduled workflow failed");
             }
@@ -991,7 +994,7 @@ async fn tick(pool: &PgPool, workflow: &Workflow) -> Result<u64> {
         )
         .await?
         {
-            ran += 1;
+            ran = ran.tally(1);
             if ran >= SCHEDULE_BATCH {
                 stopped_early = true;
                 break;

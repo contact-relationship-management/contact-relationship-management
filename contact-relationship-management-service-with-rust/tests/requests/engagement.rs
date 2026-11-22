@@ -104,7 +104,7 @@ async fn engagement_round_trip() {
                             // date silently stops being upcoming the day it
                             // passes. This one did, on 2026-08-15, and the
                             // suite had been failing every day since.
-                            "due_on": (contact_relationship_management::clock::now() + contact_relationship_management::time::days(7))
+                            "due_on": (contact_relationship_management::clock::now() + contact_relationship_management::time::test_operators::test_days(7))
                                 .strftime_utc("%Y-%m-%d").to_string() }),
             )
             .await

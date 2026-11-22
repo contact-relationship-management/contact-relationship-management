@@ -244,7 +244,9 @@ async fn rotate_secret(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let secret = rules::new_secret();
-    let until = crate::clock::now() + SignedDuration::from_hours(rules::ROTATION_GRACE_HOURS);
+    let until = crate::clock::now()
+        .checked_add(SignedDuration::from_hours(rules::ROTATION_GRACE_HOURS))
+        .ok_or_else(|| crate::arith::overflow("secret_grace_until"))?;
     let mut txn = db::pool(&ctx).begin().await?;
     let changed = sqlx::query!(
         "UPDATE webhook_subscriptions SET previous_secret = secret, \

@@ -80,10 +80,15 @@ pub fn mailgun_verified(key: &str, body: &[u8], now: i64) -> bool {
     let Ok(sent_at) = timestamp.parse::<i64>() else {
         return false;
     };
-    if (now - sent_at).abs() > MAILGUN_TOLERANCE_SECS || token.is_empty() {
+    if now
+        .checked_sub(sent_at)
+        .and_then(i64::checked_abs)
+        .is_none_or(|age| age > MAILGUN_TOLERANCE_SECS)
+        || token.is_empty()
+    {
         return false;
     }
-    let Some(given) = unhex(signature) else {
+    let Some(given) = crate::rules::webhooks::unhex(signature) else {
         return false;
     };
     let Ok(mut mac) = Hmac::<Sha256>::new_from_slice(key.as_bytes()) else {
@@ -92,16 +97,6 @@ pub fn mailgun_verified(key: &str, body: &[u8], now: i64) -> bool {
     mac.update(timestamp.as_bytes());
     mac.update(token.as_bytes());
     mac.verify_slice(&given).is_ok()
-}
-
-fn unhex(text: &str) -> Option<Vec<u8>> {
-    if !text.len().is_multiple_of(2) || !text.is_ascii() {
-        return None;
-    }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).ok())
-        .collect()
 }
 
 /// The signing key for Mailgun webhooks, if configured.

@@ -3,8 +3,6 @@
 //! never silently sum), overflow-refusing, ratios reported with their
 //! numerator/denominator and `null` on a zero denominator.
 
-#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
-
 use std::collections::BTreeMap;
 
 /// One open deal's forecast inputs.
@@ -76,11 +74,11 @@ pub fn win_rate(won: i64, lost: i64) -> Option<Ratio> {
 /// campaign's currency. Zero cost ⇒ `value: None` with the absolute
 /// figures alongside (CRM-R8).
 #[must_use]
-pub fn roi(attributed_won_revenue_minor: i64, cost_minor: i64) -> Ratio {
-    ratio(
-        attributed_won_revenue_minor.saturating_sub(cost_minor),
+pub fn roi(attributed_won_revenue_minor: i64, cost_minor: i64) -> Option<Ratio> {
+    Some(ratio(
+        attributed_won_revenue_minor.checked_sub(cost_minor)?,
         cost_minor,
-    )
+    ))
 }
 
 /// CLV per account: Σ won-deal amounts per currency.
@@ -172,6 +170,9 @@ mod tests {
 
     fn win_rate(won: i64, lost: i64) -> Ratio {
         super::win_rate(won, lost).unwrap()
+    }
+    fn roi(revenue: i64, cost: i64) -> Ratio {
+        super::roi(revenue, cost).unwrap()
     }
 
     #[test]

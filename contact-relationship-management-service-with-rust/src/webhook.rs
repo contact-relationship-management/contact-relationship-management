@@ -47,26 +47,23 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
-fn unhex(text: &str) -> Option<Vec<u8>> {
-    if !text.len().is_multiple_of(2) || !text.is_ascii() {
-        return None;
-    }
-    (0..text.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).ok())
-        .collect()
-}
-
 /// Whether the request is authentic and fresh.
 #[must_use]
 pub fn verify(secret: &str, timestamp: &str, signature: &str, body: &[u8], now: i64) -> bool {
     let Ok(sent_at) = timestamp.trim().parse::<i64>() else {
         return false;
     };
-    if (now - sent_at).abs() > TOLERANCE_SECS {
+    if now
+        .checked_sub(sent_at)
+        .and_then(i64::checked_abs)
+        .is_none_or(|age| age > TOLERANCE_SECS)
+    {
         return false;
     }
-    let Some(given) = signature.strip_prefix("sha256=").and_then(unhex) else {
+    let Some(given) = signature
+        .strip_prefix("sha256=")
+        .and_then(crate::rules::webhooks::unhex)
+    else {
         return false;
     };
     tag(secret, timestamp.trim(), body).is_some_and(|mac| mac.verify_slice(&given).is_ok())

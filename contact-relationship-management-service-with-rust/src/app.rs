@@ -1,6 +1,7 @@
 //! Application wiring: the routes, the blanket auth guard, the API-version middleware, the
 //! command line, and the truncate lifecycle for `contact-relationship-management`.
 
+use crate::arith::Tally;
 use axa::{
     AppContext, Environment, Error, Result,
     boot::{BootResult, TestApp},
@@ -196,7 +197,7 @@ fn spawn_break_glass_refresh(ctx: &AppContext, poll: Option<redis_store::Shared>
                 }
             }
             crate::break_glass::registry().replace(live);
-            count += 1;
+            count = count.tally(1);
             tokio::time::sleep(std::time::Duration::from_secs(tick)).await;
         }
     });

@@ -513,20 +513,21 @@ pub struct Cell {
 /// because a count of one is a person and a sum over one record is that record's amount. `min` of
 /// zero or less leaves everything. With `by_group` a cell's size is the records of its whole group
 /// (all its currencies), which is what a conversion adds up. Returns what is kept and how many
-/// cells (or, by group, groups) were left out.
+/// cells (or, by group, groups) were left out. `None` when a group's size does not fit, so nothing
+/// is shown that was not checked.
 ///
 /// This is **primary** suppression only: an answer carries no total, so one left-out cell cannot
 /// be got by subtraction from it, but two reports asked in different ways can still be compared.
 #[must_use]
-pub fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> (Vec<Cell>, usize) {
+pub fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> Option<(Vec<Cell>, usize)> {
     use std::collections::{BTreeMap, BTreeSet};
     if min <= 0 {
-        return (cells, 0);
+        return Some((cells, 0));
     }
     let mut size: BTreeMap<String, i64> = BTreeMap::new();
     for cell in &cells {
         let slot = size.entry(cell.group.clone()).or_default();
-        *slot = slot.saturating_add(cell.n);
+        *slot = slot.checked_add(cell.n)?;
     }
     let big_enough = |cell: &Cell| {
         let n = if by_group {
@@ -555,12 +556,16 @@ pub fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> (Vec<Cell>, usize
             keep
         })
         .collect();
-    (kept, left_out.len())
+    Some((kept, left_out.len()))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn suppress(cells: Vec<Cell>, min: i64, by_group: bool) -> (Vec<Cell>, usize) {
+        super::suppress(cells, min, by_group).unwrap()
+    }
 
     fn spec(kind: &str, group_by: &str) -> Spec {
         Spec {

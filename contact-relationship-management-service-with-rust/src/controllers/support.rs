@@ -2,6 +2,7 @@
 //! SLA deadlines and breach facts, SLA policies, the breach sweep,
 //! and the versioned knowledge base.
 
+use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::json::Json;
 use axa::extract::Query;
@@ -275,7 +276,11 @@ async fn create_ticket(
     let mut txn = pool.begin().await?;
     let deadlines = targets_for(&mut txn, &payload.priority)
         .await?
-        .map(|(targets, calendar)| sla::deadlines_on(opened_at, targets, calendar.as_ref()));
+        .map(|(targets, calendar)| {
+            sla::deadlines_on(opened_at, targets, calendar.as_ref())
+                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+        })
+        .transpose()?;
     let pid = Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO tickets (pid, contact_pid, account_pid, assignee_ref, title, priority, \
@@ -423,13 +428,13 @@ async fn sweep_waiting(
         else {
             continue;
         };
-        if now - since <= jiff::SignedDuration::from_mins(i64::from(*limit)) {
+        if now.duration_since(since) <= jiff::SignedDuration::from_mins(i64::from(*limit)) {
             continue;
         }
         let (pid, title) = (ticket.pid, ticket.title.clone());
         if action == "resolve" {
             transition(ctx, caller, pid, "resolved", Some("wait_limit")).await?;
-            done.resolved += 1;
+            done.resolved = done.resolved.tally(1);
         } else {
             let escalate = action == "escalate";
             let mut txn = pool.begin().await?;
@@ -445,7 +450,7 @@ async fn sweep_waiting(
             .execute(&mut *txn)
             .await?;
             if escalate {
-                done.escalated += 1;
+                done.escalated = done.escalated.tally(1);
                 Audit::record_on(
                     &mut txn,
                     "ticket",
@@ -469,7 +474,7 @@ async fn sweep_waiting(
             Some(serde_json::json!({ "waiting_since": since, "action": action })),
         )
         .await?;
-        done.exceeded += 1;
+        done.exceeded = done.exceeded.tally(1);
     }
     Ok(done)
 }
@@ -497,11 +502,14 @@ async fn sweep_closing(
         let (Some(limit), Some(since)) = (days.get(&ticket.priority), ticket.resolved_at) else {
             continue;
         };
-        if now - since <= crate::time::days(i64::from(*limit)) {
+        let Some(allowed) = crate::time::days(i64::from(*limit)) else {
+            continue;
+        };
+        if now.duration_since(since) <= allowed {
             continue;
         }
         transition(ctx, caller, ticket.pid, "closed", Some("auto_close")).await?;
-        closed += 1;
+        closed = closed.tally(1);
     }
     Ok(closed)
 }
@@ -565,27 +573,30 @@ async fn resume_clock(
 ) -> Result<Resumed> {
     let policy = targets_for(conn, &ticket.priority).await?;
     let calendar = policy.as_ref().and_then(|(_, calendar)| calendar.as_ref());
-    let paused = sla::Paused {
-        first_response_seconds: ticket.first_response_paused_seconds
-            + sla::pause_counted(
-                calendar,
-                paused_at,
-                now,
-                ticket.first_response_due_at,
-                ticket.first_responded_at.is_some(),
-            ),
-        resolution_seconds: ticket.resolution_paused_seconds
-            + sla::pause_counted(
-                calendar,
-                paused_at,
-                now,
-                ticket.resolution_due_at,
-                ticket.resolved_at.is_some(),
-            ),
+    let counted = |waited: i64, due, met| {
+        sla::pause_counted(calendar, paused_at, now, due, met)
+            .and_then(|more| waited.checked_add(more))
+            .ok_or_else(|| crate::arith::overflow("paused_seconds"))
     };
-    let deadlines = policy.as_ref().map(|(targets, calendar)| {
-        sla::deadlines_paused(ticket.opened_at, *targets, calendar.as_ref(), paused)
-    });
+    let paused = sla::Paused {
+        first_response_seconds: counted(
+            ticket.first_response_paused_seconds,
+            ticket.first_response_due_at,
+            ticket.first_responded_at.is_some(),
+        )?,
+        resolution_seconds: counted(
+            ticket.resolution_paused_seconds,
+            ticket.resolution_due_at,
+            ticket.resolved_at.is_some(),
+        )?,
+    };
+    let deadlines = policy
+        .as_ref()
+        .map(|(targets, calendar)| {
+            sla::deadlines_paused(ticket.opened_at, *targets, calendar.as_ref(), paused)
+                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+        })
+        .transpose()?;
     Ok(Resumed { paused, deadlines })
 }
 
@@ -615,7 +626,7 @@ fn reference_in(subject: &str) -> Option<String> {
     let lower = subject.to_ascii_lowercase();
     let mut rest = lower.as_str();
     while let Some(at) = rest.find("[t-") {
-        let after = &rest[at + 3..];
+        let after = at.checked_add(3).and_then(|start| rest.get(start..))?;
         if let Some(digits) = after.get(..8)
             && after.get(8..9) == Some("]")
             && digits.bytes().all(|b| b.is_ascii_hexdigit())
@@ -630,7 +641,11 @@ fn reference_in(subject: &str) -> Option<String> {
 /// The mailbox in a `From` value: what is inside `<...>` when there is such a part, in lower case.
 fn address_in(from: &str) -> String {
     let inner = match (from.rfind('<'), from.rfind('>')) {
-        (Some(open), Some(close)) if open < close => &from[open + 1..close],
+        (Some(open), Some(close)) if open < close => open
+            .checked_add(1)
+            .and_then(|start| from.get(start..close))
+            // ADDR-1: a bracket pair that cannot be read leaves the whole value to be trimmed.
+            .unwrap_or(from),
         _ => from,
     };
     inner.trim().to_ascii_lowercase()
@@ -864,7 +879,9 @@ async fn ticket_priority(
         .await?
         .map(|(targets, calendar)| {
             sla::deadlines_paused(ticket.opened_at, targets, calendar.as_ref(), paused)
-        });
+                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+        })
+        .transpose()?;
     let from = ticket.priority.clone();
     let row = sqlx::query_as!(
         tickets::Model,
@@ -942,7 +959,9 @@ async fn sla_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Resu
         )
         .await?;
         txn.commit().await?;
-        breaches += u64::from(new_first) + u64::from(new_resolution);
+        breaches = breaches
+            .tally(u64::from(new_first))
+            .tally(u64::from(new_resolution));
         Metrics::global().sla_breached_total.inc();
     }
     let waited = sweep_waiting(&ctx, &caller, now).await?;
@@ -1008,7 +1027,7 @@ async fn update_article(
         return Err(unprocessable("archived articles are read-only"));
     }
     let version = if article.status == "published" {
-        article.version + 1
+        article.version.tally(1)
     } else {
         article.version
     };

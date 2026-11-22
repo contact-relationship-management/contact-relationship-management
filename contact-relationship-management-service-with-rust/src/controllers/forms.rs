@@ -472,7 +472,10 @@ async fn send_confirmation(
     else {
         return false;
     };
-    let expires = crate::clock::now() + crate::time::days(CONFIRM_DAYS);
+    let Some(expires) = crate::clock::now().checked_add_days(CONFIRM_DAYS) else {
+        tracing::warn!(form = %form.slug, "web form: the confirmation link's expiry is out of range");
+        return false;
+    };
     let mut conn = match pool.acquire().await {
         Ok(conn) => conn,
         Err(error) => {

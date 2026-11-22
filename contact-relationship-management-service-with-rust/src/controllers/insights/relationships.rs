@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, HeaderMap, Response, Result, State, Uuid, accounts, conditional,
     contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
 };
+use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
 // `ETag` is taken, and the schema says it is always there.
@@ -121,8 +122,8 @@ pub(super) async fn stakeholders(
         match contact.stakeholder_role.as_deref() {
             Some(role) => {
                 let days = last_touch.get(&contact.pid).map_or_else(
-                    || crate::time::whole_days(now - contact.created_at),
-                    |at| crate::time::whole_days(now - *at),
+                    || crate::time::whole_days(now.duration_since(contact.created_at)),
+                    |at| crate::time::whole_days(now.duration_since(*at)),
                 );
                 if let Some(bucket) = by_role.get_mut(role) {
                     bucket.push(StakeholderContact {
@@ -136,12 +137,13 @@ pub(super) async fn stakeholders(
                 }
                 match (contact.influence, contact.interest) {
                     (Some(influence), Some(interest)) => {
-                        *grid.entry(format!("p{influence}i{interest}")).or_default() += 1;
+                        let slot = grid.entry(format!("p{influence}i{interest}")).or_default();
+                        *slot = slot.tally(1);
                     }
-                    _ => ungridded += 1,
+                    _ => ungridded = ungridded.tally(1),
                 }
             }
-            None => undeclared_contacts += 1,
+            None => undeclared_contacts = undeclared_contacts.tally(1),
         }
     }
     let account_roles: Vec<AccountRole> = account_rows
@@ -186,8 +188,14 @@ pub(super) async fn partnerships_register(
     let mut by_kind: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     let mut by_stage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for row in &rows {
-        *by_kind.entry(row.kind.as_str()).or_default() += 1;
-        *by_stage.entry(row.stage.as_str()).or_default() += 1;
+        {
+            let slot = &mut *by_kind.entry(row.kind.as_str()).or_default();
+            *slot = slot.tally(1);
+        }
+        {
+            let slot = &mut *by_stage.entry(row.stage.as_str()).or_default();
+            *slot = slot.tally(1);
+        }
     }
     let register: Vec<PartnershipRow> = rows
         .iter()
@@ -230,7 +238,9 @@ pub(super) async fn memberships_view(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today + crate::time::days(window);
+    let horizon = today
+        .checked_add_days(window)
+        .ok_or_else(|| crate::arith::overflow("horizon"))?;
     let rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let names: std::collections::BTreeMap<Uuid, &str> = account_rows

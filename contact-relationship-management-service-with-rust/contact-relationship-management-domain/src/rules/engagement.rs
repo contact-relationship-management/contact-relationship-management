@@ -74,7 +74,7 @@ pub fn partnership_transition(current: &str, to: &str) -> Result<(), Partnership
     let current_idx = PARTNERSHIP_STAGES.iter().position(|s| *s == current);
     let to_idx = PARTNERSHIP_STAGES.iter().position(|s| *s == to);
     match (current_idx, to_idx) {
-        (Some(c), Some(t)) if t == c + 1 => Ok(()),
+        (Some(c), Some(t)) if c.checked_add(1) == Some(t) => Ok(()),
         _ => Err(PartnershipError::Illegal {
             from: current.to_string(),
             to: to.to_string(),

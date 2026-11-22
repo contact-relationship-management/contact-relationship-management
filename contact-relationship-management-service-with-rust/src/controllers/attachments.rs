@@ -8,6 +8,7 @@
 //! The routes run on `sqlx` (CRM-D24, CRM-T206), and so, since CRM-T216, do [`export_for`] and
 //! [`erase_rows`], which the privacy routes call.
 
+use crate::arith::Tally;
 use std::path::PathBuf;
 
 use axa::error::ErrorDetail;
@@ -454,7 +455,7 @@ pub(crate) async fn remove_files(keys: &[Uuid]) -> usize {
     for key in keys {
         if let Err(error) = store::remove(&dir, *key).await {
             tracing::error!(%error, %key, "attachment file not removed");
-            left += 1;
+            left = left.tally(1);
         }
     }
     left

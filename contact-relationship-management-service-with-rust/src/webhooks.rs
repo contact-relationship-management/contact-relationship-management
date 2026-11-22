@@ -11,6 +11,7 @@
 //!
 //! The statements are `sqlx` ones (CRM-D24, CRM-T206).
 
+use crate::arith::Tally;
 use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
@@ -178,11 +179,11 @@ async fn fan_out(pool: &PgPool, now: Timestamp, report: &mut Report) -> Result<(
                 )
                 .execute(&mut *txn)
                 .await?;
-                report.deliveries_created += made.rows_affected();
+                report.deliveries_created = report.deliveries_created.tally(made.rows_affected());
             }
         }
         ids.push(row.id);
-        report.events_fanned_out += 1;
+        report.events_fanned_out = report.events_fanned_out.tally(1);
     }
     sqlx::query!(
         "UPDATE event_outbox SET webhook_fanned_out_at = CURRENT_TIMESTAMP WHERE id = ANY($1)",
@@ -294,7 +295,7 @@ async fn prepare(pool: &PgPool, id: i32, now: Timestamp) -> Result<Loaded, sqlx:
     let refs: Vec<&str> = secrets.iter().map(String::as_str).collect();
     let Ok(signature) = rules::signature_header(&refs, &event_id.to_string(), timestamp, &body)
     else {
-        return Ok(Loaded::Close("no usable signing secret", attempts + 1));
+        return Ok(Loaded::Close("no usable signing secret", attempts.tally(1)));
     };
     Ok(Loaded::Send(Prepared {
         attempts,
@@ -328,7 +329,7 @@ async fn send_one(
                 "dead"
             };
             if status == "dead" {
-                report.dead += 1;
+                report.dead = report.dead.tally(1);
             }
             return finish(pool, id, status, attempts, None, Some(why)).await;
         }
@@ -339,7 +340,7 @@ async fn send_one(
     if let Some(host) = crate::rules::residency::host_of(&prepared.url)
         && !crate::residency::permits(&host)
     {
-        report.dead += 1;
+        report.dead = report.dead.tally(1);
         let why = format!("{host} is not a declared outside host (CRM-R106)");
         finish(pool, id, "dead", prepared.attempts, None, Some(&why)).await?;
         let mut txn = pool.begin().await?;
@@ -354,18 +355,18 @@ async fn send_one(
         .await?;
         return txn.commit().await;
     }
-    report.attempted += 1;
-    let attempts = prepared.attempts + 1;
+    report.attempted = report.attempted.tally(1);
+    let attempts = prepared.attempts.tally(1);
     let outcome = sender
         .post(&prepared.url, &prepared.headers, prepared.body.clone())
         .await;
     match outcome {
         Outcome::Status(code) if (200..300).contains(&code) => {
-            report.delivered += 1;
+            report.delivered = report.delivered.tally(1);
             finish(pool, id, "delivered", attempts, Some(code), None).await
         }
         Outcome::Status(410) => {
-            report.subscriptions_disabled += 1;
+            report.subscriptions_disabled = report.subscriptions_disabled.tally(1);
             disable_gone(pool, id, attempts, &prepared, now).await
         }
         failure => {
@@ -374,8 +375,11 @@ async fn send_one(
                 Outcome::Failed(why) => (None, why),
             };
             if let Some(delay) = rules::retry_delay_seconds(attempts) {
-                report.retrying += 1;
-                let next = now + jiff::SignedDuration::from_secs(delay);
+                report.retrying = report.retrying.tally(1);
+                // RETRY-NEXT-1: the delay is at most a day; a retry time out of range is `now`.
+                let next = now
+                    .checked_add(jiff::SignedDuration::from_secs(delay))
+                    .unwrap_or(now);
                 let mut conn = pool.acquire().await?;
                 record_attempt(
                     &mut conn,
@@ -388,7 +392,7 @@ async fn send_one(
                 )
                 .await
             } else {
-                report.dead += 1;
+                report.dead = report.dead.tally(1);
                 finish(pool, id, "dead", attempts, status, Some(&why)).await
             }
         }

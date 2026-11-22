@@ -11,6 +11,7 @@
 //! census and the sweep share one list: every name comes from them, every number is a clamped
 //! integer, and they are reviewed by hand. Every other statement is checked and binds its values.
 
+use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::db;
 use axa::prelude::*;
@@ -592,10 +593,13 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
             tables.insert((*table).to_string(), count);
         }
     }
+    let horizon = crate::clock::now()
+        .checked_sub_days(days)
+        .ok_or_else(|| crate::arith::overflow("consent_horizon"))?;
     let withdrawn = sqlx::query_scalar!(
         "SELECT COUNT(*) AS \"n!\" FROM contacts WHERE deleted_at IS NULL \
          AND marketing_consent = 'withdrawn' AND consent_changed_at < $1",
-        crate::clock::now() - crate::time::days(days),
+        horizon,
     )
     .fetch_one(pool)
     .await?;
@@ -650,7 +654,7 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         .await?;
         if result.rows_affected() > 0 {
             deleted.insert((*table).to_string(), result.rows_affected());
-            total += result.rows_affected();
+            total = total.tally(result.rows_affected());
         }
     }
     // Delivery and event logs that are finished with, on their own horizons (CRM-R81).
@@ -665,7 +669,7 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         .await?;
         if result.rows_affected() > 0 {
             logs_deleted.insert(rule.table.to_string(), result.rows_affected());
-            total += result.rows_affected();
+            total = total.tally(result.rows_affected());
         }
     }
     let (event_horizon_days, mail_horizon_days) = (

@@ -95,23 +95,24 @@ pub struct ScoreBreakdown {
 
 /// Recent-activity points: full at ≤7 days, linear decay to 0 at 30.
 #[must_use]
-pub fn recency_points(days: i64, full: i32) -> i32 {
+pub fn recency_points(days: i64, full: i32) -> Option<i32> {
     if days <= 7 {
-        full
+        Some(full)
     } else if days >= 30 {
-        0
+        Some(0)
     } else {
         // Linear over the 23-day window, ceiling — stays ≥1 until the
         // window closes at day 30.
-        let remaining = 30 - days; // 1..=22
-        i32::try_from((i64::from(full) * remaining + 22) / 23).unwrap_or(0)
+        let remaining = 30_i64.checked_sub(days)?; // 1..=22
+        let scaled = i64::from(full).checked_mul(remaining)?.checked_add(22)?;
+        i32::try_from(scaled.checked_div(23)?).ok()
     }
 }
 
 /// Score a lead from its facts (CRM-D5): deterministic, clamped, with
 /// the full per-rule breakdown.
 #[must_use]
-pub fn score(facts: &LeadFacts, weights: &Weights) -> ScoreBreakdown {
+pub fn score(facts: &LeadFacts, weights: &Weights) -> Option<ScoreBreakdown> {
     fn fired(rule: &str, fired: bool, points: i32) -> RuleScore {
         RuleScore {
             rule: rule.to_string(),
@@ -122,9 +123,10 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> ScoreBreakdown {
         .email_domain
         .as_deref()
         .is_some_and(|d| !d.is_empty() && !FREEMAIL.contains(&d));
-    let recency = facts
-        .days_since_last_activity
-        .map_or(0, |days| recency_points(days, weights.recent_activity));
+    let recency = match facts.days_since_last_activity {
+        Some(days) => recency_points(days, weights.recent_activity)?,
+        None => 0,
+    };
     let rules = vec![
         fired(
             "source_referral",
@@ -154,7 +156,9 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> ScoreBreakdown {
         ),
         fired("unsubscribe", facts.unsubscribed, weights.unsubscribe),
     ];
-    let total: i32 = rules.iter().map(|r| r.points).sum();
+    let total = rules
+        .iter()
+        .try_fold(0_i32, |sum, rule| sum.checked_add(rule.points))?;
     let score = total.clamp(0, 100);
     let label = if score >= 70 {
         "hot"
@@ -163,16 +167,23 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> ScoreBreakdown {
     } else {
         "cold"
     };
-    ScoreBreakdown {
+    Some(ScoreBreakdown {
         score,
         label,
         rules,
-    }
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn score(facts: &LeadFacts, weights: &Weights) -> ScoreBreakdown {
+        super::score(facts, weights).unwrap()
+    }
+    fn recency_points(days: i64, full: i32) -> i32 {
+        super::recency_points(days, full).unwrap()
+    }
 
     fn facts() -> LeadFacts {
         LeadFacts {

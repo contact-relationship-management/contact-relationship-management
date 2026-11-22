@@ -2,6 +2,7 @@
 //! pure-core derivation from recorded facts (CRM-D4) — per-currency,
 //! honest ratios, `as_of`-stamped, ETag-conditional.
 
+use crate::arith::Tally;
 use crate::controllers::PidPath;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
@@ -70,14 +71,18 @@ async fn open_deals_by_stage(
     for row in rows {
         let (stage, currency, total) = (row.stage, row.currency, row.total);
         let n = usize::try_from(row.n).unwrap_or(0);
-        let total = total.parse::<i128>().map_or(0, |t| {
-            i64::try_from(t).unwrap_or(if t < 0 { i64::MIN } else { i64::MAX })
-        });
+        let total = total
+            .parse::<i128>()
+            .ok()
+            .and_then(|t| i64::try_from(t).ok())
+            .ok_or_else(|| crate::arith::overflow("stage_total"))?;
         let (count, by_currency) = totals.entry(stage).or_default();
-        *count += n;
-        open_deals += n;
+        *count = count.tally(n);
+        open_deals = open_deals.tally(n);
         let slot = by_currency.entry(currency).or_insert(0);
-        *slot = slot.saturating_add(total);
+        *slot = slot
+            .checked_add(total)
+            .ok_or_else(|| crate::arith::overflow("stage_total"))?;
     }
     Ok((totals, open_deals))
 }
@@ -269,9 +274,9 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
                 .resolution_due_at
                 .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
         let slot = by_priority.entry(ticket.priority.clone()).or_default();
-        slot.0 += 1;
+        slot.0 = slot.0.tally(1);
         if breached {
-            slot.1 += 1;
+            slot.1 = slot.1.tally(1);
         }
     }
     Metrics::global()
@@ -326,8 +331,12 @@ fn clv_outlook(
             query.years,
         ) {
             let discount = query.discount_bps.unwrap_or(0);
-            let since = now - crate::time::days(365);
-            let before = since - crate::time::days(365);
+            let since = now
+                .checked_sub_days(365)
+                .ok_or_else(|| crate::arith::overflow("since"))?;
+            let before = since
+                .checked_sub_days(365)
+                .ok_or_else(|| crate::arith::overflow("before"))?;
             let (mut recent, mut prior): (
                 std::collections::BTreeMap<String, i64>,
                 std::collections::BTreeMap<String, i64>,
@@ -631,7 +640,9 @@ async fn activity_dashboard(
     State(ctx): State<AppContext>,
     Query(params): Query<ActivityParams>,
 ) -> Result<Response> {
-    let since = crate::clock::now() - crate::time::days(params.days.clamp(1, 365));
+    let since = crate::clock::now()
+        .checked_sub_days(params.days.clamp(1, 365))
+        .ok_or_else(|| crate::arith::overflow("since"))?;
     let counts: Vec<(String, i64)> = sqlx::query!(
         "SELECT kind, COUNT(id) AS \"n!\" FROM activities \
          WHERE deleted_at IS NULL AND occurred_at >= $1 GROUP BY kind",

@@ -368,7 +368,10 @@ async fn deflection(
     // the day it was opened there.
     let calendar = super::organization::periods(crate::db::pool(&ctx)).await?;
     let to = crate::rules::periods::today_in(crate::clock::now(), &calendar.zone);
-    let from = to - crate::time::days(days - 1);
+    let from = days
+        .checked_sub(1)
+        .and_then(|span| to.checked_sub_days(span))
+        .ok_or_else(|| crate::arith::overflow("from"))?;
     let pool = db::pool(&ctx);
     let totals = sqlx::query!(
         "SELECT COALESCE(SUM(views), 0)::bigint AS \"views!\", \
@@ -437,7 +440,11 @@ async fn deflection(
         helpful_yes: yes,
         helpful_no: totals.no,
         tickets_opened,
-        deflection: analytics::ratio(yes, yes.saturating_add(tickets_opened)),
+        deflection: analytics::ratio(
+            yes,
+            yes.checked_add(tickets_opened)
+                .ok_or_else(|| crate::arith::overflow("deflection"))?,
+        ),
         top_articles,
         note: "counts only, kept per day; a visitor is not identified, so a vote is a visitor's own \
                word and a ticket is not tied to a visit; deflection is an estimate, not a measure",

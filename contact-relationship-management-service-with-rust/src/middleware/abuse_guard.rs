@@ -124,12 +124,9 @@ async fn shared_verdict(
         if count > u64::from(limit) {
             return Ok(Err(verdict(false, limit, 0, ttl)));
         }
-        return Ok(Ok(Some(verdict(
-            true,
-            limit,
-            u64::from(limit) - count,
-            ttl,
-        ))));
+        // RATE-1: a client past its limit has no budget left, which is zero.
+        let remaining = u64::from(limit).checked_sub(count).unwrap_or(0);
+        return Ok(Ok(Some(verdict(true, limit, remaining, ttl))));
     }
     Ok(Ok(None))
 }

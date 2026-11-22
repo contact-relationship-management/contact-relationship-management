@@ -7,8 +7,6 @@
 //! units of the quota (rounded down), so the bands tile exactly: no revenue is in two bands and
 //! none is in neither.
 
-#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
-
 use serde::{Deserialize, Serialize};
 
 use super::analytics::{self, Ratio};
@@ -188,10 +186,14 @@ pub fn attainment(quota_minor: i64, revenue_minor: i64) -> Ratio {
     analytics::ratio(revenue_minor, quota_minor)
 }
 
-/// What is still to win to meet the quota; zero once it is met.
+/// What is still to win to meet the quota; zero once it is met (CRM-R59). `None` when the
+/// difference does not fit.
 #[must_use]
-pub fn remaining(quota_minor: i64, revenue_minor: i64) -> i64 {
-    quota_minor.saturating_sub(revenue_minor).max(0)
+pub fn remaining(quota_minor: i64, revenue_minor: i64) -> Option<i64> {
+    quota_minor
+        .checked_sub(revenue_minor)
+        // QUOTA-REMAINING-1: a quota that is met leaves nothing to win, which is zero.
+        .map(|left| left.max(0))
 }
 
 #[cfg(test)]
@@ -207,6 +209,9 @@ mod tests {
     }
     fn commission(bands: &[Band]) -> i64 {
         super::commission(bands).unwrap()
+    }
+    fn remaining(quota: i64, revenue: i64) -> i64 {
+        super::remaining(quota, revenue).unwrap()
     }
 
     #[test]

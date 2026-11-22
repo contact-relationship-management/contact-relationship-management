@@ -29,13 +29,17 @@ pub struct Deadlines {
 /// Derive the deadlines from the ticket's opened time (re-derived on
 /// an audited priority change).
 #[must_use]
-pub fn deadlines(opened_at: Timestamp, targets: Targets) -> Deadlines {
-    Deadlines {
-        first_response_due_at: opened_at
-            + SignedDuration::from_mins(i64::from(targets.first_response_minutes)),
-        resolution_due_at: opened_at
-            + SignedDuration::from_mins(i64::from(targets.resolution_minutes)),
-    }
+///
+/// `None` when a deadline falls outside the range of dates.
+pub fn deadlines(opened_at: Timestamp, targets: Targets) -> Option<Deadlines> {
+    Some(Deadlines {
+        first_response_due_at: opened_at.checked_add(SignedDuration::from_mins(i64::from(
+            targets.first_response_minutes,
+        )))?,
+        resolution_due_at: opened_at.checked_add(SignedDuration::from_mins(i64::from(
+            targets.resolution_minutes,
+        )))?,
+    })
 }
 
 /// Like [`deadlines`], but counted in working time on `calendar` when there is one (CRM-R45): the
@@ -47,7 +51,7 @@ pub fn deadlines_on(
     opened_at: Timestamp,
     targets: Targets,
     calendar: Option<&Calendar>,
-) -> Deadlines {
+) -> Option<Deadlines> {
     deadlines_paused(opened_at, targets, calendar, Paused::default())
 }
 
@@ -69,21 +73,25 @@ pub fn deadlines_paused(
     targets: Targets,
     calendar: Option<&Calendar>,
     paused: Paused,
-) -> Deadlines {
-    let place = |minutes: i32, extra: i64| {
-        let seconds = i64::from(minutes) * 60 + extra.max(0);
-        let round_the_clock = opened_at + SignedDuration::from_secs(seconds);
-        calendar
-            .and_then(|c| c.add_working_seconds(opened_at.0, seconds))
-            .map_or(round_the_clock, Timestamp)
+) -> Option<Deadlines> {
+    let place = |minutes: i32, extra: i64| -> Option<Timestamp> {
+        let seconds = i64::from(minutes)
+            .checked_mul(60)?
+            .checked_add(extra.max(0))?;
+        let round_the_clock = opened_at.checked_add(SignedDuration::from_secs(seconds))?;
+        Some(
+            calendar
+                .and_then(|c| c.add_working_seconds(opened_at.0, seconds))
+                .map_or(round_the_clock, Timestamp),
+        )
     };
-    Deadlines {
+    Some(Deadlines {
         first_response_due_at: place(
             targets.first_response_minutes,
             paused.first_response_seconds,
-        ),
-        resolution_due_at: place(targets.resolution_minutes, paused.resolution_seconds),
-    }
+        )?,
+        resolution_due_at: place(targets.resolution_minutes, paused.resolution_seconds)?,
+    })
 }
 
 /// The moment the SLA clock reads: `now`, or the moment the ticket was paused while it waits for
@@ -103,17 +111,17 @@ pub fn pause_counted(
     resumed_at: Timestamp,
     due: Option<Timestamp>,
     met: bool,
-) -> i64 {
+) -> Option<i64> {
     let Some(due) = due.filter(|_| !met) else {
-        return 0;
+        return Some(0);
     };
     let end = resumed_at.min(due);
     if end <= paused_at {
-        return 0;
+        return Some(0);
     }
     match calendar {
         Some(calendar) => calendar.working_seconds_between(paused_at.0, end.0),
-        None => (end - paused_at).as_secs(),
+        None => Some(end.duration_since(paused_at).as_secs()),
     }
 }
 
@@ -144,7 +152,52 @@ pub fn resolution_breached(now: Timestamp, due: Timestamp, resolved_at: Option<T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::time::days;
+
+    // The rules answer `None` on overflow; most tests are about the figures.
+    fn deadlines(opened_at: Timestamp, targets: Targets) -> Deadlines {
+        super::deadlines(opened_at, targets).unwrap()
+    }
+    fn deadlines_on(
+        opened_at: Timestamp,
+        targets: Targets,
+        calendar: Option<&Calendar>,
+    ) -> Deadlines {
+        super::deadlines_on(opened_at, targets, calendar).unwrap()
+    }
+    fn deadlines_paused(
+        opened_at: Timestamp,
+        targets: Targets,
+        calendar: Option<&Calendar>,
+        paused: Paused,
+    ) -> Deadlines {
+        super::deadlines_paused(opened_at, targets, calendar, paused).unwrap()
+    }
+    fn pause_counted(
+        calendar: Option<&Calendar>,
+        paused_at: Timestamp,
+        resumed_at: Timestamp,
+        due: Option<Timestamp>,
+        met: bool,
+    ) -> i64 {
+        super::pause_counted(calendar, paused_at, resumed_at, due, met).unwrap()
+    }
+
+    #[test]
+    fn a_deadline_that_does_not_fit_is_none() {
+        let last = Timestamp(jiff::Timestamp::MAX);
+        let targets = Targets {
+            first_response_minutes: 1,
+            resolution_minutes: 1,
+        };
+        assert!(super::deadlines(last, targets).is_none());
+        assert!(super::deadlines_on(last, targets, None).is_none());
+        let huge = Paused {
+            first_response_seconds: i64::MAX,
+            resolution_seconds: 0,
+        };
+        assert!(super::deadlines_paused(at(9, 0), targets, None, huge).is_none());
+    }
+    use crate::time::test_operators::test_days as days;
 
     fn at(h: i8, m: i8) -> Timestamp {
         format!("2026-07-06T{h:02}:{m:02}:00Z").parse().unwrap()

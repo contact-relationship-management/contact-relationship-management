@@ -99,6 +99,25 @@ impl Timestamp {
         self.0.checked_add(by).ok().map(Self)
     }
 
+    /// The instant `by` earlier, or later for a negative `by`; `None` outside `jiff`'s range.
+    #[must_use]
+    pub fn checked_sub(self, by: SignedDuration) -> Option<Self> {
+        self.0.checked_sub(by).ok().map(Self)
+    }
+
+    /// The instant `n` days of 24 hours later; `None` when `n` days do not fit or the result is
+    /// outside `jiff`'s range.
+    #[must_use]
+    pub fn checked_add_days(self, n: i64) -> Option<Self> {
+        self.checked_add(days(n)?)
+    }
+
+    /// The instant `n` days of 24 hours earlier; `None` as [`Self::checked_add_days`].
+    #[must_use]
+    pub fn checked_sub_days(self, n: i64) -> Option<Self> {
+        self.checked_sub(days(n)?)
+    }
+
     /// The time from `earlier` to this instant, negative when `earlier` is later.
     #[must_use]
     pub fn duration_since(self, earlier: Self) -> SignedDuration {
@@ -167,55 +186,11 @@ impl From<Timestamp> for jiff::Timestamp {
     }
 }
 
-impl std::ops::Add<SignedDuration> for Timestamp {
-    type Output = Self;
-
-    /// Saturates at the earliest or latest instant `jiff` holds when the result is outside its
-    /// range, so a very long period asked for in a request cannot stop the process.
-    fn add(self, by: SignedDuration) -> Self {
-        Self(self.0.checked_add(by).unwrap_or(if by.is_negative() {
-            jiff::Timestamp::MIN
-        } else {
-            jiff::Timestamp::MAX
-        }))
-    }
-}
-
-impl std::ops::Sub<SignedDuration> for Timestamp {
-    type Output = Self;
-
-    /// Saturates, as [`Add`](std::ops::Add) does.
-    fn sub(self, by: SignedDuration) -> Self {
-        Self(self.0.checked_sub(by).unwrap_or(if by.is_negative() {
-            jiff::Timestamp::MAX
-        } else {
-            jiff::Timestamp::MIN
-        }))
-    }
-}
-
-impl std::ops::Sub for Timestamp {
-    type Output = SignedDuration;
-
-    /// The time from `earlier` to this instant, as [`Timestamp::duration_since`].
-    fn sub(self, earlier: Self) -> SignedDuration {
-        self.duration_since(earlier)
-    }
-}
-
-impl std::ops::AddAssign<SignedDuration> for Timestamp {
-    fn add_assign(&mut self, by: SignedDuration) {
-        *self = *self + by;
-    }
-}
-
-/// `n` days of 24 hours, as `chrono::Duration::days` counted them.
-///
-/// Saturates when `n` days do not fit a [`SignedDuration`], so a very large count from a request
-/// cannot stop the process; the sums it feeds saturate too.
+/// `n` days of 24 hours, as `chrono::Duration::days` counted them; `None` when they do not fit a
+/// [`SignedDuration`].
 #[must_use]
-pub fn days(n: i64) -> SignedDuration {
-    SignedDuration::from_secs(n.saturating_mul(86_400))
+pub fn days(n: i64) -> Option<SignedDuration> {
+    n.checked_mul(86_400).map(SignedDuration::from_secs)
 }
 
 /// The whole days in `duration`, toward zero, as `chrono`'s `num_days` counted them.
@@ -276,6 +251,38 @@ impl schemars::JsonSchema for Timestamp {
 pub struct Date(pub civil::Date);
 
 impl Date {
+    /// The day `by` later, in whole days of 24 hours (a part day is dropped, as `chrono` dropped
+    /// it); `None` outside `jiff`'s range.
+    #[must_use]
+    pub fn checked_add(self, by: SignedDuration) -> Option<Self> {
+        self.0.checked_add(by).ok().map(Self)
+    }
+
+    /// The day `by` earlier, in whole days of 24 hours; `None` outside `jiff`'s range.
+    #[must_use]
+    pub fn checked_sub(self, by: SignedDuration) -> Option<Self> {
+        self.0.checked_sub(by).ok().map(Self)
+    }
+
+    /// The day `n` days later; `None` when `n` days do not fit or the result is out of range.
+    #[must_use]
+    pub fn checked_add_days(self, n: i64) -> Option<Self> {
+        self.checked_add(days(n)?)
+    }
+
+    /// The day `n` days earlier; `None` as [`Self::checked_add_days`].
+    #[must_use]
+    pub fn checked_sub_days(self, n: i64) -> Option<Self> {
+        self.checked_sub(days(n)?)
+    }
+
+    /// The days from `earlier` to this day, as so many 24 hours (negative when `earlier` is
+    /// later), as `chrono` subtracted two dates.
+    #[must_use]
+    pub fn duration_since(self, earlier: Self) -> SignedDuration {
+        self.0.duration_since(earlier.0)
+    }
+
     /// The day `year`-`month`-`day`, or `None` for a day that does not exist.
     #[must_use]
     pub fn from_ymd(year: i16, month: i8, day: i8) -> Option<Self> {
@@ -319,47 +326,6 @@ impl Date {
             .and_then(|span| PG_EPOCH_DATE.checked_add(span))
             .map(Self)
             .map_err(|e| e.to_string())
-    }
-}
-
-impl std::ops::Add<SignedDuration> for Date {
-    type Output = Self;
-
-    /// The day `by` later, in whole days of 24 hours (a part day is dropped, as `chrono` dropped
-    /// it).
-    ///
-    /// Saturates at the earliest or latest day `jiff` holds.
-    fn add(self, by: SignedDuration) -> Self {
-        Self(self.0.checked_add(by).unwrap_or(if by.is_negative() {
-            civil::Date::MIN
-        } else {
-            civil::Date::MAX
-        }))
-    }
-}
-
-impl std::ops::Sub<SignedDuration> for Date {
-    type Output = Self;
-
-    /// The day `by` earlier, in whole days of 24 hours.
-    ///
-    /// Saturates, as [`Add`](std::ops::Add) does.
-    fn sub(self, by: SignedDuration) -> Self {
-        Self(self.0.checked_sub(by).unwrap_or(if by.is_negative() {
-            civil::Date::MAX
-        } else {
-            civil::Date::MIN
-        }))
-    }
-}
-
-impl std::ops::Sub for Date {
-    type Output = SignedDuration;
-
-    /// The days from `earlier` to this day, as so many 24 hours (negative when `earlier` is
-    /// later), as `chrono` subtracted two dates.
-    fn sub(self, earlier: Self) -> SignedDuration {
-        self.0.duration_since(earlier.0)
     }
 }
 
@@ -421,8 +387,71 @@ impl schemars::JsonSchema for Date {
     }
 }
 
+/// Operators for the unit tests of this crate only: a test reads `now + days(3)` and a failure is a
+/// panic. Production code has no operators on instants and days (spec/arithmetic/index.md): it
+/// uses `checked_add`, `checked_sub` and `duration_since`, and handles `None`.
+#[cfg(any(test, feature = "test-support"))]
+#[allow(
+    clippy::unwrap_used,
+    clippy::arithmetic_side_effects,
+    clippy::missing_panics_doc,
+    clippy::must_use_candidate,
+    reason = "test support: a failure is a panic (RCA-EXC-5)"
+)]
+pub mod test_operators {
+    use super::{Date, SignedDuration, Timestamp};
+
+    /// `n` days, for a test that is not about overflow.
+    pub fn test_days(n: i64) -> SignedDuration {
+        super::days(n).unwrap()
+    }
+
+    impl std::ops::Add<SignedDuration> for Timestamp {
+        type Output = Self;
+        fn add(self, by: SignedDuration) -> Self {
+            self.checked_add(by).unwrap()
+        }
+    }
+    impl std::ops::Sub<SignedDuration> for Timestamp {
+        type Output = Self;
+        fn sub(self, by: SignedDuration) -> Self {
+            self.checked_sub(by).unwrap()
+        }
+    }
+    impl std::ops::AddAssign<SignedDuration> for Timestamp {
+        fn add_assign(&mut self, by: SignedDuration) {
+            *self = *self + by;
+        }
+    }
+    impl std::ops::Sub for Timestamp {
+        type Output = SignedDuration;
+        fn sub(self, earlier: Self) -> SignedDuration {
+            self.duration_since(earlier)
+        }
+    }
+    impl std::ops::Add<SignedDuration> for Date {
+        type Output = Self;
+        fn add(self, by: SignedDuration) -> Self {
+            self.checked_add(by).unwrap()
+        }
+    }
+    impl std::ops::Sub<SignedDuration> for Date {
+        type Output = Self;
+        fn sub(self, by: SignedDuration) -> Self {
+            self.checked_sub(by).unwrap()
+        }
+    }
+    impl std::ops::Sub for Date {
+        type Output = SignedDuration;
+        fn sub(self, earlier: Self) -> SignedDuration {
+            self.duration_since(earlier)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::test_operators::test_days;
     use super::*;
 
     fn at(text: &str) -> Timestamp {
@@ -430,22 +459,25 @@ mod tests {
     }
 
     #[test]
-    fn arithmetic_past_the_range_saturates_and_never_panics() {
+    fn arithmetic_past_the_range_is_none_and_never_panics_or_wraps() {
         let end = Timestamp(jiff::Timestamp::MAX);
         let start = Timestamp(jiff::Timestamp::MIN);
-        assert_eq!(end + days(1), end);
-        assert_eq!(start - days(1), start);
-        assert_eq!(end - days(-1), end);
-        assert_eq!(start + days(-1), start);
-        assert_eq!(at("2026-11-16T00:00:00Z") + days(i64::MAX), end);
-        assert_eq!(at("2026-11-16T00:00:00Z") - days(i64::MAX), start);
-        assert_eq!(days(i64::MAX), SignedDuration::from_secs(i64::MAX));
+        assert_eq!(end.checked_add(test_days(1)), None);
+        assert_eq!(start.checked_sub(test_days(1)), None);
+        assert_eq!(end.checked_sub(days(-1).unwrap()), None);
+        assert_eq!(start.checked_add(days(-1).unwrap()), None);
+        assert_eq!(end.checked_sub_days(1).map(|t| t < end), Some(true));
+        assert_eq!(at("2026-11-16T00:00:00Z").checked_add_days(i64::MAX), None);
+        assert_eq!(at("2026-11-16T00:00:00Z").checked_sub_days(i64::MAX), None);
+        assert_eq!(days(i64::MAX), None, "it does not fit a duration");
+        assert_eq!(days(1), Some(SignedDuration::from_secs(86_400)));
         let last = Date(civil::Date::MAX);
         let first = Date(civil::Date::MIN);
-        assert_eq!(last + days(1), last);
-        assert_eq!(first - days(1), first);
-        assert_eq!(last - days(-1), last);
-        assert_eq!(first + days(-1), first);
+        assert_eq!(last.checked_add_days(1), None);
+        assert_eq!(first.checked_sub_days(1), None);
+        assert_eq!(last.checked_sub_days(-1), None);
+        assert_eq!(first.checked_add_days(-1), None);
+        assert_eq!(first.checked_add_days(1).map(|d| d > first), Some(true));
     }
 
     // The JSON a record carried under `chrono`, so no API response changes (CRM-T258).
@@ -688,7 +720,7 @@ mod tests {
             late - at("2026-11-17T23:59:00Z"),
             SignedDuration::from_secs(59)
         );
-        assert_eq!(late - days(1), at("2026-11-16T23:59:59Z"));
+        assert_eq!(late - test_days(1), at("2026-11-16T23:59:59Z"));
     }
 
     #[test]
@@ -721,8 +753,8 @@ mod tests {
     #[test]
     fn a_date_moves_by_whole_days() {
         let day = Date::from_ymd(2026, 3, 1).unwrap();
-        assert_eq!(day - days(1), Date::from_ymd(2026, 2, 28).unwrap());
-        assert_eq!(day + days(365), Date::from_ymd(2027, 3, 1).unwrap());
+        assert_eq!(day - test_days(1), Date::from_ymd(2026, 2, 28).unwrap());
+        assert_eq!(day + test_days(365), Date::from_ymd(2027, 3, 1).unwrap());
         // A part day is dropped, toward zero.
         assert_eq!(
             day + SignedDuration::from_hours(47),

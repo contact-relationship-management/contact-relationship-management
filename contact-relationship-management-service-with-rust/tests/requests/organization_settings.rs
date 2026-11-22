@@ -171,7 +171,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
         // (two for the hour between 10:00 and 11:00 UTC), and never the same day.
         let pago = pacific_today("Pago_Pago");
         assert!(
-            pago + contact_relationship_management::time::days(1) == kiritimati || pago + contact_relationship_management::time::days(2) == kiritimati,
+            pago + contact_relationship_management::time::test_operators::test_days(1) == kiritimati || pago + contact_relationship_management::time::test_operators::test_days(2) == kiritimati,
             "{pago} vs {kiritimati}"
         );
 
@@ -258,7 +258,7 @@ async fn the_other_todays_follow_the_organization_or_the_caller() {
             ),
         )
         .await;
-        assert_eq!(due, kiritimati + contact_relationship_management::time::days(2));
+        assert_eq!(due, kiritimati + contact_relationship_management::time::test_operators::test_days(2));
 
         // A follow-up due on Pago Pago's today is not overdue for a caller there, and a day
         // overdue on the organization's day.

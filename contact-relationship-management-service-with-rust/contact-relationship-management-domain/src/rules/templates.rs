@@ -366,14 +366,18 @@ pub fn parse(source: &str) -> Result<Vec<Segment>, ParseError> {
         if start > 0 {
             out.push(Segment::Text(rest[..start].to_string()));
         }
-        let after = &rest[start + 2..];
+        let after = rest
+            .get(start.checked_add(2).ok_or(ParseError::Unclosed)?..)
+            .ok_or(ParseError::Unclosed)?;
         let end = after.find("}}").ok_or(ParseError::Unclosed)?;
         let name = after[..end].trim();
         if !known(name) {
             return Err(ParseError::Unknown(name.to_string()));
         }
         out.push(Segment::Token(name.to_string()));
-        rest = &after[end + 2..];
+        rest = after
+            .get(end.checked_add(2).ok_or(ParseError::Unclosed)?..)
+            .ok_or(ParseError::Unclosed)?;
     }
     if !rest.is_empty() {
         out.push(Segment::Text(rest.to_string()));

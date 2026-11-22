@@ -205,8 +205,8 @@ async fn a_deal_with_no_move_or_activity_for_n_days_is_stalled() {
         }
         // An activity five days ago on the second, a planned one next week on the third; the
         // first stays quiet.
-        let five_days_ago = (contact_relationship_management::clock::now() - contact_relationship_management::time::days(5)).to_rfc3339();
-        let next_week = (contact_relationship_management::clock::now() + contact_relationship_management::time::days(7)).to_rfc3339();
+        let five_days_ago = (contact_relationship_management::clock::now() - contact_relationship_management::time::test_operators::test_days(5)).to_rfc3339();
+        let next_week = (contact_relationship_management::clock::now() + contact_relationship_management::time::test_operators::test_days(7)).to_rfc3339();
         for (pid, at) in [(&pids[1], &five_days_ago), (&pids[2], &next_week)] {
             request
                 .post("/api/activities")

@@ -5,6 +5,7 @@
 //! record so the whole import can be taken back. Duplicate advice comes from the matcher and
 //! never blocks a row. Imported leads are not contacts and carry no consent.
 
+use crate::arith::Tally;
 use std::collections::{HashMap, HashSet};
 
 use axa::prelude::*;
@@ -195,7 +196,7 @@ pub(super) async fn advise(
     let mut reports = Vec::with_capacity(rows.len());
     let mut judged = Vec::with_capacity(rows.len());
     for (offset, judgement) in rows.into_iter().enumerate() {
-        let number = offset + 1;
+        let number = offset.tally(1);
         let row = match judgement {
             Ok(row) => row,
             Err(reason) => {
@@ -407,7 +408,7 @@ async fn commit(
     for (report, row) in reports.iter().zip(judged) {
         let Some(row) = row else { continue };
         if payload.skip_likely_duplicates && !report.likely_duplicates.is_empty() {
-            skipped += 1;
+            skipped = skipped.tally(1);
         } else {
             to_save.push(row);
         }
@@ -541,7 +542,10 @@ async fn undo(
         )
         .await?;
     }
-    let kept = all.len() - removed.len();
+    let kept = all
+        .len()
+        .checked_sub(removed.len())
+        .ok_or_else(|| crate::arith::overflow("kept"))?;
     sqlx::query!(
         "UPDATE lead_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",

@@ -38,7 +38,7 @@ pub fn last_touch(
 /// Whether a deal last touched at `touched` is stalled at `now` after `days` days.
 #[must_use]
 pub fn is_stalled(closed: bool, touched: Timestamp, now: Timestamp, days: u32) -> bool {
-    !closed && now - touched >= whole_days(i64::from(days))
+    !closed && whole_days(i64::from(days)).is_some_and(|limit| now.duration_since(touched) >= limit)
 }
 
 #[cfg(test)]

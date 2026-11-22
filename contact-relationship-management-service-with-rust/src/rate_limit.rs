@@ -72,16 +72,15 @@ impl Guard {
                 .and_then(|v| v.trim().parse::<u64>().ok())
                 .unwrap_or(default)
         };
-        let on = u64::from(production);
         Self::new(
             u32::try_from(number(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN",
-                600 * on,
+                if production { 600 } else { 0 },
             ))
             .unwrap_or(u32::MAX),
             u32::try_from(number(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT",
-                10 * on,
+                if production { 10 } else { 0 },
             ))
             .unwrap_or(u32::MAX),
             number("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS", 300),

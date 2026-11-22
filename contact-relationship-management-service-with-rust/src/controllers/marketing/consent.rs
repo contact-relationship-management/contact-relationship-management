@@ -226,7 +226,9 @@ pub(super) async fn request_consent(
         .position(|p| *p == payload.purpose)
         .and_then(|i| u8::try_from(i).ok())
         .ok_or_else(|| unprocessable("unknown purpose"))?;
-    let expires_at = crate::clock::now() + crate::time::days(CONFIRM_DAYS);
+    let expires_at = crate::clock::now()
+        .checked_add_days(CONFIRM_DAYS)
+        .ok_or_else(|| crate::arith::overflow("expires_at"))?;
     apply_consent(
         pool,
         contact,
@@ -265,7 +267,9 @@ pub(super) async fn preferences_link(
     let signer = unsubscriber()?;
     let pool = db::pool(&ctx);
     let contact = find_contact(pool, pid).await?;
-    let expires_at = crate::clock::now() + crate::time::days(PREFERENCES_DAYS);
+    let expires_at = crate::clock::now()
+        .checked_add_days(PREFERENCES_DAYS)
+        .ok_or_else(|| crate::arith::overflow("expires_at"))?;
     let token = crate::link_tokens::issue(
         pool,
         crate::link_tokens::PREFERENCES,

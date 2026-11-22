@@ -45,7 +45,12 @@ async fn bump_cache_generation(cache: &Cache) {
     let stamp = i64::try_from(crate::clock::now().0.as_nanosecond()).unwrap_or_default();
     match tokio::time::timeout(
         CACHE_WAIT,
-        cache.set_with_ttl(CACHE_GEN_KEY, &stamp, INSIGHT_TTL * 4),
+        cache.set_with_ttl(
+            CACHE_GEN_KEY,
+            &stamp, // CACHE-1: the generation key outlives an entry by four lifetimes; if that is out of
+            // range it lives one.
+            INSIGHT_TTL.checked_mul(4).unwrap_or(INSIGHT_TTL),
+        ),
     )
     .await
     {

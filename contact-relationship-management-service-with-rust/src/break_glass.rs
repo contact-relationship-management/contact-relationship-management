@@ -106,9 +106,11 @@ pub fn validate_review(grantee: &str, reviewer: &str, note: &str) -> Result<Stri
 }
 
 /// Expiry of a grant taken at `now`.
+///
+/// `None` when the expiry is out of range.
 #[must_use]
-pub fn expiry(now: Timestamp, minutes: i64) -> Timestamp {
-    now + SignedDuration::from_mins(minutes)
+pub fn expiry(now: Timestamp, minutes: i64) -> Option<Timestamp> {
+    now.checked_add(SignedDuration::from_mins(minutes))
 }
 
 /// The live grants this process knows about: subject to expiry.
@@ -222,7 +224,7 @@ mod tests {
     fn grants_expire() {
         let registry = Registry::default();
         let now = crate::clock::now();
-        registry.grant("u", expiry(now, 30));
+        registry.grant("u", expiry(now, 30).unwrap());
         assert!(registry.active("u", now));
         assert!(registry.active("u", now + SignedDuration::from_mins(29)));
         assert!(!registry.active("u", now + SignedDuration::from_mins(30)));
@@ -233,8 +235,8 @@ mod tests {
     fn replace_drops_revoked_grants_and_grant_keeps_the_later_expiry() {
         let registry = Registry::default();
         let now = crate::clock::now();
-        registry.grant("u", expiry(now, 10));
-        registry.grant("u", expiry(now, 5));
+        registry.grant("u", expiry(now, 10).unwrap());
+        registry.grant("u", expiry(now, 5).unwrap());
         assert!(registry.active("u", now + SignedDuration::from_mins(9)));
         registry.replace(HashMap::new());
         assert!(!registry.active("u", now));

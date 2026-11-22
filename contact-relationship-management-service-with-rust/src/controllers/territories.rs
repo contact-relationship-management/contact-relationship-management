@@ -4,6 +4,7 @@
 //! adds up the won deals on each territory's accounts. Both sit under the admin-only `/api/quotas`
 //! prefix, like the quotas themselves.
 
+use crate::arith::Tally;
 use std::collections::{BTreeMap, BTreeSet};
 use std::str::FromStr;
 
@@ -277,10 +278,12 @@ async fn territory_attainment(
         Some(to) => to,
         None => super::organization::caller_today(crate::db::pool(&ctx), &headers).await?,
     };
-    let from = query
-        .from
-        .unwrap_or_else(|| to - crate::time::days(DEFAULT_PERIOD_DAYS));
-    if from > to || crate::time::whole_days(to - from) > MAX_PERIOD_DAYS {
+    let from = query.from.unwrap_or_else(|| {
+        // TERRITORY-WINDOW-1: the default period is DEFAULT_PERIOD_DAYS before `to`; a start
+        // that cannot be computed is `to`, an empty period.
+        to.checked_sub_days(DEFAULT_PERIOD_DAYS).unwrap_or(to)
+    });
+    if from > to || crate::time::whole_days(to.duration_since(from)) > MAX_PERIOD_DAYS {
         return Err(super::unprocessable(&format!(
             "/from: not after /to, and at most {MAX_PERIOD_DAYS} days before it"
         )));
@@ -314,7 +317,7 @@ async fn territory_attainment(
             .0
             .checked_add(deal.amount_minor)
             .ok_or_else(too_large)?;
-        slot.1 += 1;
+        slot.1 = slot.1.tally(1);
     }
     let revenue = |owner: Option<Uuid>| -> Vec<TerritoryRevenue> {
         sums.iter()

@@ -5,8 +5,6 @@
 //! amount is converted with integer arithmetic, scaled by the two currencies' own minor units
 //! (ISO 4217, [`super::currency`]) and rounded half to even.
 
-#![cfg_attr(not(test), deny(clippy::arithmetic_side_effects))]
-
 use crate::time::Date;
 
 /// Billionths in one: a rate is held as `rate * 1_000_000_000`.
@@ -823,7 +821,12 @@ mod tests {
                 amount_minor: 500
             }]
         );
-        let before = [dated("ann", day(1, 1) - crate::time::days(1), "USD", 100)];
+        let before = [dated(
+            "ann",
+            day(1, 1) - crate::time::test_operators::test_days(1),
+            "USD",
+            100,
+        )];
         let none = convert_rows_dated(&before, "GBP", &rates);
         assert!(
             none.rows.is_empty() && none.left_out.len() == 1,

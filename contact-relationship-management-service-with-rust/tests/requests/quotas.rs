@@ -221,8 +221,8 @@ async fn attainment_is_the_workers_won_revenue_in_the_period_and_the_commission_
             .json();
         let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - contact_relationship_management::time::days(10),
-            today + contact_relationship_management::time::days(80),
+            today - contact_relationship_management::time::test_operators::test_days(10),
+            today + contact_relationship_management::time::test_operators::test_days(80),
         );
         for (owner, amount, plan_pid) in [
             (&ada, 100_000, Some(plan["pid"].clone())),
@@ -332,8 +332,8 @@ async fn a_split_deal_is_credited_in_shares_to_the_minor_unit_and_a_removed_spli
 
         let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - contact_relationship_management::time::days(10),
-            today + contact_relationship_management::time::days(80),
+            today - contact_relationship_management::time::test_operators::test_days(10),
+            today + contact_relationship_management::time::test_operators::test_days(80),
         );
         for owner in [&ada, &grace] {
             request
@@ -439,8 +439,8 @@ async fn a_team_adds_its_workers_standings_per_currency_and_is_replaced_by_name_
         }
         let today = contact_relationship_management::clock::now().date_utc();
         let (from, to) = (
-            today - contact_relationship_management::time::days(10),
-            today + contact_relationship_management::time::days(80),
+            today - contact_relationship_management::time::test_operators::test_days(10),
+            today + contact_relationship_management::time::test_operators::test_days(80),
         );
         for owner in [&ada, &grace] {
             request
@@ -695,8 +695,8 @@ async fn a_clawback_takes_credit_back_from_one_worker_and_is_refused_beyond_what
             request
                 .put("/api/quotas")
                 .json(
-                    &json!({ "owner_ref": owner, "period_from": today - contact_relationship_management::time::days(10),
-                               "period_to": today + contact_relationship_management::time::days(80),
+                    &json!({ "owner_ref": owner, "period_from": today - contact_relationship_management::time::test_operators::test_days(10),
+                               "period_to": today + contact_relationship_management::time::test_operators::test_days(80),
                                "currency": "GBP", "amount_minor": 100_000 }),
                 )
                 .await

@@ -221,7 +221,7 @@ async fn a_report_shows_its_sums_in_one_currency_naming_the_rates_and_what_it_co
 
         // Refusals: a future day, a count, a lower-case currency, a date for nothing.
         let tomorrow = (contact_relationship_management::clock::now()
-            + contact_relationship_management::time::days(1))
+            + contact_relationship_management::time::test_operators::test_days(1))
         .date_utc()
         .to_string();
         for (extra, pointer) in [

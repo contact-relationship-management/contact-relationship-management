@@ -7,6 +7,7 @@
 //! Runs on `sqlx` (CRM-D24, CRM-T206); the policy check reads the record through
 //! [`inbox::subject_attrs`] since CRM-T216.
 
+use crate::arith::Tally;
 use axa::extract::Query;
 use axa::prelude::*;
 use axum::http::{StatusCode, Uri};
@@ -153,7 +154,7 @@ async fn unread_count(
     let mut unread = 0_u64;
     for n in rows.iter().take(usize::try_from(COUNT_CAP).unwrap_or(0)) {
         if visible(db::pool(&ctx), &caller, n).await? {
-            unread += 1;
+            unread = unread.tally(1);
         }
     }
     format::json(UnreadCount { unread, capped })
@@ -229,7 +230,7 @@ async fn read_all(
 /// A database error.
 pub async fn run_sweep(pool: &PgPool, actor: Option<&str>) -> Result<inbox::Outcome> {
     let outcome = inbox::sweep(pool).await?;
-    if outcome.created + outcome.suppressed > 0 {
+    if outcome.created > 0 || outcome.suppressed > 0 {
         let mut txn = pool.begin().await?;
         Audit::record_on(
             &mut txn,
@@ -266,7 +267,7 @@ impl BackgroundWorker<()> for NotificationSweepWorker {
 
     async fn perform(&self, (): ()) -> Result<()> {
         let outcome = run_sweep(db::pool(&self.ctx), None).await?;
-        if outcome.created + outcome.suppressed > 0 {
+        if outcome.created > 0 || outcome.suppressed > 0 {
             tracing::info!(
                 created = outcome.created,
                 suppressed = outcome.suppressed,

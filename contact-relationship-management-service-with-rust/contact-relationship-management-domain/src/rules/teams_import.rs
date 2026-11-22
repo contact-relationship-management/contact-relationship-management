@@ -30,16 +30,16 @@ pub fn is_person_ref(text: &str) -> bool {
 
 /// Group `(department, person_ref)` pairs, one per worker, into teams' members.
 #[must_use]
-pub fn group<'a>(workers: impl IntoIterator<Item = (&'a str, Option<&'a str>)>) -> Grouped {
+pub fn group<'a>(workers: impl IntoIterator<Item = (&'a str, Option<&'a str>)>) -> Option<Grouped> {
     let mut out = Grouped::default();
     for (department, person_ref) in workers {
         let Some(person_ref) = person_ref.map(str::trim).filter(|r| is_person_ref(r)) else {
-            out.without_person_ref += 1;
+            out.without_person_ref = out.without_person_ref.checked_add(1)?;
             continue;
         };
         let department = department.trim();
         if department.is_empty() {
-            out.without_department += 1;
+            out.without_department = out.without_department.checked_add(1)?;
             continue;
         }
         out.by_department
@@ -51,12 +51,16 @@ pub fn group<'a>(workers: impl IntoIterator<Item = (&'a str, Option<&'a str>)>) 
         members.sort();
         members.dedup();
     }
-    out
+    Some(out)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn group<'a>(workers: impl IntoIterator<Item = (&'a str, Option<&'a str>)>) -> Grouped {
+        super::group(workers).unwrap()
+    }
 
     const A: &str = "person:00000000-0000-0000-0000-00000000000a";
     const B: &str = "person:00000000-0000-0000-0000-00000000000b";
