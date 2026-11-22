@@ -141,7 +141,12 @@ fn with_cors(mut response: Response, origin: &str) -> Response {
 async fn preflight(Path(slug): Path<String>, headers: HeaderMap) -> Response {
     let forms = settings::current().web_forms.clone();
     // A preflight has no body: its refusal follows `Accept-Language` alone.
-    let text = public_text::negotiate(None, header_text(&headers, "accept-language"));
+    let text = match super::accept_language(&headers).and_then(|accept| {
+        public_text::negotiate(None, accept).map_err(|why| super::unprocessable(&why))
+    }) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     match admit(&forms, &slug, &headers, text) {
         Ok((_, origin)) => {
             let mut response = StatusCode::NO_CONTENT.into_response();
@@ -182,11 +187,10 @@ fn received(text: &Text) -> Response {
 /// The language of the mail and the answer (CRM-T180): the form page's `language`, else the
 /// request's `Accept-Language`, else English. The contact's language is not stored (CRM-R29):
 /// the request that asks for the mail says it.
-fn language_of(payload: &FormPayload, headers: &HeaderMap) -> &'static Text {
-    let accept = headers
-        .get(header::ACCEPT_LANGUAGE)
-        .and_then(|v| v.to_str().ok());
+fn language_of(payload: &FormPayload, headers: &HeaderMap) -> Result<&'static Text> {
+    let accept = super::accept_language(headers)?;
     public_text::negotiate(payload.language.as_deref(), accept)
+        .map_err(|why| super::unprocessable(&why))
 }
 
 /// `429` with the seconds to wait, in `text`'s language.
@@ -222,7 +226,10 @@ async fn submit(
 ) -> Response {
     let forms = settings::current().web_forms.clone();
     // Every answer, refusals too, is in the request's language (CRM-T180, CRM-T182).
-    let text = language_of(&payload, &headers);
+    let text = match language_of(&payload, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let (form, origin) = match admit(&forms, &slug, &headers, text) {
         Ok(found) => found,
         Err(refused) => return *refused,

@@ -29,13 +29,12 @@ pub const RETENTION_DEFAULT_DAYS: i64 = 365;
 /// every soft-delete into a hard-delete (CRM-D14, mirroring WPM-D22).
 pub const RETENTION_FLOOR_DAYS: i64 = 30;
 
-/// Parse the retention horizon from the raw env value: unset / blank /
-/// junk ⇒ the default; anything below the floor is clamped up to it.
+/// The retention horizon from the raw setting: the default when it is not set at all, the value when
+/// it is a whole number of days at or above the floor, and `None` otherwise. A setting that is blank,
+/// not a number or under the floor is invalid and is never raised to the floor (RCA-IN-2).
 #[must_use]
-pub fn retention_days(raw: Option<&str>) -> i64 {
-    raw.and_then(|value| value.trim().parse::<i64>().ok())
-        .unwrap_or(RETENTION_DEFAULT_DAYS)
-        .max(RETENTION_FLOOR_DAYS)
+pub fn retention_days(raw: Option<&str>) -> Option<i64> {
+    horizon(raw, RETENTION_DEFAULT_DAYS, RETENTION_FLOOR_DAYS)
 }
 
 /// Default horizon (days) for the event outbox and webhook deliveries, when `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS`
@@ -58,22 +57,26 @@ pub fn valid_horizon(raw: &str, floor: i64) -> bool {
     raw.trim().parse::<i64>().is_ok_and(|days| days >= floor)
 }
 
-fn horizon(raw: Option<&str>, default: i64, floor: i64) -> i64 {
-    raw.and_then(|value| value.trim().parse::<i64>().ok())
-        .unwrap_or(default)
-        .max(floor)
+fn horizon(raw: Option<&str>, default: i64, floor: i64) -> Option<i64> {
+    match raw {
+        None => Some(default),
+        Some(value) => value
+            .trim()
+            .parse::<i64>()
+            .ok()
+            .filter(|days| *days >= floor),
+    }
 }
 
-/// The horizon for the event outbox and webhook deliveries: unset, blank or junk is the default,
-/// and anything below the floor is raised to it.
+/// The horizon for the event outbox and webhook deliveries, read as [`retention_days`] is.
 #[must_use]
-pub fn event_retention_days(raw: Option<&str>) -> i64 {
+pub fn event_retention_days(raw: Option<&str>) -> Option<i64> {
     horizon(raw, EVENT_DEFAULT_DAYS, EVENT_FLOOR_DAYS)
 }
 
 /// The horizon for email deliveries and events, read the same way.
 #[must_use]
-pub fn mail_retention_days(raw: Option<&str>) -> i64 {
+pub fn mail_retention_days(raw: Option<&str>) -> Option<i64> {
     horizon(raw, MAIL_DEFAULT_DAYS, MAIL_FLOOR_DAYS)
 }
 
@@ -287,21 +290,20 @@ mod tests {
         assert!(!erasable(true, true, true));
     }
 
-    /// The horizon: default on unset/junk, floor-clamped, and a sane
-    /// value passes through.
+    /// The horizon: the default when not set, a valid value passes through, and anything else is
+    /// `None`: never the default and never raised to the floor.
     #[test]
-    fn retention_horizon_defaults_and_floors() {
-        assert_eq!(retention_days(None), RETENTION_DEFAULT_DAYS);
-        assert_eq!(retention_days(Some("")), RETENTION_DEFAULT_DAYS);
-        assert_eq!(retention_days(Some("junk")), RETENTION_DEFAULT_DAYS);
-        assert_eq!(retention_days(Some("730")), 730);
-        assert_eq!(
-            retention_days(Some("0")),
-            RETENTION_FLOOR_DAYS,
-            "0 would hard-delete"
-        );
-        assert_eq!(retention_days(Some("-5")), RETENTION_FLOOR_DAYS);
-        assert_eq!(retention_days(Some("30")), 30);
+    fn retention_horizon_is_the_default_when_absent_and_none_when_invalid() {
+        assert_eq!(retention_days(None), Some(RETENTION_DEFAULT_DAYS));
+        assert_eq!(retention_days(Some("730")), Some(730));
+        assert_eq!(retention_days(Some("30")), Some(30));
+        for bad in ["", "junk", "0", "-5", "29"] {
+            assert_eq!(
+                retention_days(Some(bad)),
+                None,
+                "{bad:?} (0 would hard-delete)"
+            );
+        }
     }
 
     /// Each retention default says whose it is, and the table cannot drift from the constants the
@@ -317,24 +319,24 @@ mod tests {
             ),
             (
                 "CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS",
-                retention_days(None),
-                retention_days(Some("0"))
+                RETENTION_DEFAULT_DAYS,
+                RETENTION_FLOOR_DAYS
             )
         );
         assert_eq!(
             (event.setting, event.default_days, event.floor_days),
             (
                 "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS",
-                event_retention_days(None),
-                event_retention_days(Some("0"))
+                EVENT_DEFAULT_DAYS,
+                EVENT_FLOOR_DAYS
             )
         );
         assert_eq!(
             (mail.setting, mail.default_days, mail.floor_days),
             (
                 "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS",
-                mail_retention_days(None),
-                mail_retention_days(Some("0"))
+                MAIL_DEFAULT_DAYS,
+                MAIL_FLOOR_DAYS
             )
         );
         for entry in RETENTION_DEFAULTS {
@@ -375,15 +377,19 @@ mod tests {
     }
 
     #[test]
-    fn the_log_horizons_default_and_never_go_below_their_floors() {
-        assert_eq!(event_retention_days(None), EVENT_DEFAULT_DAYS);
-        assert_eq!(event_retention_days(Some("junk")), EVENT_DEFAULT_DAYS);
-        assert_eq!(event_retention_days(Some("90")), 90);
-        assert_eq!(event_retention_days(Some("1")), EVENT_FLOOR_DAYS);
-        assert_eq!(mail_retention_days(None), MAIL_DEFAULT_DAYS);
-        assert_eq!(mail_retention_days(Some(" 1000 ")), 1000);
-        assert_eq!(mail_retention_days(Some("30")), MAIL_FLOOR_DAYS);
-        assert_eq!(mail_retention_days(Some("-1")), MAIL_FLOOR_DAYS);
+    fn the_log_horizons_default_when_absent_and_are_none_when_below_their_floors() {
+        assert_eq!(event_retention_days(None), Some(EVENT_DEFAULT_DAYS));
+        assert_eq!(event_retention_days(Some("90")), Some(90));
+        assert_eq!(event_retention_days(Some("7")), Some(EVENT_FLOOR_DAYS));
+        for bad in ["junk", "", "1", "6"] {
+            assert_eq!(event_retention_days(Some(bad)), None, "{bad:?}");
+        }
+        assert_eq!(mail_retention_days(None), Some(MAIL_DEFAULT_DAYS));
+        assert_eq!(mail_retention_days(Some(" 1000 ")), Some(1000));
+        assert_eq!(mail_retention_days(Some("400")), Some(MAIL_FLOOR_DAYS));
+        for bad in ["30", "-1", "399", "x"] {
+            assert_eq!(mail_retention_days(Some(bad)), None, "{bad:?}");
+        }
     }
 
     #[test]

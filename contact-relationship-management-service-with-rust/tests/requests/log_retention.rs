@@ -184,11 +184,23 @@ async fn finished_delivery_and_event_rows_go_by_age_and_nothing_still_owed_does(
             assert!(again["logs_deleted"][table].is_null(), "{table}: {again}");
         }
 
-        // The horizons cannot be set below their floors: a day is a week, and a month is not enough
-        // for mail (attribution reaches back a year).
+        // A horizon below its floor is invalid, never raised to it (RCA-IN-2): a day is under a week,
+        // and a month is not enough for mail (attribution reaches back a year). Start-up refuses it
+        // (`Settings::unusable`); the report, reached after the settings were changed, is an error.
+        for (event, mail) in [("1", None), ("junk", None), ("", None), ("7", Some("30"))] {
+            settings::update(|s| {
+                s.event_retention_days = Some(event.into());
+                s.mail_retention_days = mail.map(Into::into);
+            });
+            request
+                .get("/api/retention")
+                .await
+                .assert_status(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        // At the floors exactly, the floors are the horizons.
         settings::update(|s| {
-            s.event_retention_days = Some("1".into());
-            s.mail_retention_days = Some("30".into());
+            s.event_retention_days = Some("7".into());
+            s.mail_retention_days = Some("400".into());
         });
         let floored: Value = request.get("/api/retention").await.json();
         assert_eq!(floored["event_horizon_days"], 7, "{floored}");

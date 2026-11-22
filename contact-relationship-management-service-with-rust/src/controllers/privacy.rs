@@ -503,32 +503,33 @@ pub(crate) struct HorizonBasis {
 }
 
 /// The basis of each of the three horizons in force.
-fn horizon_basis() -> Vec<HorizonBasis> {
+fn horizon_basis() -> Result<Vec<HorizonBasis>> {
     let settings = crate::settings::current();
-    rules::RETENTION_DEFAULTS
+    let basis = rules::RETENTION_DEFAULTS
         .iter()
         .map(|entry| {
             let (raw, days) = match entry.setting {
                 "CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS" => (
                     settings.event_retention_days.as_deref(),
-                    log_horizon(rules::Horizon::Event),
+                    log_horizon(rules::Horizon::Event)?,
                 ),
                 "CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS" => (
                     settings.mail_retention_days.as_deref(),
-                    log_horizon(rules::Horizon::Mail),
+                    log_horizon(rules::Horizon::Mail)?,
                 ),
-                _ => (settings.retention_days.as_deref(), horizon_days()),
+                _ => (settings.retention_days.as_deref(), horizon_days()?),
             };
-            HorizonBasis {
+            Ok(HorizonBasis {
                 setting: entry.setting,
                 days,
                 set: raw.is_some_and(|value| value.trim().parse::<i64>().is_ok()),
                 default_days: entry.default_days,
                 floor_days: entry.floor_days,
                 default_from: entry.default_from,
-            }
+            })
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+    Ok(basis)
 }
 
 /// `POST /api/retention/sweep`.
@@ -545,27 +546,41 @@ pub(crate) struct RetentionSweep {
     rows_deleted: u64,
 }
 
+/// A retention setting that is no number of days at or above its floor. Start-up refuses it
+/// (`Settings::unusable`), so this is reached only when the settings were changed afterwards; it
+/// names the setting and never its value.
+fn invalid_horizon(setting: &str) -> Error {
+    Error::string(&format!(
+        "{setting} must be a whole number of days at or above its floor"
+    ))
+}
+
 /// The retention horizon in days (`CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS`, default 365,
 /// floor 30 — CRM-D14).
-fn horizon_days() -> i64 {
+fn horizon_days() -> Result<i64> {
     rules::retention_days(crate::settings::current().retention_days.as_deref())
+        .ok_or_else(|| invalid_horizon("CONTACT_RELATIONSHIP_MANAGEMENT_RETENTION_DAYS"))
 }
 
 /// The horizon in days for a log table's rule (CRM-R81).
-fn log_horizon(horizon: rules::Horizon) -> i64 {
+fn log_horizon(horizon: rules::Horizon) -> Result<i64> {
     let settings = crate::settings::current();
     match horizon {
         rules::Horizon::Event => {
-            rules::event_retention_days(settings.event_retention_days.as_deref())
+            rules::event_retention_days(settings.event_retention_days.as_deref()).ok_or_else(|| {
+                invalid_horizon("CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_RETENTION_DAYS")
+            })
         }
-        rules::Horizon::Mail => rules::mail_retention_days(settings.mail_retention_days.as_deref()),
+        rules::Horizon::Mail => rules::mail_retention_days(settings.mail_retention_days.as_deref())
+            .ok_or_else(|| invalid_horizon("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_RETENTION_DAYS")),
     }
 }
 
-/// The `WHERE` of a log rule at its horizon. The horizon is a clamped integer, never text.
-fn log_condition(rule: &rules::LogRule) -> String {
-    rule.condition
-        .replace("{days}", &log_horizon(rule.horizon).to_string())
+/// The `WHERE` of a log rule at its horizon. The horizon is an integer, never text.
+fn log_condition(rule: &rules::LogRule) -> Result<String> {
+    Ok(rule
+        .condition
+        .replace("{days}", &log_horizon(rule.horizon)?.to_string()))
 }
 
 /// `GET /api/retention` — the report: per table, soft-deleted rows
@@ -580,7 +595,7 @@ fn log_condition(rule: &rules::LogRule) -> String {
 /// separate destructive POST.
 #[debug_handler]
 async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
-    let days = horizon_days();
+    let days = horizon_days()?;
     let pool = db::pool(&ctx);
     let mut tables = std::collections::BTreeMap::new();
     for table in rules::SOFT_DELETED_TABLES {
@@ -610,7 +625,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         let count: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
             "SELECT COUNT(*) FROM {} WHERE {}",
             rule.table,
-            log_condition(&rule)
+            log_condition(&rule)?
         )))
         .fetch_one(pool)
         .await?;
@@ -623,10 +638,10 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
         horizon_days: days,
         soft_deleted_past_horizon: tables,
         withdrawn_consent_past_horizon,
-        event_horizon_days: log_horizon(rules::Horizon::Event),
-        mail_horizon_days: log_horizon(rules::Horizon::Mail),
+        event_horizon_days: log_horizon(rules::Horizon::Event)?,
+        mail_horizon_days: log_horizon(rules::Horizon::Mail)?,
         logs_past_horizon: logs,
-        horizon_basis: horizon_basis(),
+        horizon_basis: horizon_basis()?,
         derivation: "soft-deleted rows older than the horizon are hard-deleted by the \
                      sweep; contacts with marketing_consent = withdrawn since before the \
                      horizon are reported (not auto-scrubbed — each still needs the \
@@ -642,7 +657,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
 /// audited with counts.
 #[debug_handler]
 async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> Result<Response> {
-    let days = horizon_days();
+    let days = horizon_days()?;
     let mut txn = db::pool(&ctx).begin().await?;
     let mut deleted = std::collections::BTreeMap::new();
     let mut total: u64 = 0;
@@ -664,7 +679,7 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         let result = sqlx::raw_sql(AssertSqlSafe(format!(
             "DELETE FROM {} WHERE {}",
             rule.table,
-            log_condition(&rule)
+            log_condition(&rule)?
         )))
         .execute(&mut *txn)
         .await?;
@@ -674,8 +689,8 @@ async fn retention_sweep(State(ctx): State<AppContext>, caller: MaybeAuthUser) -
         }
     }
     let (event_horizon_days, mail_horizon_days) = (
-        log_horizon(rules::Horizon::Event),
-        log_horizon(rules::Horizon::Mail),
+        log_horizon(rules::Horizon::Event)?,
+        log_horizon(rules::Horizon::Mail)?,
     );
     Audit::record_on(
         &mut txn,

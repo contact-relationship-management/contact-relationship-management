@@ -1109,48 +1109,73 @@ pub fn english() -> &'static Text {
 /// The page's language: `chosen` (the address's `?lang=`) if the pages have it, else the best
 /// language of `accept_language` they have, by its `q` weights in the order given, else English.
 /// A `*` or a language with `q=0` chooses nothing.
-#[must_use]
-pub fn negotiate(chosen: Option<&str>, accept_language: Option<&str>) -> &'static Text {
+///
+/// # Errors
+///
+/// A `q` value that is not 0 to 1 with up to three decimals is a malformed request input, so the
+/// whole header is refused; it is neither counted as 0 nor passed over (RCA-IN-2). The message names
+/// the figure and never shows the value. A `chosen` language the pages have is used before the
+/// header is read.
+pub fn negotiate(
+    chosen: Option<&str>,
+    accept_language: Option<&str>,
+) -> Result<&'static Text, String> {
     if let Some(text) = chosen.and_then(text_for) {
-        return text;
+        return Ok(text);
     }
     let mut ranges: Vec<(u16, usize, &str)> = Vec::new();
     for (position, item) in accept_language.unwrap_or_default().split(',').enumerate() {
         let mut parts = item.split(';');
         let range = parts.next().unwrap_or_default().trim();
-        let weight = parts
-            .find_map(|p| p.trim().strip_prefix("q="))
-            .map_or(1000, quality);
+        let weight = match parts.find_map(|p| p.trim().strip_prefix("q=")) {
+            None => 1000,
+            Some(q) => quality(q).ok_or_else(|| {
+                "Accept-Language has a q value that is not 0 to 1 with up to three decimals"
+                    .to_string()
+            })?,
+        };
         // An empty range and `*` name no page, so `text_for` passes over them; q=0 refuses one.
         if weight > 0 {
             ranges.push((weight, position, range));
         }
     }
     ranges.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
-    ranges
+    Ok(ranges
         .iter()
         .find_map(|(_, _, range)| text_for(range))
-        .unwrap_or_else(english)
+        .unwrap_or_else(english))
 }
 
-/// A `q` value (0 to 1, up to three decimals) in thousandths; anything else counts as 0.
-fn quality(text: &str) -> u16 {
+/// A `q` value (0 to 1, up to three decimals) in thousandths; `None` for anything else.
+fn quality(text: &str) -> Option<u16> {
     let text = text.trim();
     let (whole, fraction) = text.split_once('.').unwrap_or((text, ""));
-    if fraction.len() > 3 || !fraction.bytes().all(|b| b.is_ascii_digit()) {
-        return 0;
+    if fraction.len() > 3 {
+        return None;
     }
-    let thousandths = format!("{fraction:0<3}").parse::<u16>().unwrap_or(0);
+    let mut thousandths = 0_u16;
+    for place in 0..3 {
+        let digit = match fraction.as_bytes().get(place) {
+            Some(byte) => u16::from(byte.checked_sub(b'0').filter(|digit| *digit <= 9)?),
+            None => 0,
+        };
+        thousandths = thousandths.checked_mul(10)?.checked_add(digit)?;
+    }
     match whole {
-        "0" => thousandths,
-        "1" if thousandths == 0 => 1000,
-        _ => 0,
+        "0" => Some(thousandths),
+        "1" if thousandths == 0 => Some(1000),
+        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The text for a header that reads; a malformed one is the error tested below.
+    fn negotiate(chosen: Option<&str>, accept: Option<&str>) -> &'static Text {
+        super::negotiate(chosen, accept).unwrap()
+    }
 
     // CRM-T259: a range with q=0, `*`, or nothing chooses nothing, and a q value is 0 to 1 with up
     // to three decimals.
@@ -1170,14 +1195,44 @@ mod tests {
 
     #[test]
     fn a_quality_is_zero_to_one_in_thousandths() {
-        assert_eq!(quality("1"), 1000);
-        assert_eq!(quality("1.000"), 1000);
-        assert_eq!(quality("1.001"), 0);
-        assert_eq!(quality("0.5"), 500);
-        assert_eq!(quality("0.123"), 123);
-        assert_eq!(quality("0.1234"), 0);
-        assert_eq!(quality("0.1x"), 0);
-        assert_eq!(quality("2"), 0);
+        assert_eq!(quality("1"), Some(1000));
+        assert_eq!(quality("1.000"), Some(1000));
+        assert_eq!(quality("1.001"), None);
+        assert_eq!(quality("0.5"), Some(500));
+        assert_eq!(quality("0.123"), Some(123));
+        assert_eq!(quality("0.1234"), None);
+        assert_eq!(quality("0.1x"), None);
+        assert_eq!(quality("2"), None);
+        assert_eq!(quality("0"), Some(0));
+        assert_eq!(quality("0.0"), Some(0));
+        assert_eq!(quality(" 0.5 "), Some(500));
+        assert_eq!(
+            quality("0."),
+            Some(0),
+            "RFC 9110 allows no digits after the point"
+        );
+        assert_eq!(quality("1."), Some(1000));
+        for malformed in ["", "-1", "abc", ".5", "1.5", "0.12.3", "0,5", "٠.٥"] {
+            assert_eq!(quality(malformed), None, "{malformed:?}");
+        }
+    }
+
+    /// A malformed `q` refuses the header, and names the figure without its value.
+    #[test]
+    fn a_malformed_q_value_refuses_the_header_and_never_counts_as_zero() {
+        for header in ["de;q=abc", "fr, de;q=1.5", "en;q=", "de;q=0.1234"] {
+            let refused = super::negotiate(None, Some(header)).unwrap_err();
+            assert!(refused.contains("q value"), "{refused}");
+            assert!(
+                !refused.contains("abc") && !refused.contains("1.5"),
+                "{refused}"
+            );
+        }
+        // `?lang=` that the pages have wins before the header is read.
+        assert_eq!(
+            super::negotiate(Some("de"), Some("fr;q=abc")).unwrap().lang,
+            "de"
+        );
     }
 
     #[test]
@@ -1197,11 +1252,8 @@ mod tests {
         );
         assert_eq!(negotiate(None, Some("*")).lang, "en");
         assert_eq!(negotiate(None, None).lang, "en");
-        assert_eq!(
-            negotiate(None, Some("es;q=1.5, fr;q=0.4")).lang,
-            "fr",
-            "a bad q is 0"
-        );
+        // A bad q is no longer read as 0: the owner decided it is an error (RCA-IN-2).
+        assert!(super::negotiate(None, Some("es;q=1.5, fr;q=0.4")).is_err());
     }
 
     #[test]

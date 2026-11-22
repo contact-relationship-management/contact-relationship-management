@@ -22,11 +22,17 @@ pub(super) struct PageLanguage {
 
 /// The language of a public page (CRM-T175): the address's `?lang=`, else the reader's
 /// `Accept-Language`, else English ([`public_text::negotiate`]).
-pub(super) fn page_text(chosen: &PageLanguage, headers: &axum::http::HeaderMap) -> &'static Text {
-    let accept = headers
-        .get(axum::http::header::ACCEPT_LANGUAGE)
-        .and_then(|v| v.to_str().ok());
+///
+/// # Errors
+///
+/// A `422` when the header is malformed (see [`public_text::negotiate`]).
+pub(super) fn page_text(
+    chosen: &PageLanguage,
+    headers: &axum::http::HeaderMap,
+) -> Result<&'static Text> {
+    let accept = super::super::accept_language(headers)?;
     public_text::negotiate(chosen.lang.as_deref(), accept)
+        .map_err(|why| crate::controllers::unprocessable(&why))
 }
 
 /// The page's links to the same page in each other language.
@@ -135,7 +141,10 @@ pub(super) async fn unsubscribe_page_get(
     Query(chosen): Query<PageLanguage>,
     headers: axum::http::HeaderMap,
 ) -> Response {
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     match link_contact(&token) {
         Some(_) => unsubscribe_page(
             axum::http::StatusCode::OK,
@@ -165,7 +174,10 @@ pub(super) async fn unsubscribe_post(
     Query(chosen): Query<PageLanguage>,
     headers: axum::http::HeaderMap,
 ) -> Response {
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let Some((contact_pid, message_pid)) = link_contact(&token) else {
         return unsubscribe_page(
             axum::http::StatusCode::NOT_FOUND,
@@ -474,7 +486,10 @@ pub(super) async fn confirm_page_get(
     Query(chosen): Query<PageLanguage>,
     headers: axum::http::HeaderMap,
 ) -> Response {
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let path = format!("/confirm/{token}");
     let Some((_, purpose)) = confirm_target(db::pool(&ctx), &token).await else {
         return invalid_link(text, &path);
@@ -507,7 +522,10 @@ pub(super) async fn confirm_post(
     headers: axum::http::HeaderMap,
 ) -> Response {
     use axum::http::StatusCode;
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let path = format!("/confirm/{token}");
     // The token is spent in the same transaction as the confirmation, so a failure leaves it
     // usable and a second request, even a simultaneous one, finds it spent (CRM-R79).
@@ -630,7 +648,10 @@ pub(super) async fn preferences_page_get(
     Query(chosen): Query<PageLanguage>,
     headers: axum::http::HeaderMap,
 ) -> Response {
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let path = format!("/preferences/{token}");
     let pool = db::pool(&ctx);
     let Some(contact) = preferences_contact(pool, &token).await else {
@@ -658,7 +679,10 @@ pub(super) async fn preferences_post(
     headers: axum::http::HeaderMap,
     axum::extract::Form(choice): axum::extract::Form<PreferenceChoice>,
 ) -> Response {
-    let text = page_text(&chosen, &headers);
+    let text = match page_text(&chosen, &headers) {
+        Ok(text) => text,
+        Err(refused) => return refused.into_response(),
+    };
     let path = format!("/preferences/{token}");
     let not_available = || {
         public_page(

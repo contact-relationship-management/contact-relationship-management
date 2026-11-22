@@ -438,9 +438,10 @@ impl App {
                 "CONTACT_RELATIONSHIP_MANAGEMENT_TRUST_FORWARDED_FOR is ignored: list your proxies in TRUSTED_PROXIES instead"
             );
         }
-        let guard = std::sync::Arc::new(rate_limit::Guard::from_env(
-            ctx.environment.is_production_like(),
-        ));
+        let guard = std::sync::Arc::new(
+            rate_limit::Guard::from_env(ctx.environment.is_production_like())
+                .map_err(|why| Error::string(&why))?,
+        );
         let address_lockout = rate_limit::address_lockout(
             std::env::var(rate_limit::ADDRESS_LOCKOUT_VAR)
                 .ok()

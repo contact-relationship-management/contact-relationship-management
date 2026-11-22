@@ -404,7 +404,11 @@ impl Settings {
     /// The settings in the process environment.
     #[must_use]
     pub fn from_env() -> Self {
-        Self::from_lookup(&|name| std::env::var(name).ok())
+        // A value that is not valid text is read lossily, so a numeric setting fails to parse and is
+        // refused, and is not taken as unset (RCA-IN-2).
+        Self::from_lookup(&|name| {
+            std::env::var_os(name).map(|value| value.to_string_lossy().into_owned())
+        })
     }
 }
 

@@ -790,6 +790,29 @@ async fn the_public_pages_are_in_the_reader_s_language() {
             "{html}"
         );
 
+        // A malformed q value refuses the page with a 422 that names the header, never reads it as 0;
+        // a header that is sent and is not text is refused too (RCA-IN-2).
+        let refused = request
+            .get(&path)
+            .add_header(accept.clone(), HeaderValue::from_static("de;q=abc"))
+            .await;
+        refused.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+        let body = refused.text();
+        assert!(body.contains("Accept-Language has a q value"), "{body}");
+        assert!(!body.contains("abc"), "{body}");
+        let not_text = request
+            .get(&path)
+            .add_header(accept.clone(), HeaderValue::from_bytes(&[0xE9]).unwrap())
+            .await;
+        not_text.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+        assert!(not_text.text().contains("Accept-Language is not text"));
+        // The address's choice is used before the header is read.
+        request
+            .get(&format!("{path}?lang=de"))
+            .add_header(accept.clone(), HeaderValue::from_static("de;q=abc"))
+            .await
+            .assert_status_ok();
+
         // Arabic is right to left; the address's choice wins over the browser's.
         let html = request
             .get(&format!("{path}?lang=ar"))

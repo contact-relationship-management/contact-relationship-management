@@ -95,31 +95,35 @@ async fn row<'e>(db: impl PgExecutor<'e>) -> Result<Option<Calendar>> {
     .await?)
 }
 
-/// The calendar a stored zone and month stand for; a value no longer known falls back.
-fn periods_from(zone: &str, month: i16) -> Periods {
-    let fallback = Periods::default();
-    Periods {
-        zone: periods::zone(zone).unwrap_or(fallback.zone),
+/// The calendar a stored zone and month stand for. A stored value that is no longer a known zone or
+/// a month from 1 to 12 is corrupt data (RCA-IN-6): an error that names the field, never a
+/// starting value in its place.
+fn periods_from(zone: &str, month: i16) -> Result<Periods> {
+    Ok(Periods {
+        zone: periods::zone(zone)
+            .map_err(|_| Error::string("the stored time zone is not a known zone"))?,
         fiscal_start_month: periods::fiscal_start_month(i64::from(month))
-            .unwrap_or(fallback.fiscal_start_month),
-    }
+            .map_err(|_| Error::string("the stored fiscal year start month is not from 1 to 12"))?,
+    })
 }
 
-/// The days a stored value stands for; one out of range falls back.
-fn stalled_from(days: i16) -> u32 {
-    stalled::days(i64::from(days)).unwrap_or(stalled::DEFAULT_DAYS)
+/// The days a stored value stands for; one out of range is corrupt data, as above.
+fn stalled_from(days: i16) -> Result<u32> {
+    stalled::days(i64::from(days))
+        .map_err(|_| Error::string("the stored stalled-after days are out of range"))
 }
 
-/// The organization's calendar; the starting values when none is stored or the stored zone is
-/// no longer known.
+/// The organization's calendar; the starting values when none is stored. A stored zone or month that
+/// is not valid is an error (RCA-IN-6).
 ///
 /// # Errors
 ///
 /// A database error.
 pub async fn periods<'e>(db: impl PgExecutor<'e>) -> Result<Periods> {
-    Ok(row(db).await?.map_or_else(Periods::default, |row| {
-        periods_from(&row.time_zone, row.fiscal_year_start_month)
-    }))
+    match row(db).await? {
+        Some(row) => periods_from(&row.time_zone, row.fiscal_year_start_month),
+        None => Ok(Periods::default()),
+    }
 }
 
 /// After how many days an open deal is stalled; the starting 14 when none is stored.
@@ -128,9 +132,10 @@ pub async fn periods<'e>(db: impl PgExecutor<'e>) -> Result<Periods> {
 ///
 /// A database error.
 pub async fn stalled_after_days<'e>(db: impl PgExecutor<'e>) -> Result<u32> {
-    Ok(row(db).await?.map_or(stalled::DEFAULT_DAYS, |row| {
-        stalled_from(row.stalled_after_days)
-    }))
+    match row(db).await? {
+        Some(row) => stalled_from(row.stalled_after_days),
+        None => Ok(stalled::DEFAULT_DAYS),
+    }
 }
 
 /// "Today" for the caller of a request: in the zone it names in `CRM-Time-Zone`, else the
@@ -165,12 +170,14 @@ pub async fn organization_today<'e>(db: impl PgExecutor<'e>) -> Result<crate::ti
 
 async fn view(pool: &PgPool) -> Result<SettingsView> {
     let row = stored(pool).await?;
-    let found = row.as_ref().map_or_else(Periods::default, |row| {
-        periods_from(&row.time_zone, row.fiscal_year_start_month)
-    });
-    let stalled_days = row.as_ref().map_or(stalled::DEFAULT_DAYS, |row| {
-        stalled_from(row.stalled_after_days)
-    });
+    let found = match &row {
+        Some(row) => periods_from(&row.time_zone, row.fiscal_year_start_month)?,
+        None => Periods::default(),
+    };
+    let stalled_days = match &row {
+        Some(row) => stalled_from(row.stalled_after_days)?,
+        None => stalled::DEFAULT_DAYS,
+    };
     let (updated_at, set_by) = match row {
         Some(row) => (row.updated_at, row.set_by),
         None => (crate::clock::now(), None),
@@ -210,9 +217,10 @@ async fn set(
         Some(raw) => stalled::days(raw)
             .map_err(|why| problems.push_field("stalled_after_days", why))
             .ok(),
-        None => Some(stored(pool).await?.map_or(stalled::DEFAULT_DAYS, |row| {
-            stalled_from(row.stalled_after_days)
-        })),
+        None => Some(match stored(pool).await? {
+            Some(row) => stalled_from(row.stalled_after_days)?,
+            None => stalled::DEFAULT_DAYS,
+        }),
     };
     problems.finish()?;
     let (Some(zone), Some(month), Some(stalled_days)) = (zone, month, stalled_days) else {

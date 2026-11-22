@@ -153,6 +153,23 @@ pub fn unprocessable(message: &str) -> Error {
     )
 }
 
+/// The request's `Accept-Language`: `None` when it is not sent, a `422` when it is sent and is not
+/// text (RCA-IN-2); it is not read as absent.
+///
+/// # Errors
+///
+/// A `422` that names the header and never its value.
+pub fn accept_language(headers: &axum::http::HeaderMap) -> Result<Option<&str>> {
+    headers
+        .get(axum::http::header::ACCEPT_LANGUAGE)
+        .map(|value| {
+            value
+                .to_str()
+                .map_err(|_| unprocessable("Accept-Language is not text"))
+        })
+        .transpose()
+}
+
 /// A `422` for a figure that does not fit, where the arithmetic (`checked_*`, CRM-T301) returned
 /// `None`: a number the caller sent, or a sum of stored ones, is too large to be worked out
 /// exactly. Nothing is clamped or wrapped.

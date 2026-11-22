@@ -44,7 +44,17 @@ where it enters, with an error that names the figure:
 - **A numeric setting** (`MIN_CELL_SIZE`, `MAIL_BATCH`, `ATTACHMENT_MAX_BYTES`, the three client limits,
   `PASETO_KEYS_REFRESH_SECS`) that is blank, not a number or out of range: `Settings::unusable` names it and
   start-up refuses (RCA-IN-4). The three retention settings are refused when below their floors (30, 7 and 400
-  days) and are no longer raised to them.
+  days) and are no longer raised to them; `rules::privacy::retention_days` and its two siblings return `None` for
+  an invalid value, and the retention endpoints then answer with an error that names the setting.
+- **The rate-limit numbers** (`RATE_LIMIT_PER_MIN`, `AUTH_FAIL_LIMIT`, `AUTH_FAIL_WINDOW_SECS`) that are set but not a
+  whole number or too large: `Guard::from_env` returns an error that names the setting, and start-up stops. A value
+  that is not valid text is read lossily and fails the same way, never as unset.
+- **A stored organization calendar** (time zone, fiscal start month, stalled-after days) that is no longer valid is
+  corrupt data (RCA-IN-6): an error that names the field, not the starting values.
+- **An `Accept-Language` header** with a `q` value that is not 0 to 1 with up to three decimals, or that is not
+  text: a `422` naming the header (`public_text::negotiate`, `controllers::accept_language`). Decided by the owner
+  on 2026-11-22; it is not read as 0 and the range is not passed over. The address's `?lang=`, when the pages have
+  it, is used before the header is read.
 - **A `From` value** whose brackets cannot be read: `address_in` returns `None`, and the reply is an
   `unverified_sender`.
 - **A fiscal start month** outside 1 to 12: no period SQL (`fiscal_year_expr` returns `None`), and a report plan
@@ -84,11 +94,6 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
 - `scripts/check-checked-arithmetic.py` runs in the `clippy` stage and fails on `saturating_*`, `wrapping_*`,
   `overflowing_*`, `clamp` and an unwrapped `checked_*` result in production code (RCA-ENF-5).
 - Not yet at the rule:
-  - **Inputs still replaced** (RCA-ENF-7; the script lists them as warnings): the auth rate-limit numbers read
-    in `rate_limit::from_env`, the retention rule functions' own lenient parse (`privacy::retention_days` and the
-    two like it, whose input the settings now refuse before they are read), a stored search-hit `pid` that
-    fails to parse (`search.rs`), and stored values that fall back (`organization::periods_from` and
-    `stalled_from`, RCA-IN-6).
   - **`Option::unwrap_or_default`** is used in about 80 places (stored JSON, optional text), which RCA-P-3 forbids and
     `clippy.toml` does not yet ban. Each needs its own look.
   - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,

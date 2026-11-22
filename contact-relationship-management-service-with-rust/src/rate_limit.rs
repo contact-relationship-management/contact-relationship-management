@@ -64,27 +64,47 @@ impl Guard {
     /// failures in 5 minutes), off elsewhere so local runs and test suites
     /// are not throttled. `CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN`, `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT`,
     /// and `CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS` override; 0 disables.
-    #[must_use]
-    pub fn from_env(production: bool) -> Self {
-        let number = |name: &str, default: u64| {
-            std::env::var(name)
-                .ok()
-                .and_then(|v| v.trim().parse::<u64>().ok())
-                .unwrap_or(default)
+    ///
+    /// # Errors
+    ///
+    /// A setting that is set but blank, not a whole number or too large; it names the setting and
+    /// never its value. The defaults apply only to a setting that is not set at all (RCA-IN-3).
+    pub fn from_env(production: bool) -> Result<Self, String> {
+        Self::from_lookup(production, &|name| std::env::var(name).ok())
+    }
+
+    /// [`Guard::from_env`] over any `name -> value` lookup.
+    ///
+    /// # Errors
+    ///
+    /// As [`Guard::from_env`].
+    pub fn from_lookup(
+        production: bool,
+        get: &dyn Fn(&str) -> Option<String>,
+    ) -> Result<Self, String> {
+        let number = |name: &str, default: u64| -> Result<u64, String> {
+            get(name).map_or(Ok(default), |value| {
+                value
+                    .trim()
+                    .parse::<u64>()
+                    .map_err(|_| format!("{name} must be a whole number"))
+            })
         };
-        Self::new(
-            u32::try_from(number(
+        let count = |name: &str, default: u64| -> Result<u32, String> {
+            u32::try_from(number(name, default)?)
+                .map_err(|_| format!("{name} must be at most {}", u32::MAX))
+        };
+        Ok(Self::new(
+            count(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN",
                 if production { 600 } else { 0 },
-            ))
-            .unwrap_or(u32::MAX),
-            u32::try_from(number(
+            )?,
+            count(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT",
                 if production { 10 } else { 0 },
-            ))
-            .unwrap_or(u32::MAX),
-            number("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS", 300),
-        )
+            )?,
+            number("CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS", 300)?,
+        ))
     }
 }
 
@@ -280,7 +300,35 @@ mod tests {
 
     #[test]
     fn production_defaults_on_elsewhere_off() {
-        assert!(Guard::from_env(true).requests.is_some());
-        assert!(Guard::from_env(false).requests.is_none());
+        assert!(Guard::from_env(true).unwrap().requests.is_some());
+        assert!(Guard::from_env(false).unwrap().requests.is_none());
+    }
+
+    /// A rate-limit number that is set but not a whole number, or too large, stops start-up and
+    /// names the setting; it is not the default and not the largest value.
+    #[test]
+    fn a_rate_limit_setting_that_is_set_and_invalid_is_refused() {
+        let with = |name: &'static str, value: &'static str| {
+            Guard::from_lookup(true, &move |n| (n == name).then(|| value.to_string()))
+        };
+        let per_min = "CONTACT_RELATIONSHIP_MANAGEMENT_RATE_LIMIT_PER_MIN";
+        let limit = "CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_LIMIT";
+        let window = "CONTACT_RELATIONSHIP_MANAGEMENT_AUTH_FAIL_WINDOW_SECS";
+        assert!(with(per_min, " 25 ").unwrap().requests.is_some());
+        assert!(with(per_min, "0").unwrap().requests.is_none());
+        assert!(with(window, "60").is_ok());
+        for (name, bad) in [
+            (per_min, "lots"),
+            (per_min, ""),
+            (per_min, "-1"),
+            (per_min, "4294967296"),
+            (limit, "4294967296"),
+            (limit, "x"),
+            (window, "soon"),
+        ] {
+            let refused = with(name, bad).unwrap_err();
+            assert!(refused.contains(name), "{refused}");
+            assert!(!refused.contains(&format!("= {bad}")), "{refused}");
+        }
     }
 }

@@ -79,19 +79,24 @@ async fn search(
             .fetch_all(&mut *txn)
             .await?;
     txn.commit().await?;
-    let found: Vec<SearchHit> = rows
+    // The record's `Uuid` travels with its hit, so it is never parsed back out of the text.
+    let found: Vec<(SearchHit, Uuid)> = rows
         .into_iter()
-        .map(|(kind, pid, title, detail)| SearchHit {
-            kind,
-            pid: pid.to_string(),
-            title,
-            detail,
+        .map(|(kind, pid, title, detail)| {
+            (
+                SearchHit {
+                    kind,
+                    pid: pid.to_string(),
+                    title,
+                    detail,
+                },
+                pid,
+            )
         })
         .collect();
     let (found, more) = page.split(found);
     let mut shown = Vec::with_capacity(found.len());
-    for hit in found {
-        let pid = hit.pid.parse::<Uuid>().unwrap_or_default();
+    for (hit, pid) in found {
         // Only contacts and deals carry record-level attributes; the rest are decided on the
         // entity, which the blanket guard has already done.
         let allowed = if matches!(hit.kind.as_str(), "contact" | "deal") && auth::require_auth() {
