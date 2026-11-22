@@ -2523,6 +2523,8 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T284 **Upstream patch targets with evidence (CRM-R107).** Extend SECURITY.md's targets to dependencies and base
       images; scan the built images; open an issue with a deadline for a critical or high finding; vulnerability lines in
       release notes. (M)
+      *First part done 2026-11-22: SECURITY.md upstream targets and the release-note rule. **Not done:** image scanning and the
+      deadline issue, which change CI workflows and need their actions pinned and run. Not run: the full CI stages.*
 - [ ] CRM-T285 **Exit export, key destruction and retention per class (CRM-R109).** The whole-deployment export with a
       manifest, encrypted to the customer's key; erasure steps and a certificate template; retention horizons per class.
       (L)

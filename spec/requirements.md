@@ -1801,8 +1801,9 @@ the service sends nothing outside it that we have not listed.*
 - Dependencies and both images are scanned on every change and each night; a critical or high finding opens an issue
   with its deadline.
 - A release note names every vulnerability it fixes.
-- There today: `cargo audit`, `pnpm audit`, `cargo deny`, SBOMs, images pinned by digest, the nightly run. Not built:
-  scanning the built images; an issue opened by a finding with its deadline; vulnerability lines in release notes.
+- There today: `cargo audit`, `pnpm audit`, `cargo deny`, SBOMs, images pinned by digest, the nightly run. Built (CRM-T284, first part): the upstream targets in
+  SECURITY.md, counted from the day a fix exists, and the rule that a release note names each vulnerability it fixes. Not
+  built: scanning the built images; an issue opened by a finding with its deadline.
 
 ## CRM-R108 — An independent test each year, covering role separation
 

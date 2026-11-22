@@ -76,6 +76,22 @@ sensitive, say so in a first email without them, and a way to send them will be 
 The reporter is kept informed at each step, and told if a target will be missed and why. A report
 that is not accepted is answered with the reason.
 
+### A vulnerability found upstream
+
+The same targets cover a vulnerability in a dependency or a base image, counted from the day a fix
+is available upstream, not from a report:
+
+| Severity | Fix, update or mitigation |
+| --- | --- |
+| Critical | 14 days after a fix is available |
+| High | 30 days after a fix is available |
+| Medium | 90 days |
+
+While no fix exists, the project records the alert with the reason it does or does not apply (a
+feature that is off by default, for example) and looks again at each release. A release note names
+every vulnerability the release fixes, upstream ones included, with its identifier. These are targets,
+not commitments, like the table above.
+
 ## Severity
 
 Severity is rated with the Common Vulnerability Scoring System, version 4.0 (CVSS v4.0), base
