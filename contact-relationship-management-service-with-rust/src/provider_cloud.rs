@@ -88,7 +88,10 @@ pub fn ses_body(
 /// An AWS Signature Version 4 signature (hex) for the given request parts.
 /// `headers` are lowercase `(name, value)` pairs, already sorted by name.
 #[must_use]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the SigV4 inputs, each named by the AWS algorithm"
+)]
 pub fn sigv4_signature(
     method: &str,
     path: &str,

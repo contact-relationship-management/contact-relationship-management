@@ -266,7 +266,7 @@ pub(crate) struct WpmEventView {
 /// `POST /api/bridges/wpm/events` body, as WPM sends it (WPM-R151, WPM-R207).
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 #[schemars(rename = "WpmEvent")]
-#[allow(
+#[expect(
     dead_code,
     reason = "documents the body; it is read by rules::wpm_events"
 )]

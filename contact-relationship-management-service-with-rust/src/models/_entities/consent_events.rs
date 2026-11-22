@@ -1,6 +1,6 @@
 //! The row of `consent_events`. One append-only consent history row (CRM-R6) -- compliance evidence, never edited.
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

@@ -50,7 +50,13 @@ pub fn reload_from_settings() {
 /// `CONTACT_RELATIONSHIP_MANAGEMENT_KEYCLOAK_*` (see [`keycloak_verifier`]).
 // `async` in every feature shape so `app.rs` has one call site; only the
 // `paseto` half awaits (the key fetch).
-#[allow(clippy::unused_async)]
+#[cfg_attr(
+    not(feature = "paseto"),
+    expect(
+        clippy::unused_async,
+        reason = "async for the paseto half, which awaits the key fetch; a keycloak-only build never awaits"
+    )
+)]
 pub async fn init() {
     #[cfg(feature = "paseto")]
     init_paseto().await;
@@ -245,6 +251,6 @@ pub(super) fn build_from_env() -> Verifier {
 #[cfg(feature = "paseto")]
 pub(super) fn empty_verifier(issuer: &str, audience: &str) -> Verifier {
     let empty = serde_json::json!({ "keys": [] });
-    #[allow(clippy::expect_used, reason = "an empty key set always parses")]
+    #[expect(clippy::expect_used, reason = "an empty key set always parses")]
     Verifier::from_paseto_keys_value(&empty, issuer, audience).expect("empty key set always builds")
 }

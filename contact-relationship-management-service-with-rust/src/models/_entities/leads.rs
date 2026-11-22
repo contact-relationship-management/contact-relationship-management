@@ -1,6 +1,6 @@
 //! The row of `leads`. One unqualified prospect with its derived score (CRM-R3).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

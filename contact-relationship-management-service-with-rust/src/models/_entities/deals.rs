@@ -1,6 +1,6 @@
 //! The row of `deals`. One revenue opportunity moving through stages; terminal stages close it (CRM-R4).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use crate::time::Date;

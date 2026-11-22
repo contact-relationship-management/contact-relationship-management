@@ -1,6 +1,6 @@
 //! The row of `external_links`. A link from a contact, account, deal or lead to its record in another system (CRM-R27).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

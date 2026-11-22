@@ -29,7 +29,10 @@ pub(crate) struct StaleDeal {
 
 /// `GET /api/insights/stale-deals`.
 #[derive(Debug, serde::Serialize, schemars::JsonSchema)]
-#[allow(clippy::struct_field_names)] // `stale_deals` is the response member clients read
+#[expect(
+    clippy::struct_field_names,
+    reason = "`stale_deals` is the response member clients read"
+)]
 pub(crate) struct StaleDeals {
     derivation: &'static str,
     threshold_days: i64,
@@ -412,7 +415,7 @@ pub(super) async fn pipeline_hygiene(
 /// resolved (from status audits), activities logged, campaigns
 /// started, and consent withdrawals.
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one pass over the period's facts
+#[expect(clippy::too_many_lines, reason = "one pass over the period's facts")]
 pub(super) async fn executive(
     axa::extract::Query(query): axa::extract::Query<WindowQuery>,
     State(ctx): State<AppContext>,

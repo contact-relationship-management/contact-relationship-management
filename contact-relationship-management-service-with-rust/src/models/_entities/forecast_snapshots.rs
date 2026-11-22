@@ -1,6 +1,6 @@
 //! The row of `forecast_snapshots`. One frozen forecast roll-up (CRM-R5) -- an output, never an input.
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use crate::time::Date;

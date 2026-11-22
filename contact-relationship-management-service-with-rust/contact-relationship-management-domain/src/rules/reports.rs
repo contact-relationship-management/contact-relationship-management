@@ -77,7 +77,10 @@ pub enum Bind {
 
 /// The query for a report.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(clippy::struct_excessive_bools)] // four independent facts the controller reads, not a state
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "four independent facts the controller reads, not a state"
+)]
 pub struct Plan {
     /// SQL with `$1`, `$2`… placeholders; it selects `grp`, optionally `currency`, and `value`.
     pub sql: String,
@@ -111,7 +114,7 @@ struct Table {
     money: Option<(&'static str, &'static str)>,
 }
 
-#[allow(clippy::too_many_lines)] // one table of what each kind offers
+#[expect(clippy::too_many_lines, reason = "one table of what each kind offers")]
 fn table(kind: &str) -> Option<Table> {
     Some(match kind {
         "contact" => Table {
@@ -260,7 +263,6 @@ fn is_period(field: &str) -> bool {
 /// A field's SQL. A period is written `@month(column)`, `@fiscal_quarter(column)` or
 /// `@fiscal_year(column)` in the table and resolved here in the organization's zone and fiscal
 /// year (CRM-T171); a missing timestamp (an open deal's close) is `(open)`.
-#[allow(clippy::trivially_copy_pass_by_ref)] // the calendar is passed by reference everywhere
 fn resolve(expr: &str, periods: &Periods) -> Option<String> {
     let Some(marker) = expr.strip_prefix('@') else {
         return Some(expr.to_string());
@@ -380,7 +382,7 @@ pub fn plan(spec: &Spec) -> Result<Plan, Vec<(String, String)>> {
 /// # Errors
 ///
 /// Every problem found.
-#[allow(clippy::too_many_lines)] // one linear build of the query
+#[expect(clippy::too_many_lines, reason = "one linear build of the query")]
 pub fn plan_in(spec: &Spec, periods: &Periods) -> Result<Plan, Vec<(String, String)>> {
     let Some(table) = table(&spec.kind) else {
         return Err(vec![(

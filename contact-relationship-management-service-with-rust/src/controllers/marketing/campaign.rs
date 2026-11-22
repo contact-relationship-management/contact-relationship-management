@@ -840,7 +840,10 @@ pub(super) async fn clear_email_suppression(
 /// recipients → delivered → opened → clicked → leads → won revenue;
 /// ROI reports `null` on a zero cost, with absolutes alongside.
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one handler: read, convert (two ways) and answer
+#[expect(
+    clippy::too_many_lines,
+    reason = "one handler: read, convert (two ways) and answer"
+)]
 pub(super) async fn campaign_funnel(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,

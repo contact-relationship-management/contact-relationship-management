@@ -3,7 +3,7 @@
 
 // A row type: the field-level shape is documented by the
 // migration and the `audit_logs` table, not by per-field rustdoc.
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

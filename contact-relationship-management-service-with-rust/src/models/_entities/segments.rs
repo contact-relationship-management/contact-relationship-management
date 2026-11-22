@@ -1,6 +1,6 @@
 //! The row of `segments`. One declarative audience filter (CRM-R7); consent is `ANDed` structurally.
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

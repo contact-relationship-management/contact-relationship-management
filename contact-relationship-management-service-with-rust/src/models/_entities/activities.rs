@@ -1,6 +1,6 @@
 //! The row of `activities`. One interaction, attached to any relationship object (CRM-R2).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use crate::time::Date;

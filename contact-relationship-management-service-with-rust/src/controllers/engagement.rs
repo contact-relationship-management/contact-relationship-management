@@ -465,7 +465,10 @@ pub(crate) struct RosterMember {
 
 /// `GET /api/groups/{pid}`: the group, its roster and the recent activity of its members.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-#[allow(clippy::struct_field_names)] // `group` is the response member clients read
+#[expect(
+    clippy::struct_field_names,
+    reason = "`group` is the response member clients read"
+)]
 pub(crate) struct Group {
     group: working_groups::Model,
     roster: Vec<RosterMember>,

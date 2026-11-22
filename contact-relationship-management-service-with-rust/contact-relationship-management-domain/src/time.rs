@@ -391,7 +391,7 @@ impl schemars::JsonSchema for Date {
 /// panic. Production code has no operators on instants and days (spec/arithmetic/index.md): it
 /// uses `checked_add`, `checked_sub` and `duration_since`, and handles `None`.
 #[cfg(any(test, feature = "test-support"))]
-#[allow(
+#[expect(
     clippy::unwrap_used,
     clippy::arithmetic_side_effects,
     clippy::missing_panics_doc,

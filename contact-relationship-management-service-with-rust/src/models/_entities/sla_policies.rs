@@ -1,6 +1,6 @@
 //! The row of `sla_policies`. One priority SLA-target row (CRM-R11).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

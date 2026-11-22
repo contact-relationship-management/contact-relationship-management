@@ -1,6 +1,6 @@
 //! The row of `accounts`. One relationship wrapper over an `organization:` record (CRM-R1).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

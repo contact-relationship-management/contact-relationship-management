@@ -117,7 +117,10 @@ pub fn check_target(address: &str) -> Result<String, String> {
 }
 
 /// Names that never leave the machine or the network, whatever they resolve to.
-#[allow(clippy::case_sensitive_file_extension_comparisons)] // host names, not files
+#[expect(
+    clippy::case_sensitive_file_extension_comparisons,
+    reason = "host names, not files"
+)]
 fn is_local_name(name: &str) -> bool {
     let name = name.trim_end_matches('.').to_ascii_lowercase();
     // A name with no dot, `localhost` among them, never leaves the network.

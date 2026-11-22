@@ -30,7 +30,6 @@ fn shape(path: &str) -> String {
 
 /// The public routes outside `/api/`: the unsubscribe page, the provider webhooks and the
 /// metrics endpoint. They carry their own request bodies and no bearer token.
-#[allow(clippy::too_many_lines)] // one literal
 fn public_operations() -> Value {
     let ok = |desc: &str| json!({ "200": { "description": desc } });
     json!({

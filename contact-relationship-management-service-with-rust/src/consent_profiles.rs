@@ -305,7 +305,10 @@ pub async fn state_on<'e>(
 /// # Errors
 ///
 /// A database error.
-#[allow(clippy::too_many_arguments)] // the decision's inputs, each named in the design
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the decision's inputs, each named in the design"
+)]
 pub async fn decide(
     db: &mut PgConnection,
     loaded: &Loaded,

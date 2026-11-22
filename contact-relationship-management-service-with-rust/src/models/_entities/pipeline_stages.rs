@@ -1,6 +1,6 @@
 //! The row of `pipeline_stages`. One ordered stage with its win probability and terminal flags (CRM-R4).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

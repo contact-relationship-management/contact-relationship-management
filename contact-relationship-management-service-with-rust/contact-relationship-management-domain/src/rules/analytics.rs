@@ -54,7 +54,7 @@ pub struct Ratio {
 
 /// Build a [`Ratio`].
 #[must_use]
-#[allow(clippy::cast_precision_loss)] // display-only ratio
+#[expect(clippy::cast_precision_loss, reason = "display-only ratio")]
 pub fn ratio(numerator: i64, denominator: i64) -> Ratio {
     Ratio {
         numerator,

@@ -19,7 +19,9 @@
     clippy::todo,
     clippy::unimplemented,
     clippy::indexing_slicing,
-    clippy::arithmetic_side_effects
+    clippy::arithmetic_side_effects,
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason
 )]
 #![cfg_attr(
     test,
@@ -30,15 +32,14 @@
         clippy::unreachable,
         clippy::indexing_slicing,
         clippy::arithmetic_side_effects,
-        clippy::disallowed_methods
+        clippy::disallowed_methods,
+        clippy::allow_attributes,
+        clippy::allow_attributes_without_reason
     )
 )]
 // New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;
 // the lint's replacement needs a typed empty array for each case.
 #![cfg_attr(test, allow(clippy::assert_is_empty))]
-// The spec writes a declared floor as `checked_*` plus `unwrap_or(FLOOR)`, citing its declaration, and
-// not as `saturating_*` (RCA-INT-4, RCA-NONE-2); clippy would have the latter.
-#![allow(clippy::manual_saturating_arithmetic)]
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 

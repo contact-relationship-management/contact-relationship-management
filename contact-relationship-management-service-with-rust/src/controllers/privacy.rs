@@ -200,7 +200,10 @@ const SCRUBBED_PLACES: usize = 13;
 
 /// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
 /// statement each, in the order of the audit row's counts. Returns the rows each one changed.
-#[allow(clippy::too_many_lines)] // one statement for each place the contact's data lives
+#[expect(
+    clippy::too_many_lines,
+    reason = "one statement for each place the contact's data lives"
+)]
 async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBBED_PLACES]> {
     let mut affected = Vec::new();
     // Free text linked to this contact, and rows that are about it only. A plaintext tombstone on

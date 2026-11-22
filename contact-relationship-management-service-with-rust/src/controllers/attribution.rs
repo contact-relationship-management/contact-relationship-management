@@ -556,7 +556,10 @@ async fn convert_credit(
 /// `GET /api/attribution?model=&window_days=&from=&to=` — share the revenue of won deals among
 /// the campaigns that touched the buyer.
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one handler: read, share, convert and answer
+#[expect(
+    clippy::too_many_lines,
+    reason = "one handler: read, share, convert and answer"
+)]
 async fn run(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,

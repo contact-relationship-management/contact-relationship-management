@@ -517,7 +517,10 @@ async fn sweep_closing(
 
 /// `POST /api/sla/sweep`: how many tickets crossed a deadline in this sweep.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-#[allow(clippy::struct_field_names)] // the `new_` names are what clients read
+#[expect(
+    clippy::struct_field_names,
+    reason = "the `new_` names are what clients read"
+)]
 pub(crate) struct SlaSweep {
     new_breaches: u64,
     /// Waiting tickets found past their policy's `max_wait_minutes` in this sweep (CRM-R64).

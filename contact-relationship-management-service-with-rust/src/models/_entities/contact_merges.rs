@@ -1,6 +1,6 @@
 //! The row of `contact_merges`. The merge ledger (CRM-R24): one row per merge, with the ids of every row that moved and what is needed to undo it (CRM-R26).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

@@ -2,7 +2,7 @@
 //! groups (roster in `working_group_members`).
 
 // A row type: documented by the migration.
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

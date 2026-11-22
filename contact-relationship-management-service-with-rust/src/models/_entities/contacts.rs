@@ -1,6 +1,6 @@
 //! The row of `contacts`. One relationship wrapper over a `person:` record (CRM-R1); `marketing_consent` is send-path law (CRM-D6).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

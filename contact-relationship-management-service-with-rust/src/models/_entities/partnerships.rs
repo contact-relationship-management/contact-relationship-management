@@ -2,7 +2,7 @@
 //! an account (kind + a scouting→pilot→scaled→retired lifecycle).
 
 // A row type: documented by the migration.
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use crate::time::Date;

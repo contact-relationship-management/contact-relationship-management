@@ -26,7 +26,7 @@ pub const MIN_WEBHOOK_SECRET: usize = 32;
 
 /// Every lazily-read setting.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[allow(
+#[expect(
     clippy::struct_excessive_bools,
     reason = "each flag is its own environment variable"
 )]

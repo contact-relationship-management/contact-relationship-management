@@ -86,7 +86,10 @@ impl Task for Seed {
         true
     }
 
-    #[allow(clippy::too_many_lines)] // one linear walk building the demo book
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one linear walk building the demo book"
+    )]
     async fn run(&self, ctx: &AppContext, _vars: &Vars) -> Result<()> {
         // One transaction, so a seed that fails leaves nothing half made (CRM-T216).
         let mut txn = crate::db::pool(ctx).begin().await?;

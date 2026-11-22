@@ -36,7 +36,7 @@ pub struct Metrics {
 impl Metrics {
     /// Construct the metric set into a fresh registry. The `.expect`s
     /// are infallible: static opts, empty registry.
-    #[allow(
+    #[expect(
         clippy::expect_used,
         reason = "static options and a fresh registry cannot fail"
     )]
@@ -98,7 +98,7 @@ impl Metrics {
     /// Not in practice: the text encoder writes into a `Vec` and
     /// produces valid UTF-8.
     #[must_use]
-    #[allow(
+    #[expect(
         clippy::expect_used,
         reason = "the text encoder writes UTF-8 to a Vec, which cannot fail"
     )]

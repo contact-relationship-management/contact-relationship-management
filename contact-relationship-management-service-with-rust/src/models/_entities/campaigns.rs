@@ -1,6 +1,6 @@
 //! The row of `campaigns`. One campaign with simulated engagement counters (CRM-R8).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

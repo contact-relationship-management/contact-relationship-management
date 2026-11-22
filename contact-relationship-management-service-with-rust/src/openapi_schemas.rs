@@ -35,7 +35,7 @@ fn reference(name: &str) -> Value {
 /// Request schemas generated from the payload structs, so a request body and
 /// its documentation cannot drift apart. The rest are still written by hand
 /// below; the move is one controller at a time (CRM-T83).
-#[allow(clippy::too_many_lines)] // one list of the documented types
+#[expect(clippy::too_many_lines, reason = "one list of the documented types")]
 fn generated() -> serde_json::Map<String, Value> {
     use crate::controllers::{
         attachments, attribution, audits, board, break_glass, bridges, calendars, custom_fields,
@@ -315,7 +315,7 @@ fn base_schemas() -> Value {
 
 /// The request schema for `(method, path)`, if the operation takes a body.
 #[must_use]
-#[allow(clippy::too_many_lines)] // one arm per route that takes a body
+#[expect(clippy::too_many_lines, reason = "one arm per route that takes a body")]
 pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("post", "/api/contacts") => "ContactPayload",
@@ -425,7 +425,10 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
 
 /// The schema of a non-list `200` response for `(method, path)`.
 #[must_use]
-#[allow(clippy::too_many_lines)] // one arm per route with a single-object answer
+#[expect(
+    clippy::too_many_lines,
+    reason = "one arm per route with a single-object answer"
+)]
 pub fn response_schema(method: &str, path: &str) -> Option<&'static str> {
     Some(match (method, path) {
         ("get", "/api/contacts/{pid}") => "ContactDetail",

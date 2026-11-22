@@ -320,7 +320,10 @@ pub(crate) struct ArticleStats {
 /// What the public knowledge base did over a period, beside the tickets raised.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 #[schemars(rename = "KbDeflection")]
-#[allow(clippy::struct_field_names)] // `deflection` is the response member clients read
+#[expect(
+    clippy::struct_field_names,
+    reason = "`deflection` is the response member clients read"
+)]
 pub(crate) struct Deflection {
     /// First day counted.
     from: Date,

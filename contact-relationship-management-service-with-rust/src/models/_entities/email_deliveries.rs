@@ -1,6 +1,6 @@
 //! The row of `email_deliveries`. One message to one contact for one campaign (CRM-T39); the idempotency key of a send.
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

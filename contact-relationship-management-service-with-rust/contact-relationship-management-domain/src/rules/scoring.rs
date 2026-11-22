@@ -52,7 +52,7 @@ impl Default for Weights {
 }
 
 /// The scoring inputs — plain facts, derived by the caller.
-#[allow(clippy::struct_excessive_bools)] // independent boolean facts
+#[expect(clippy::struct_excessive_bools, reason = "independent boolean facts")]
 #[derive(Debug, Clone, Default)]
 pub struct LeadFacts {
     /// The lead's `source` token.

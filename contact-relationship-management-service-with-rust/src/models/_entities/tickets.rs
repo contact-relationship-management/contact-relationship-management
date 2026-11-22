@@ -1,6 +1,6 @@
 //! The row of `tickets`. One support ticket with derived SLA deadlines + breach facts (CRM-R10/R11). NOT a `case`-registry identity.
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

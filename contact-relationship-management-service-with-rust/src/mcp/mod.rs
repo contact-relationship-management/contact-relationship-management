@@ -140,7 +140,7 @@ struct Incoming {
 }
 
 /// Origin, size and JSON-RPC shape.
-#[allow(clippy::result_large_err, reason = "the error is the response")]
+#[expect(clippy::result_large_err, reason = "the error is the response")]
 fn parse(headers: &HeaderMap, body: &Bytes) -> Result<Incoming, Response> {
     let refuse = |status, code, why: &str| Err(rpc_error(status, &Value::Null, code, why, None));
     // Origin: a browser page must be on the list; a client that sends none (an agent) is fine.
@@ -282,7 +282,7 @@ fn supported() -> Vec<&'static str> {
 }
 
 /// A modern request names its version in `_meta`, and the headers must say the same as the body.
-#[allow(clippy::result_large_err, reason = "the error is the response")]
+#[expect(clippy::result_large_err, reason = "the error is the response")]
 fn check_modern(
     headers: &HeaderMap,
     method: &str,

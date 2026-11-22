@@ -1,6 +1,6 @@
 //! The row of `nurture_enrollments`. One contact through a sequence (CRM-R9); the scheduler is idempotent per (enrolment, step).
 
-#![allow(missing_docs)]
+#![expect(missing_docs, reason = "a row type, documented by the migration")]
 
 use crate::models::DateTimeWithTimeZone;
 use serde::{Deserialize, Serialize};

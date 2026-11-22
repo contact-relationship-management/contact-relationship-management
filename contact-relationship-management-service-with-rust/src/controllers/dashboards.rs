@@ -127,7 +127,10 @@ pub(crate) struct SlaDashboard {
 
 /// `GET /api/accounts/{pid}/clv`.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-#[allow(clippy::struct_field_names)] // `clv_minor` is the response member clients read
+#[expect(
+    clippy::struct_field_names,
+    reason = "`clv_minor` is the response member clients read"
+)]
 pub(crate) struct Clv {
     account_pid: Uuid,
     won_deals: usize,
@@ -181,7 +184,10 @@ pub(crate) struct ClvProjection {
 
 /// The look-ahead in one currency: each currency's figure converted once, then added.
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-#[allow(clippy::struct_field_names)] // the members are named as the unconverted ones are
+#[expect(
+    clippy::struct_field_names,
+    reason = "the members are named as the unconverted ones are"
+)]
 pub(crate) struct ClvProjectionConverted {
     /// Minor units of `convert_to`.
     annual_base_minor: i64,

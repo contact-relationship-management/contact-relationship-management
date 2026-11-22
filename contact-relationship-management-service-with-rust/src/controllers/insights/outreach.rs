@@ -136,7 +136,6 @@ pub(crate) struct MembersView {
 /// its contacts — disclosed), plus no-next-touch coverage (rows with
 /// no open `due_on` activity).
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one pass over contacts + accounts
 pub(super) async fn cadence(
     axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
@@ -355,7 +354,7 @@ pub(super) async fn funnel(
                 .map_or(0, std::collections::HashSet::len)
         };
         let conversion = previous.map(|prev| {
-            #[allow(clippy::cast_precision_loss)] // display ratio, not money math
+            #[expect(clippy::cast_precision_loss, reason = "display ratio, not money math")]
             let value = (prev != 0).then(|| count as f64 / prev as f64);
             crate::rules::analytics::Ratio {
                 numerator: i64::try_from(count).unwrap_or(i64::MAX),
@@ -402,7 +401,6 @@ pub(super) struct FunnelQuery {
 /// membership state per account, with the silent list (no touch in
 /// the window).
 #[debug_handler]
-#[allow(clippy::too_many_lines)] // one pass over the account estate
 pub(super) async fn members(
     axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
