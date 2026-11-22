@@ -60,6 +60,7 @@ them.
 | [analytics-reporting.md](analytics-reporting.md)   | Module 4: dashboards, KPIs, activity tracking                           |
 | [integrations.md](integrations.md)                 | Upstream family services; EntityRef URNs                                |
 | [auth.md](auth.md)                                 | SSO, ABAC personas (rep / sales manager / marketing / support), masking |
+| [arithmetic/index.md](arithmetic/index.md)         | Math must not panic: `checked_*` and `None`, never a panic or a wrap |
 | [audit.md](audit.md)                               | Audit trail, events, consent history                                    |
 | [architecture.md](architecture.md)                 | Editions, layering, pure-core rules, persistence                        |
 | [testing.md](testing.md)                           | Test strategy per edition                                               |
