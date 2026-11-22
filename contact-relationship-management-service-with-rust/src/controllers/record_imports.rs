@@ -6,6 +6,7 @@
 //! goes to the person service and is kept nowhere here). A new contact has no consent, and an
 //! import starts no workflows.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::collections::HashMap;
 
@@ -854,10 +855,7 @@ async fn undo_import(
         )
         .await?;
     }
-    let kept = all
-        .len()
-        .checked_sub(removed.len())
-        .ok_or_else(|| crate::arith::overflow("kept"))?;
+    let kept = all.len().checked_sub(removed.len()).or_overflow("kept")?;
     sqlx::query!(
         "UPDATE record_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",

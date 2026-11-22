@@ -5,6 +5,7 @@ use super::{
     WindowQuery, activities, auth, conditional, days_or, deals, debug_handler, forecast_snapshots,
     leads, parse_instant, record_rejection,
 };
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use crate::db;
 use crate::models::rows;
@@ -255,9 +256,7 @@ pub(super) async fn followups(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today
-        .checked_add_days(30)
-        .ok_or_else(|| crate::arith::overflow("horizon"))?;
+    let horizon = today.checked_add_days(30).or_overflow("horizon")?;
     let rows: Vec<activities::Model> =
         rows::open_dated_activities(db::pool(&ctx), query.kind.as_deref()).await?;
     let view = |activity: &activities::Model| Followup {
@@ -454,7 +453,7 @@ pub(super) async fn executive(
             let entry = won_value.entry(deal.currency.clone()).or_default();
             *entry = entry
                 .checked_add(deal.amount_minor)
-                .ok_or_else(|| crate::arith::overflow("won_value"))?;
+                .or_overflow("won_value")?;
         } else {
             lost = lost.tally(1);
             let reason = deal

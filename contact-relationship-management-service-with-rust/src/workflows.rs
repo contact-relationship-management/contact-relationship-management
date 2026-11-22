@@ -9,6 +9,7 @@
 //! On `sqlx` since CRM-T215 (CRM-D24): a run takes the triggering write's connection, and its
 //! savepoint is SQL.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::future::Future;
 use std::pin::Pin;
@@ -466,7 +467,7 @@ async fn act(
                     crate::controllers::organization::organization_today(&mut *txn)
                         .await?
                         .checked_add_days(i64::from(d))
-                        .ok_or_else(|| crate::arith::overflow("due_date"))?,
+                        .or_overflow("due_date")?,
                 ),
                 None => None,
             };

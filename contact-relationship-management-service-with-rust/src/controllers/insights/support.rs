@@ -1,6 +1,7 @@
 //! Support insights: the SLA register and per-assignee workload.
 
 use super::{AppContext, HeaderMap, Response, Result, State, conditional, debug_handler, tickets};
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
@@ -53,7 +54,7 @@ pub(super) async fn sla_register(
     let now = crate::clock::now();
     let at_risk_horizon = now
         .checked_add(jiff::SignedDuration::from_hours(4))
-        .ok_or_else(|| crate::arith::overflow("at_risk_horizon"))?;
+        .or_overflow("at_risk_horizon")?;
     let open: Vec<tickets::Model> =
         crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
     let mut breaches: Vec<(i64, Breach)> = Vec::new();

@@ -7,6 +7,7 @@
 //! Everything runs on `sqlx` (CRM-D24, CRM-T205); [`put_team`], which the WPM import in
 //! `bridges.rs` also calls, takes the caller's transaction since CRM-T216.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::collections::BTreeMap;
 
@@ -283,11 +284,11 @@ async fn team_attainment(
             slot.0 = slot
                 .0
                 .checked_add(s.quota_minor)
-                .ok_or_else(|| crate::arith::overflow("team_quota"))?;
+                .or_overflow("team_quota")?;
             slot.1 = slot
                 .1
                 .checked_add(s.revenue_minor)
-                .ok_or_else(|| crate::arith::overflow("team_revenue"))?;
+                .or_overflow("team_revenue")?;
             slot.2 = slot.2.tally(s.won_deals);
             slot.3 = slot.3.tally(1);
         }
@@ -296,9 +297,7 @@ async fn team_attainment(
             for (code, minor) in &s.other_currencies {
                 if !per.contains_key(code) {
                     let slot = other.entry(code.clone()).or_default();
-                    *slot = slot
-                        .checked_add(*minor)
-                        .ok_or_else(|| crate::arith::overflow("team_other_revenue"))?;
+                    *slot = slot.checked_add(*minor).or_overflow("team_other_revenue")?;
                 }
             }
         }
@@ -323,7 +322,7 @@ async fn team_attainment(
                             won_deals,
                             attainment: analytics::ratio(revenue_minor, quota_minor),
                             remaining_minor: quota::remaining(quota_minor, revenue_minor)
-                                .ok_or_else(|| crate::arith::overflow("quota_remaining"))?,
+                                .or_overflow("quota_remaining")?,
                             workers,
                         })
                     },

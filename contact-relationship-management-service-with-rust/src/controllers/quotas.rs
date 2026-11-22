@@ -8,6 +8,7 @@
 //! Everything runs on `sqlx` (CRM-D24, CRM-T206); the attainment read, [`standings`], since
 //! CRM-T215, with the organization's zone bound in place of written into its SQL.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::collections::BTreeMap;
 
@@ -882,7 +883,7 @@ async fn credited_deals(
         let mine = mine
             .map(|part| {
                 part.checked_sub(clawed.unwrap_or(0))
-                    .ok_or_else(|| crate::arith::overflow("credit_after_clawback"))
+                    .or_overflow("credit_after_clawback")
                     // CLAWBACK-1 (CRM-R68): a clawback takes from the credit, never below nothing.
                     .map(|left| left.max(0))
             })
@@ -923,15 +924,11 @@ pub(super) async fn standings(
         let (mut revenue, mut deals, mut other) = (0_i64, 0_i64, BTreeMap::new());
         for (c, credited) in credited_deals(pool, &owner, from, to).await? {
             if c == currency {
-                revenue = revenue
-                    .checked_add(credited)
-                    .ok_or_else(|| crate::arith::overflow("revenue"))?;
+                revenue = revenue.checked_add(credited).or_overflow("revenue")?;
                 deals = deals.tally(1);
             } else {
                 let slot: &mut i64 = other.entry(c).or_default();
-                *slot = slot
-                    .checked_add(credited)
-                    .ok_or_else(|| crate::arith::overflow("other_revenue"))?;
+                *slot = slot.checked_add(credited).or_overflow("other_revenue")?;
             }
         }
         let tiers: Option<Vec<Tier>> = q
@@ -958,7 +955,7 @@ pub(super) async fn standings(
             won_deals: deals,
             attainment: quota::attainment(quota_minor, revenue),
             remaining_minor: quota::remaining(quota_minor, revenue)
-                .ok_or_else(|| crate::arith::overflow("quota_remaining"))?,
+                .or_overflow("quota_remaining")?,
             other_currencies: other,
             plan: q.plan_name,
             commission_minor,

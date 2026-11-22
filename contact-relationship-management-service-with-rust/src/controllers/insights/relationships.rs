@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, HeaderMap, Response, Result, State, Uuid, accounts, conditional,
     contacts, days_or, debug_handler, engagement_rules, memberships, partnerships,
 };
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
@@ -238,9 +239,7 @@ pub(super) async fn memberships_view(
     // The caller's day (CRM-T179), as attainment's.
     let today =
         crate::controllers::organization::caller_today(crate::db::pool(&ctx), &headers).await?;
-    let horizon = today
-        .checked_add_days(window)
-        .ok_or_else(|| crate::arith::overflow("horizon"))?;
+    let horizon = today.checked_add_days(window).or_overflow("horizon")?;
     let rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let names: std::collections::BTreeMap<Uuid, &str> = account_rows

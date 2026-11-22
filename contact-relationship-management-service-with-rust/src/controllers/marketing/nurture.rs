@@ -6,6 +6,7 @@ use super::{
     nurture_enrollments, nurture_sequences, nurture_steps, streaming, tokens, unprocessable,
     with_unsubscribe,
 };
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use sqlx::PgConnection;
 
@@ -197,7 +198,7 @@ pub(crate) async fn enrol_in(
         .checked_add(jiff::SignedDuration::from_hours(i64::from(
             first.delay_hours,
         )))
-        .ok_or_else(|| crate::arith::overflow("due"))?;
+        .or_overflow("due")?;
     let pid = Uuid::new_v4();
     sqlx::query!(
         "INSERT INTO nurture_enrollments (pid, sequence_pid, contact_pid, current_step, \
@@ -595,7 +596,7 @@ async fn advance_one(
     )
     .await?;
     let ((current_step, next_due_at, status), finished) =
-        advance_enrollment(&row, &steps, now).ok_or_else(|| crate::arith::overflow("next_step"))?;
+        advance_enrollment(&row, &steps, now).or_overflow("next_step")?;
     sqlx::query!(
         "UPDATE nurture_enrollments SET current_step = $2, next_due_at = $3, status = $4 \
          WHERE id = $1 AND deleted_at IS NULL",

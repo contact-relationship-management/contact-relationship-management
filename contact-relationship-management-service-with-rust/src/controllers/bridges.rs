@@ -10,6 +10,7 @@
 //! event's signature instead. The fourth asks WPM which contacts are its workers today, to find
 //! those the events never told of (CRM-R94).
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::collections::BTreeMap;
 
@@ -200,7 +201,7 @@ async fn import_teams(State(ctx): State<AppContext>, caller: MaybeAuthUser) -> R
             .iter()
             .map(|w| (w.department.as_str(), w.person_ref.as_deref())),
     )
-    .ok_or_else(|| crate::arith::overflow("team_import"))?;
+    .or_overflow("team_import")?;
     let mut skipped = Vec::new();
     let who = owner_of(&caller)?;
     let mut txn = db::pool(&ctx).begin().await?;
@@ -469,7 +470,7 @@ async fn employment_check(
     let asked = batches
         .iter()
         .try_fold(0_usize, |sum, batch| sum.checked_add(batch.len()))
-        .ok_or_else(|| crate::arith::overflow("people_asked"))?;
+        .or_overflow("people_asked")?;
     let mut view = EmploymentCheckView {
         mode: "stub",
         organization_ref: organization_ref.clone(),

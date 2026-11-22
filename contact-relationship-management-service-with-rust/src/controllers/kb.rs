@@ -7,6 +7,7 @@
 //! nothing); no address, no visitor and no text a visitor typed is kept.
 //! `GET /api/insights/kb-deflection` reads the counts beside the tickets raised.
 
+use crate::arith::OrOverflow;
 use std::net::IpAddr;
 use std::num::NonZeroU32;
 
@@ -371,7 +372,7 @@ async fn deflection(
     let from = days
         .checked_sub(1)
         .and_then(|span| to.checked_sub_days(span))
-        .ok_or_else(|| crate::arith::overflow("from"))?;
+        .or_overflow("from")?;
     let pool = db::pool(&ctx);
     let totals = sqlx::query!(
         "SELECT COALESCE(SUM(views), 0)::bigint AS \"views!\", \
@@ -442,8 +443,7 @@ async fn deflection(
         tickets_opened,
         deflection: analytics::ratio(
             yes,
-            yes.checked_add(tickets_opened)
-                .ok_or_else(|| crate::arith::overflow("deflection"))?,
+            yes.checked_add(tickets_opened).or_overflow("deflection")?,
         ),
         top_articles,
         note: "counts only, kept per day; a visitor is not identified, so a vote is a visitor's own \

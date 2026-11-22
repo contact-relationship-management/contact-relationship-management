@@ -384,6 +384,23 @@ impl Settings {
         }
     }
 
+    /// `Err` naming each numeric setting that was blank, not a number or out of range, so that start-up
+    /// stops (RCA-IN-4). The message names the settings and never their values.
+    ///
+    /// # Errors
+    ///
+    /// When [`Settings::unusable`] is not empty.
+    pub fn refuse_unusable(&self) -> Result<(), String> {
+        if self.unusable.is_empty() {
+            Ok(())
+        } else {
+            Err(format!(
+                "{} must be a number within its range",
+                self.unusable.join(", ")
+            ))
+        }
+    }
+
     /// The settings in the process environment.
     #[must_use]
     pub fn from_env() -> Self {
@@ -625,6 +642,24 @@ mod tests {
         ] {
             assert_eq!(get(key, v).unusable, vec![key], "{key}={v}");
         }
+    }
+
+    #[test]
+    fn start_up_names_the_settings_it_refuses_and_never_their_values() {
+        assert_eq!(Settings::default().refuse_unusable(), Ok(()));
+        let bad = Settings::from_lookup(&lookup(&[
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH", "99999999"),
+            ("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_LIMIT", "many"),
+        ]));
+        let refused = bad.refuse_unusable().unwrap_err();
+        assert!(
+            refused.contains("MAIL_BATCH") && refused.contains("WEB_FORM_LIMIT"),
+            "{refused}"
+        );
+        assert!(
+            !refused.contains("99999999") && !refused.contains("many"),
+            "{refused}"
+        );
     }
 
     #[test]

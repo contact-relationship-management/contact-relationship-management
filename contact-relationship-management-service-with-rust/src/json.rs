@@ -211,6 +211,28 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn put_builds_the_objects_on_the_way_and_leaves_a_non_object_step_alone() {
+        let mut doc = serde_json::json!(null);
+        super::put(&mut doc, &["a", "b"], serde_json::json!(1));
+        assert_eq!(doc, serde_json::json!({ "a": { "b": 1 } }));
+        super::put(&mut doc, &[], serde_json::json!("whole"));
+        assert_eq!(doc, serde_json::json!("whole"));
+        let mut number = serde_json::json!({ "a": 5 });
+        super::put(&mut number, &["a", "b"], serde_json::json!(1));
+        assert_eq!(
+            number,
+            serde_json::json!({ "a": 5 }),
+            "nothing is set under a number"
+        );
+        let mut leaf = serde_json::json!({ "a": null });
+        super::put(&mut leaf, &["a"], serde_json::json!(2));
+        assert_eq!(leaf, serde_json::json!({ "a": 2 }));
+        let mut bare = serde_json::json!(null);
+        super::put(&mut bare, &["only"], serde_json::json!(3));
+        assert_eq!(bare, serde_json::json!({ "only": 3 }));
+    }
+
     use super::{member, scrub};
 
     #[test]

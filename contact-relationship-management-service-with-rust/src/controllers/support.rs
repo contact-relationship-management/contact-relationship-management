@@ -2,6 +2,7 @@
 //! SLA deadlines and breach facts, SLA policies, the breach sweep,
 //! and the versioned knowledge base.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::json::Json;
@@ -277,8 +278,7 @@ async fn create_ticket(
     let deadlines = targets_for(&mut txn, &payload.priority)
         .await?
         .map(|(targets, calendar)| {
-            sla::deadlines_on(opened_at, targets, calendar.as_ref())
-                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+            sla::deadlines_on(opened_at, targets, calendar.as_ref()).or_overflow("ticket_deadlines")
         })
         .transpose()?;
     let pid = Uuid::new_v4();
@@ -576,7 +576,7 @@ async fn resume_clock(
     let counted = |waited: i64, due, met| {
         sla::pause_counted(calendar, paused_at, now, due, met)
             .and_then(|more| waited.checked_add(more))
-            .ok_or_else(|| crate::arith::overflow("paused_seconds"))
+            .or_overflow("paused_seconds")
     };
     let paused = sla::Paused {
         first_response_seconds: counted(
@@ -594,7 +594,7 @@ async fn resume_clock(
         .as_ref()
         .map(|(targets, calendar)| {
             sla::deadlines_paused(ticket.opened_at, *targets, calendar.as_ref(), paused)
-                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+                .or_overflow("ticket_deadlines")
         })
         .transpose()?;
     Ok(Resumed { paused, deadlines })
@@ -879,7 +879,7 @@ async fn ticket_priority(
         .await?
         .map(|(targets, calendar)| {
             sla::deadlines_paused(ticket.opened_at, targets, calendar.as_ref(), paused)
-                .ok_or_else(|| crate::arith::overflow("ticket_deadlines"))
+                .or_overflow("ticket_deadlines")
         })
         .transpose()?;
     let from = ticket.priority.clone();

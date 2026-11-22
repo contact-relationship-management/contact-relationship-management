@@ -22,6 +22,25 @@ pub fn out_of_range(figure: &str, lo: i64, hi: i64) -> Error {
     unprocessable(&format!("{figure} must be from {lo} to {hi}"))
 }
 
+/// An `Option` from a checked operation, turned into the `422` that names the figure when it is `None`.
+///
+/// `a.checked_add(b).or_overflow("figure")?` is the same as the `ok_or_else` it replaces; it is one
+/// function, so each call is covered by the tests that reach the operation.
+pub trait OrOverflow<T> {
+    /// The value, or [`overflow`] for `figure`.
+    ///
+    /// # Errors
+    ///
+    /// A `422` that names `figure`, when the checked operation returned `None`.
+    fn or_overflow(self, figure: &str) -> Result<T>;
+}
+
+impl<T> OrOverflow<T> for Option<T> {
+    fn or_overflow(self, figure: &str) -> Result<T> {
+        self.ok_or_else(|| overflow(figure))
+    }
+}
+
 /// Counting that stops at the type's largest value rather than wrapping or stopping the process.
 ///
 /// TALLY-1: a count of rows, events or attempts is the number of things seen; past the largest
@@ -48,6 +67,20 @@ tally!(u32, u64, usize, i32, i64);
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_checked_none_is_a_422_naming_the_figure_and_never_a_number() {
+        assert_eq!(250_u8.checked_add(5).or_overflow("total").unwrap(), 255);
+        let refused = 255_u8.checked_add(1).or_overflow("total").unwrap_err();
+        assert!(
+            refused
+                .to_string()
+                .contains("total could not be calculated"),
+            "{refused}"
+        );
+        let range = out_of_range("days", 1, 365).to_string();
+        assert!(range.contains("days must be from 1 to 365"), "{range}");
+    }
 
     #[test]
     fn a_tally_stops_at_its_ceiling_and_never_wraps() {

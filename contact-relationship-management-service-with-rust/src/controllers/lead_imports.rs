@@ -5,6 +5,7 @@
 //! record so the whole import can be taken back. Duplicate advice comes from the matcher and
 //! never blocks a row. Imported leads are not contacts and carry no consent.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use std::collections::{HashMap, HashSet};
 
@@ -542,10 +543,7 @@ async fn undo(
         )
         .await?;
     }
-    let kept = all
-        .len()
-        .checked_sub(removed.len())
-        .ok_or_else(|| crate::arith::overflow("kept"))?;
+    let kept = all.len().checked_sub(removed.len()).or_overflow("kept")?;
     sqlx::query!(
         "UPDATE lead_imports SET status = 'undone', undone_at = now(), undone_count = $2 \
          WHERE pid = $1",

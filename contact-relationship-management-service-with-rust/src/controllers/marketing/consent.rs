@@ -4,6 +4,7 @@ use super::{
     AppContext, Audit, Deserialize, Error, MaybeAuthUser, Problems, Response, Result, State, Uuid,
     consent_events, contacts, debug_handler, format, streaming, tokens, unprocessable,
 };
+use crate::arith::OrOverflow;
 use sqlx::{PgConnection, PgPool};
 
 use crate::controllers::PidPath;
@@ -228,7 +229,7 @@ pub(super) async fn request_consent(
         .ok_or_else(|| unprocessable("unknown purpose"))?;
     let expires_at = crate::clock::now()
         .checked_add_days(CONFIRM_DAYS)
-        .ok_or_else(|| crate::arith::overflow("expires_at"))?;
+        .or_overflow("expires_at")?;
     apply_consent(
         pool,
         contact,
@@ -269,7 +270,7 @@ pub(super) async fn preferences_link(
     let contact = find_contact(pool, pid).await?;
     let expires_at = crate::clock::now()
         .checked_add_days(PREFERENCES_DAYS)
-        .ok_or_else(|| crate::arith::overflow("expires_at"))?;
+        .or_overflow("expires_at")?;
     let token = crate::link_tokens::issue(
         pool,
         crate::link_tokens::PREFERENCES,

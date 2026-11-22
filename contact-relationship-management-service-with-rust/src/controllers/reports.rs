@@ -10,6 +10,7 @@
 //! it and the soft-delete census in `db.rs` cannot see it; `rules::reports` keeps each kind of
 //! record to its live rows (`deleted_at IS NULL`).
 
+use crate::arith::OrOverflow;
 use serde::{Deserialize, Serialize};
 use sqlx::{AssertSqlSafe, PgConnection, Row as _};
 use uuid::Uuid;
@@ -226,7 +227,7 @@ async fn answer(ctx: &AppContext, caller: &MaybeAuthUser, spec: Spec) -> Result<
     // out, and say how many were, so a short table is not mistaken for a complete one (CRM-R78).
     let min_cell_size = crate::settings::current().min_cell_size;
     let (cells, suppressed) = rules::suppress(cells, min_cell_size, spec.convert_to.is_some())
-        .ok_or_else(|| crate::arith::overflow("report_cells"))?;
+        .or_overflow("report_cells")?;
     let Conversion {
         mut rows,
         rate_date,

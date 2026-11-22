@@ -11,6 +11,7 @@
 //! census and the sweep share one list: every name comes from them, every number is a clamped
 //! integer, and they are reviewed by hand. Every other statement is checked and binds its values.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use crate::controllers::PidPath;
 use crate::db;
@@ -595,7 +596,7 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
     }
     let horizon = crate::clock::now()
         .checked_sub_days(days)
-        .ok_or_else(|| crate::arith::overflow("consent_horizon"))?;
+        .or_overflow("consent_horizon")?;
     let withdrawn = sqlx::query_scalar!(
         "SELECT COUNT(*) AS \"n!\" FROM contacts WHERE deleted_at IS NULL \
          AND marketing_consent = 'withdrawn' AND consent_changed_at < $1",

@@ -2,6 +2,7 @@
 //! pure-core derivation from recorded facts (CRM-D4) — per-currency,
 //! honest ratios, `as_of`-stamped, ETag-conditional.
 
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 use crate::controllers::PidPath;
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -75,14 +76,12 @@ async fn open_deals_by_stage(
             .parse::<i128>()
             .ok()
             .and_then(|t| i64::try_from(t).ok())
-            .ok_or_else(|| crate::arith::overflow("stage_total"))?;
+            .or_overflow("stage_total")?;
         let (count, by_currency) = totals.entry(stage).or_default();
         *count = count.tally(n);
         open_deals = open_deals.tally(n);
         let slot = by_currency.entry(currency).or_insert(0);
-        *slot = slot
-            .checked_add(total)
-            .ok_or_else(|| crate::arith::overflow("stage_total"))?;
+        *slot = slot.checked_add(total).or_overflow("stage_total")?;
     }
     Ok((totals, open_deals))
 }
@@ -331,12 +330,8 @@ fn clv_outlook(
             query.years,
         ) {
             let discount = query.discount_bps.unwrap_or(0);
-            let since = now
-                .checked_sub_days(365)
-                .ok_or_else(|| crate::arith::overflow("since"))?;
-            let before = since
-                .checked_sub_days(365)
-                .ok_or_else(|| crate::arith::overflow("before"))?;
+            let since = now.checked_sub_days(365).or_overflow("since")?;
+            let before = since.checked_sub_days(365).or_overflow("before")?;
             let (mut recent, mut prior): (
                 std::collections::BTreeMap<String, i64>,
                 std::collections::BTreeMap<String, i64>,
@@ -645,7 +640,7 @@ async fn activity_dashboard(
             crate::rules::bounds::within(params.days, 1..=365)
                 .ok_or_else(|| crate::arith::out_of_range("days", 1, 365))?,
         )
-        .ok_or_else(|| crate::arith::overflow("since"))?;
+        .or_overflow("since")?;
     let counts: Vec<(String, i64)> = sqlx::query!(
         "SELECT kind, COUNT(id) AS \"n!\" FROM activities \
          WHERE deleted_at IS NULL AND occurred_at >= $1 GROUP BY kind",
@@ -659,7 +654,7 @@ async fn activity_dashboard(
     let total = counts
         .iter()
         .try_fold(0_i64, |sum, (_, n)| sum.checked_add(*n))
-        .ok_or_else(|| crate::arith::overflow("activity_total"))?;
+        .or_overflow("activity_total")?;
     let by_kind: std::collections::BTreeMap<String, i64> = counts.into_iter().collect();
     format::json(ActivityDashboard {
         window_days: params.days,

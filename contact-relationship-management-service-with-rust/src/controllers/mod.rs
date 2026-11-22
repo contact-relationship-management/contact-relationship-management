@@ -176,6 +176,15 @@ pub fn record_rejection((status, reason): (StatusCode, String)) -> Error {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn too_large_is_a_422_that_shows_no_number() {
+        let refused = super::too_large().to_string();
+        assert!(
+            refused.contains("too large to calculate exactly"),
+            "{refused}"
+        );
+    }
+
     use super::*;
     use axum::{Router, routing::get};
     use axum_test::TestServer;

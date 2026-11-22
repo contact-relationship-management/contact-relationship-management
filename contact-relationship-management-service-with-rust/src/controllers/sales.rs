@@ -2,6 +2,7 @@
 //! conversion, pipelines + stages, deals with Kanban stage moves and
 //! terminal closes, and the stage-weighted forecast.
 
+use crate::arith::OrOverflow;
 use crate::controllers::PidPath;
 use crate::db;
 use crate::json::Json;
@@ -141,8 +142,7 @@ async fn score_lead<'e>(
         campaign_click: lead.campaign_click,
         unsubscribed: lead.unsubscribed,
     };
-    scoring::score(&facts, &scoring::Weights::default())
-        .ok_or_else(|| crate::arith::overflow("lead_score"))
+    scoring::score(&facts, &scoring::Weights::default()).or_overflow("lead_score")
 }
 
 /// What a new lead is made from.

@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, HeaderMap, Response, Result, State, accounts, conditional, contacts,
     days_or, debug_handler,
 };
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
@@ -74,9 +75,7 @@ pub(super) async fn dpo(
 ) -> Result<Response> {
     let window_days = days_or(query.days, 30)?;
     let now = crate::clock::now();
-    let since = now
-        .checked_sub_days(window_days)
-        .ok_or_else(|| crate::arith::overflow("since"))?;
+    let since = now.checked_sub_days(window_days).or_overflow("since")?;
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let mut coverage: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
     for contact in &contact_rows {
@@ -144,9 +143,7 @@ pub(super) async fn consent_by_account(
 ) -> Result<Response> {
     let window = days_or(query.days, 30)?;
     let now = crate::clock::now();
-    let since = now
-        .checked_sub_days(window)
-        .ok_or_else(|| crate::arith::overflow("since"))?;
+    let since = now.checked_sub_days(window).or_overflow("since")?;
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let withdrawals = super::rollup::withdrawals_by_account(crate::db::pool(&ctx), since).await?;

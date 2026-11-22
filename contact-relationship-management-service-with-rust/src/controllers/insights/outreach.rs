@@ -4,6 +4,7 @@ use super::{
     AppContext, DaysQuery, Deserialize, HeaderMap, Response, Result, State, Uuid, accounts,
     conditional, contacts, days_or, deals, debug_handler, memberships, pipeline_stages, tickets,
 };
+use crate::arith::OrOverflow;
 use crate::arith::Tally;
 
 // Each view carries `as_of: Option<..>`, left `None` here: [`conditional`] stamps it after the
@@ -251,9 +252,7 @@ pub(super) async fn engagement(
 ) -> Result<Response> {
     let window = days_or(query.days, 90)?;
     let now = crate::clock::now();
-    let since = now
-        .checked_sub_days(window)
-        .ok_or_else(|| crate::arith::overflow("since"))?;
+    let since = now.checked_sub_days(window).or_overflow("since")?;
     let groups = super::rollup::engagement_counts(crate::db::pool(&ctx), since, now).await?;
     let mut per_recorder_month: std::collections::BTreeMap<String, usize> =
         std::collections::BTreeMap::new();
