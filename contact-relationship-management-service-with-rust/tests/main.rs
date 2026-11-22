@@ -14,6 +14,7 @@ mod scoped_env;
 mod command_line;
 #[cfg(feature = "keycloak")]
 mod keycloak_guard;
+mod no_built_in_principal;
 mod outbox;
 mod rate_limit;
 mod requests;

@@ -1683,8 +1683,11 @@ control.*
 - Roles come from the customer's directory (group or role claims mapped to the CRM's personas), so the customer assigns
   them.
 - There today: OIDC through Keycloak behind a feature; production refuses to start without authentication. Not built: an
-  MFA check on the claim; turning magic links off; mapping directory groups to personas; a test that no principal is
-  created.
+  MFA check on the claim (the verified `Claims` carries no `amr` or `acr`, so it needs the verifier crate to expose them);
+  turning magic links off (this service has no magic link: sign-in is the family authentication service or Keycloak, so the
+  setting belongs to the one that issues tokens); mapping directory groups to personas. Built (CRM-T277, first part):
+  `tests/no_built_in_principal.rs` fails if a migration inserts a row or names a password, if the image sets an account or
+  secret, or if a second seeded password appears beside the development mail server's.
 
 ## CRM-R101 — Each role sees only the sensitive fields it needs
 

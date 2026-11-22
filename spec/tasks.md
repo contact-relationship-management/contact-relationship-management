@@ -2468,6 +2468,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T277 **Federated sign-in only, with MFA (CRM-R100).** A setting that turns magic links off and makes
       production refuse to start without federation; an MFA check on `amr`/`acr`; directory groups mapped to personas; a
       test that no migration, seed or image creates a principal outside the demo. OIDC only: SAML 2.0 waits for a customer who needs it (CRM-D27). (L)
+      *First part done 2026-11-22: the no-principal test (`tests/no_built_in_principal.rs`). **Not done:** the MFA check
+      (the verified `Claims` has no `amr`/`acr`; needs the verifier crate to carry them), federation-only (this service has no
+      magic link to turn off), group-to-persona mapping. Not run: the full CI stages.*
 - [ ] CRM-T278 **The persona matrix over every route (CRM-R101).** Expected answers per persona and sensitive field,
       checked through reads, lists, search, exports, reports and the timeline; masking of ticket and activity text; a
       support persona with no sensitive fields. (L)
