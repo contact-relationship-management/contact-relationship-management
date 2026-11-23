@@ -64,10 +64,14 @@ async fn a_webhook_to_an_undeclared_host_is_refused_when_registered_and_when_sen
         // Send: the early subscription's delivery is dead and audited; the declared one is sent.
         sqlx::query(
             "INSERT INTO event_outbox (event_id, entity, entity_pid, kind, occurred_at, \
-             schema_version, payload) VALUES ($1, 'contact', $2, 'created', now(), 1, '{}')",
+             schema_version, payload) VALUES ($1, 'contact', $2, 'created', $3, 1, '{}')",
         )
         .bind(Uuid::new_v4())
         .bind(Uuid::new_v4())
+        // The service stamps a subscription with the host clock, and a subscription only gets events
+        // from its own creation on, so the event is stamped with the host clock too. The database's
+        // `now()` can lag the host (a Podman VM does), and the event would then predate the subscription.
+        .bind(contact_relationship_management::clock::now())
         .execute(db::pool(&ctx))
         .await
         .unwrap();
