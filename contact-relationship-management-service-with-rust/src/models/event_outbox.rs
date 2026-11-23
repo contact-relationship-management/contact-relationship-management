@@ -171,6 +171,14 @@ mod tests {
         "2026-07-17T09:00:00Z".parse().unwrap()
     }
 
+    /// A schema version that does not fit the column is an error, not version 1.
+    #[test]
+    fn a_schema_version_that_does_not_fit_is_an_error() {
+        let mut env = an_envelope("employee_hired", "0c4f1e2a-0000-4000-8000-000000000000");
+        env.schema_version = u32::MAX;
+        assert!(OutboxInsert::from_envelope(&env, an_instant()).is_err());
+    }
+
     /// Every field maps and the full envelope survives as the payload.
     #[test]
     fn from_envelope_maps_every_column_and_keeps_the_full_payload() {

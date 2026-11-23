@@ -190,6 +190,20 @@ pub async fn sweep<'e>(db: impl PgExecutor<'e>) -> Result<u64, sqlx::Error> {
 mod tests {
     use super::*;
 
+    /// A stored detail outside 0 to 255 is an error, not 0 (RCA-IN-6).
+    #[test]
+    fn a_stored_detail_that_does_not_fit_is_an_error() {
+        let row = |detail| Stored {
+            contact_pid: Uuid::nil(),
+            detail,
+            expires_at: crate::clock::now(),
+        };
+        assert_eq!(Target::try_from(row(255)).unwrap().detail, 255);
+        assert_eq!(Target::try_from(row(0)).unwrap().detail, 0);
+        assert!(Target::try_from(row(256)).is_err());
+        assert!(Target::try_from(row(-1)).is_err());
+    }
+
     #[test]
     fn a_token_is_long_random_url_safe_and_never_repeats() {
         let a = generate();
