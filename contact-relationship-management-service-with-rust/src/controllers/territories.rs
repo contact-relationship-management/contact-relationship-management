@@ -117,7 +117,7 @@ async fn set_territory(
     if payload.accounts.is_empty() || payload.accounts.len() > MAX_ACCOUNTS {
         problems.push_field("accounts", format!("from 1 to {MAX_ACCOUNTS} accounts"));
     }
-    let mut refs = Vec::with_capacity(payload.accounts.len());
+    let mut refs = Vec::new();
     for account in &payload.accounts {
         problems.require_ref("accounts", EntityType::Organization, account);
         if let Ok(r) = EntityRef::from_str(account) {

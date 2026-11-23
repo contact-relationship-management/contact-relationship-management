@@ -2967,6 +2967,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     in the service and the UI; they were not triaged here.
   - **Not done:** between the default setup going off and the first green run the repository had no code scanning, which
     is a gap that cannot be filled afterwards. A Swift change outside the watched paths is scanned up to a week later.
-    The 33 open alerts (hard-coded cryptographic value, unsafe deserialization, cleartext logging, uncontrolled
-    allocation size, a non-HTTPS URL, incomplete sanitization) need a triage, and whether each was open before this change
-    was not checked.
+    The 33 alerts open at the first green run were triaged the same day (below).
+  - **Triage of the 33 alerts (2026-11-23, product owner agreed):** all were created on 18 to 22 November, before the
+    workflow. 20 were in test code (15 hard-coded keys, of which 9 in `#[cfg(test)]` modules and 6 in `tests/`; 3 cleartext
+    logging that print test data in assertion messages; 1 test of a credential sent only over https; 1 JavaScript unit
+    test): dismissed as "used in tests". 11 were `serde_json::from_slice` on webhook, inbound mail and JSON-RPC bodies
+    (typed target or `Value`, no code run, depth limited, body capped at 2 MB): dismissed as "false positive". The
+    allocation in `sales.rs` follows a check of 2 to 20 stages: "false positive". The one in `territories.rs` sized a `Vec`
+    from an already-parsed list; it is now `Vec::new()` and the alert closes when the next scan sees it. Not done: a
+    review of the 11 deserialization dismissals by someone other than the author of the triage.
