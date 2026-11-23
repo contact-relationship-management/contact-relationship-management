@@ -3001,3 +3001,25 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     checkout outside `.git`.
   - **Not done / not verified:** the apps were not run against the new Lily on a device or simulator, nor looked at; the two high-contrast themes were
     not looked at in a browser; no speaker or accessibility reviewer has judged them.
+
+## Coverage floor 97.2% (CRM-T309)
+
+- [x] CRM-T309 **The service's line-coverage floor is 97.2%, up from 97%.** Asked for by the product owner on 2026-11-23
+  ("yes & yes": test seams for the failure paths, and the higher floor). (S)
+  - **Measured (2026-11-23, local, `scripts/ci-check.sh coverage`, exit 0):** 97.33% of lines, 957 of 35,833 missed. It was
+    97.02% (1,067 missed) at the start of the day, so the new tests removed 110 missed lines. The floor is 97.2 in
+    `scripts/ci-check.sh`, which leaves 0.13 of a point (about 46 lines) of margin.
+  - **Tests added for it:** the outbox relay poll and ack, the owner audit query, `ensure_valid`, `invalid` and
+    `record_rejection`, a workflow's read, rename, taken name, delete and non-worker owner, the sequence list, a web form with
+    no signing secret and one whose mail server refuses, and every public page's refusal of a malformed `Accept-Language`.
+  - **Seams:** no production code changed. The process-wide signer (`unsubscribe::install(None)`) and sender
+    (`mail::set`) already let a test remove the signing secret and aim mail at a closed port.
+  - **Not covered:** `app.rs` start-up code (69 lines at the start of the day), the census tests' failure branches (they run
+    only when a violation exists), error logging after a database failure, and `forms.rs` edges such as a link expiry out of
+    range. These need more seams, such as a failing database pool.
+  - **Found:** a local coverage run reports every instrumented object in the Cargo target directory, and
+    `~/.cargo/config.toml` shares one target directory across projects, so another project's coverage (here `er7-rust`)
+    dragged the total to 50% and failed the floor. Run it with its own `CARGO_TARGET_DIR` and `CARGO_LLVM_COV_TARGET_DIR`.
+    CI starts clean and is not affected.
+  - **Not verified:** the CI coverage job at 97.2. Local and hosted figures agreed within the old floor's margin on the same
+    code, not more closely than that.
