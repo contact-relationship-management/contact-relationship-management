@@ -2946,7 +2946,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 
 ## Code scanning for the mobile apps (CRM-T307)
 
-- [ ] CRM-T307 **CodeQL scans the Swift and Kotlin apps.** Asked for by the product owner on 2026-11-23. (S)
+- [x] CRM-T307 **CodeQL scans the Swift and Kotlin apps.** Asked for by the product owner on 2026-11-23. (S)
   - **Why:** GitHub's default setup found the two apps after they landed and tried to build them without Lily, so
     `Analyze (swift)` and `Analyze (java-kotlin)` failed on `9c8f1a9` (the build said Lily was missing). The default setup
     cannot run `scripts/fetch-lily.sh`.
@@ -2961,6 +2961,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     `code-scanning/default-setup`). Swift is in `codeql-swift.yml` and runs weekly and when the app, `lily-design-system.lock`
     or `scripts/fetch-lily.sh` changes, because a macOS runner is billed at about ten times the Linux rate; the other
     five languages are in `codeql.yml` on every push and pull request.
-  - **Not done / not verified:** a green run with the default setup off. Between the default setup going off and that run
-    the repository had no code scanning. A Swift change not under those paths is scanned up to a week later. The Kotlin
-    job's results, and any alert the first scan of the apps raises, have not been read.
+  - **Verified (2026-11-23, `fa3f88d`):** with the default setup off, all six scans ran and uploaded: actions 42 s,
+    Python 54 s, JavaScript and TypeScript 74 s, Rust 545 s, Kotlin 287 s (`codeql.yml`) and Swift 1,747 s
+    (`codeql-swift.yml`). The scans of the two apps raised no alert. 33 alerts are open, 32 in Rust and 1 in JavaScript,
+    in the service and the UI; they were not triaged here.
+  - **Not done:** between the default setup going off and the first green run the repository had no code scanning, which
+    is a gap that cannot be filled afterwards. A Swift change outside the watched paths is scanned up to a week later.
+    The 33 open alerts (hard-coded cryptographic value, unsafe deserialization, cleartext logging, uncontrolled
+    allocation size, a non-HTTPS URL, incomplete sanitization) need a triage, and whether each was open before this change
+    was not checked.
