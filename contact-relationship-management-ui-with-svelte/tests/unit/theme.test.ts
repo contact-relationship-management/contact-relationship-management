@@ -147,7 +147,10 @@ describe("the server's links", () => {
 });
 
 describe("the theme picker the picker bar uses", () => {
-  it("is the one the layout configures: a single 0.4 in the lockfile, with no override", () => {
+  it("is the one the layout configures: a single version in the lockfile, with no override", () => {
+    const configured = JSON.parse(
+      readFileSync(resolvePath(__dirname, "../../package.json"), "utf8"),
+    ).dependencies["@lilydesignsystem/svelte-theme-picker"];
     const lock = readFileSync(
       resolvePath(__dirname, "../../pnpm-lock.yaml"),
       "utf8",
@@ -159,7 +162,7 @@ describe("the theme picker the picker bar uses", () => {
         ),
       ].map((match) => match[1]),
     );
-    expect([...versions]).toEqual(["0.4.0"]);
+    expect([...versions]).toEqual([configured]);
     expect(lock).not.toMatch(/^overrides:/m);
   });
 });

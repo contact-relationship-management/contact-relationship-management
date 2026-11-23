@@ -2976,3 +2976,28 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     allocation in `sales.rs` follows a check of 2 to 20 stages: "false positive". The one in `territories.rs` sized a `Vec`
     from an already-parsed list; it is now `Vec::new()` and the alert closes when the next scan sees it. Not done: a
     review of the 11 deserialization dismissals by someone other than the author of the triage.
+
+## Lily upgrade, and axa (CRM-T308)
+
+- [x] CRM-T308 **Lily: svelte-headless 0.13.1, picker-bar 0.10.0, themes 0.9.0, theme-picker 0.5.0, locale-translations 0.6.0; the mobile pin; axa.**
+  Asked for by the product owner on 2026-11-23 ("upgrade axa and update code. then upgrade lily and update code"). (S)
+  - **axa:** nothing to upgrade. All nine `axa` crates in `Cargo.lock` are at their newest release on crates.io
+    (`axa` 0.21.0, `axa-test` 0.12.0, `axa-postgres-sqlx` 0.2.1, `axa-postgres-job-queue` 0.6.0, `axa-cursor-pagination` 0.1.2,
+    `axa-environment` 0.2.0, `axa-problem` 0.2.0, `axa-redis-cache` 0.2.1, `axa-request-rate-limit` 0.3.3), so no code changed.
+  - **Lily on the web:** `svelte-headless` 0.12.0 to 0.13.1, `svelte-picker-bar` 0.8.0 to 0.10.0 and `themes` 0.7.0 to 0.9.0 were
+    inside `pnpm`'s one-day release age, so each is added to `minimumReleaseAgeExclude` in `contact-relationship-management-ui-with-svelte`
+    and `contact-relationship-management.github.io` (the owner asked for the upgrade, as for CRM-T296); `svelte-theme-picker`
+    0.4.0 to 0.5.0 and `svelte-locale-translations` 0.5.0 to 0.6.0 were old enough. The site takes the first three too, as `syncpack` requires.
+  - **Mobile:** `lily-design-system.lock` moves from `7e1ceca` to `d91c609` (the head of the Lily repository that day).
+  - **What it changes:** the picker bar offers 65 themes, sorted by name, with the new `light-high-contrast` and
+    `dark-high-contrast` (WCAG 2.2 AAA). They come with `DEFAULT_THEMES` and are in the build output. Nothing else needed code.
+  - **Not adopted:** `--lily-link` (themes 0.8.0), for links; the UI uses `--color-primary` for fills, and for text only on the
+    outline button in `Tour.svelte`, which is not a link, so it is left as is. Also `meterScale`, the patient-summary
+    sections and the `statistic` change props, which the UI does not use.
+  - **Test changed:** `tests/unit/theme.test.ts` pinned the theme picker at 0.4.0 in the lockfile. It now reads the version
+    `package.json` configures and still requires a single version and no override, so it needs no edit at the next bump.
+  - **Ran:** `front-end` (`syncpack`, `svelte-check` 0 errors, Vitest 384 of 384, build, lint), `e2e` 212 of 212, `site`
+    689 of 689, `mobile-kotlin` (tests and `assembleDebug`) and `mobile-swift` (`swift test` and the simulator build), all from a
+    checkout outside `.git`.
+  - **Not done / not verified:** the apps were not run against the new Lily on a device or simulator, nor looked at; the two high-contrast themes were
+    not looked at in a browser; no speaker or accessibility reviewer has judged them.
