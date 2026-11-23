@@ -646,7 +646,9 @@ async fn retention_report(State(ctx): State<AppContext>) -> Result<Response> {
     )
     .fetch_one(pool)
     .await?;
-    let withdrawn_consent_past_horizon = usize::try_from(withdrawn).unwrap_or(0);
+    let withdrawn_consent_past_horizon = usize::try_from(withdrawn)
+        .ok()
+        .or_overflow("withdrawn_consent")?;
     let mut logs = std::collections::BTreeMap::new();
     for rule in rules::log_rules(crate::models::deliveries::MAX_ATTEMPTS) {
         let count: i64 = sqlx::query_scalar(AssertSqlSafe(format!(

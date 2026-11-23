@@ -150,7 +150,7 @@ async fn unread_count(
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    let capped = i64::try_from(rows.len()).unwrap_or(i64::MAX) > COUNT_CAP;
+    let capped = crate::rules::bounds::len_i64(rows.len()) > COUNT_CAP;
     let mut unread = 0_u64;
     for n in rows.iter().take(usize::try_from(COUNT_CAP).unwrap_or(0)) {
         if visible(db::pool(&ctx), &caller, n).await? {

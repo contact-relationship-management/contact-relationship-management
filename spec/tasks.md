@@ -2870,5 +2870,5 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     reasoned `#[expect]`.
   - **Not done:** the matcher crate (published on its own; 26 hits at those lints, its `clamp` and no `clippy.toml`; a
     change there is a release); `OrEmpty::or_empty` at about 30 sites still to re-read for whether absent is the whole
-    story; `try_from(..).unwrap_or(..)` on conversions; and `ci-check.sh all`. The integration tests still use plain
+    story; about 37 `try_from(..).unwrap_or(..)` on conversions (the counts, shares and lengths are done); and `ci-check.sh all`. The integration tests still use plain
     operators.

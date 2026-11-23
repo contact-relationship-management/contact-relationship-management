@@ -260,7 +260,9 @@ pub(super) async fn engagement(
         std::collections::BTreeMap::new();
     let mut total = 0usize;
     for group in groups {
-        let count = usize::try_from(group.count).unwrap_or(0);
+        let count = usize::try_from(group.count)
+            .ok()
+            .or_overflow("activity_count")?;
         total = total.tally(count);
         let recorder = group
             .actor_ref
@@ -362,8 +364,8 @@ pub(super) async fn funnel(
             )]
             let value = (prev != 0).then(|| count as f64 / prev as f64);
             crate::rules::analytics::Ratio {
-                numerator: i64::try_from(count).unwrap_or(i64::MAX),
-                denominator: i64::try_from(prev).unwrap_or(i64::MAX),
+                numerator: crate::rules::bounds::len_i64(count),
+                denominator: crate::rules::bounds::len_i64(prev),
                 value,
             }
         });
@@ -446,7 +448,11 @@ pub(super) async fn members(
         if touch.open_next > 0 {
             {
                 let slot = open_followups.entry(account_pid).or_default();
-                *slot = slot.tally(usize::try_from(touch.open_next).unwrap_or(0));
+                *slot = slot.tally(
+                    usize::try_from(touch.open_next)
+                        .ok()
+                        .or_overflow("open_followups")?,
+                );
             }
         }
     }

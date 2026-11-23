@@ -247,7 +247,7 @@ async fn upload_to(
             pid,
             clean,
             kind.content_type,
-            i64::try_from(body.len()).unwrap_or(i64::MAX),
+            crate::rules::bounds::len_i64(body.len()),
             digest,
             caller.actor(),
         )

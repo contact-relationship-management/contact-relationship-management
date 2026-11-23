@@ -314,7 +314,7 @@ async fn won_deals(ctx: &AppContext, query: &AttributionQuery) -> Result<Vec<Won
          ORDER BY closed_at DESC, id LIMIT $3",
         query.from,
         query.to,
-        i64::try_from(MAX_DEALS + 1).unwrap_or(i64::MAX),
+        crate::rules::bounds::len_i64(MAX_DEALS + 1),
         crate::rules::periods::zone_name(&calendar.zone),
     )
     .fetch_all(crate::db::pool(ctx))

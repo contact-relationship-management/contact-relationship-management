@@ -641,7 +641,9 @@ pub(super) async fn list_sequences(State(ctx): State<AppContext>) -> Result<Resp
         out.push(SequenceView {
             sequence,
             steps,
-            active_enrollments: u64::try_from(active).unwrap_or(0),
+            active_enrollments: u64::try_from(active)
+                .ok()
+                .or_overflow("active_enrollments")?,
         });
     }
     format::json(out)

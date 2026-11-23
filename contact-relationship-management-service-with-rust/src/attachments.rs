@@ -115,3 +115,46 @@ pub async fn remove(dir: &Path, key: Uuid) -> std::io::Result<()> {
         _ => Ok(()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_file_lives_in_a_directory_named_for_the_first_two_characters_of_its_key() {
+        let key = Uuid::parse_str("ab34f1c2-0000-4000-8000-000000000001").unwrap();
+        let path = place(Path::new("/files"), key);
+        assert_eq!(
+            path,
+            Path::new("/files/ab/ab34f1c2-0000-4000-8000-000000000001")
+        );
+    }
+
+    #[test]
+    fn an_io_error_is_the_stores_io_error() {
+        let error = StoreError::from(std::io::Error::other("disk full"));
+        assert!(matches!(error, StoreError::Io(_)));
+    }
+
+    /// Exit 0 is clean, 1 is infected, any other answer or a program that will not start is a failure,
+    /// and no command at all scans nothing.
+    #[tokio::test]
+    async fn the_scan_command_answers_clean_infected_or_failed() {
+        let file = Path::new("/");
+        assert!(matches!(scan("", file).await, Ok(())));
+        assert!(matches!(scan("true", file).await, Ok(())));
+        assert!(matches!(
+            scan("false", file).await,
+            Err(StoreError::Infected)
+        ));
+        let failed = scan("a-program-that-does-not-exist-9f3", file).await;
+        assert!(
+            matches!(failed, Err(StoreError::ScanFailed(why)) if why.contains("could not start"))
+        );
+        let other = scan("ls /a/path/that/does/not/exist/at/all", file).await;
+        assert!(matches!(
+            other,
+            Err(StoreError::Infected | StoreError::ScanFailed(_))
+        ));
+    }
+}

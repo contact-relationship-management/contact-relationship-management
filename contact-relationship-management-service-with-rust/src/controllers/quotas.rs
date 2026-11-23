@@ -448,34 +448,39 @@ pub(crate) struct SplitView {
 }
 
 async fn shares_of(pool: &PgPool, deal: Uuid) -> Result<Vec<Share>> {
-    Ok(sqlx::query!(
+    sqlx::query!(
         "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
         deal,
     )
     .fetch_all(pool)
     .await?
     .into_iter()
-    .map(|r| Share {
-        owner_ref: r.owner_ref,
-        share_bps: u32::try_from(r.share_bps).unwrap_or(0),
+    .map(|r| {
+        Ok(Share {
+            owner_ref: r.owner_ref,
+            // A stored share below zero is corrupt data, not an empty share (RCA-IN-6).
+            share_bps: u32::try_from(r.share_bps).ok().or_overflow("share_bps")?,
+        })
     })
-    .collect())
+    .collect()
 }
 
 /// A deal's split.
 async fn shares(conn: &mut PgConnection, deal: Uuid) -> Result<Vec<Share>> {
-    Ok(sqlx::query!(
+    sqlx::query!(
         "SELECT owner_ref, share_bps FROM deal_splits WHERE deal_pid = $1 ORDER BY id",
         deal
     )
     .fetch_all(conn)
     .await?
     .into_iter()
-    .map(|r| Share {
-        owner_ref: r.owner_ref,
-        share_bps: u32::try_from(r.share_bps).unwrap_or(0),
+    .map(|r| {
+        Ok(Share {
+            owner_ref: r.owner_ref,
+            share_bps: u32::try_from(r.share_bps).ok().or_overflow("share_bps")?,
+        })
     })
-    .collect())
+    .collect()
 }
 
 async fn deal_exists(conn: &mut PgConnection, deal: Uuid) -> Result<()> {

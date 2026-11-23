@@ -17,9 +17,23 @@ pub fn len_u64(len: usize) -> u64 {
     u64::try_from(len).unwrap_or(u64::MAX) // LEN-1
 }
 
+/// A length or a constant as an `i64`, for a database bind or a count shown. A `usize` is at most 64
+/// bits on every supported target, so this is the value itself; on a wider one, the declared fallback
+/// is the largest `i64` (LEN-1).
+#[must_use]
+pub fn len_i64(len: usize) -> i64 {
+    i64::try_from(len).unwrap_or(i64::MAX) // LEN-1
+}
+
 #[cfg(test)]
 mod tests {
     use super::within;
+
+    #[test]
+    fn a_length_is_itself_as_an_i64() {
+        assert_eq!(super::len_i64(0), 0);
+        assert_eq!(super::len_i64(41), 41);
+    }
 
     #[test]
     fn a_length_is_itself_as_a_u64() {

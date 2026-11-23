@@ -1004,7 +1004,7 @@ async fn forecast(
     let totals = analytics::forecast_by_currency(&inputs).map_err(|e| unprocessable(&e))?;
     Metrics::global()
         .deals_open
-        .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
+        .set(crate::rules::bounds::len_i64(open.len()));
     // With `convert_to`, each currency's total is converted once and the results added.
     let mut conversion = None;
     if let (Some(target), false) = (&query.convert_to, masked) {
@@ -1096,8 +1096,8 @@ pub(crate) async fn closed_counts(pool: &PgPool) -> Result<(u64, u64)> {
     .fetch_one(pool)
     .await?;
     Ok((
-        u64::try_from(counts.won).unwrap_or(0),
-        u64::try_from(counts.lost).unwrap_or(0),
+        u64::try_from(counts.won).ok().or_overflow("won_deals")?,
+        u64::try_from(counts.lost).ok().or_overflow("lost_deals")?,
     ))
 }
 

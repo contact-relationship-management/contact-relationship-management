@@ -8,11 +8,12 @@
 //!
 //! On `sqlx` (CRM-D24, CRM-T207).
 
+use crate::arith::OrOverflow;
 use crate::time::Timestamp;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-type Result<T> = std::result::Result<T, sqlx::Error>;
+type Result<T> = axa::Result<T>;
 
 /// What the activities on one subject add up to.
 #[derive(Debug, Clone)]
@@ -29,7 +30,7 @@ pub(super) struct Touch {
 
 /// The digest of every live activity, one row per subject that has any.
 pub(super) async fn touches(pool: &PgPool) -> Result<Vec<Touch>> {
-    sqlx::query_as!(
+    Ok(sqlx::query_as!(
         Touch,
         "SELECT subject_kind, subject_pid, MAX(occurred_at) AS \"last_at!\", \
                 COUNT(*) FILTER (WHERE NOT done AND due_on IS NOT NULL) AS \"open_next!\" \
@@ -39,7 +40,7 @@ pub(super) async fn touches(pool: &PgPool) -> Result<Vec<Touch>> {
          GROUP BY subject_kind, subject_pid"
     )
     .fetch_all(pool)
-    .await
+    .await?)
 }
 
 /// How many activities fall in one group of the engagement view.
@@ -64,7 +65,7 @@ pub(super) async fn engagement_counts(
     since: Timestamp,
     until: Timestamp,
 ) -> Result<Vec<EngagementCount>> {
-    sqlx::query_as!(
+    Ok(sqlx::query_as!(
         EngagementCount,
         "SELECT actor_ref, to_char(occurred_at AT TIME ZONE 'UTC', 'YYYY-MM') AS \"month!\", \
                 kind, sentiment, COUNT(*) AS \"count!\" \
@@ -75,7 +76,7 @@ pub(super) async fn engagement_counts(
         until,
     )
     .fetch_all(pool)
-    .await
+    .await?)
 }
 
 /// How many consent events each `source` has recorded, ever.
@@ -86,10 +87,14 @@ pub(super) async fn consent_events_by_source(
         sqlx::query!("SELECT source, COUNT(*) AS \"n!\" FROM consent_events GROUP BY source")
             .fetch_all(pool)
             .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| (row.source, usize::try_from(row.n).unwrap_or(0)))
-        .collect())
+    rows.into_iter()
+        .map(|row| {
+            Ok((
+                row.source,
+                usize::try_from(row.n).ok().or_overflow("consent_events")?,
+            ))
+        })
+        .collect()
 }
 
 /// How many withdrawals happened since `since`, estate-wide.
@@ -101,7 +106,7 @@ pub(super) async fn withdrawals_since(pool: &PgPool, since: Timestamp) -> Result
     )
     .fetch_one(pool)
     .await?;
-    Ok(usize::try_from(n).unwrap_or(0))
+    usize::try_from(n).ok().or_overflow("withdrawals")
 }
 
 /// Withdrawals since `since` by the account of the contact (live contacts that
@@ -121,8 +126,12 @@ pub(super) async fn withdrawals_by_account(
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows
-        .into_iter()
-        .map(|row| (row.account_pid, usize::try_from(row.n).unwrap_or(0)))
-        .collect())
+    rows.into_iter()
+        .map(|row| {
+            Ok((
+                row.account_pid,
+                usize::try_from(row.n).ok().or_overflow("withdrawals")?,
+            ))
+        })
+        .collect()
 }

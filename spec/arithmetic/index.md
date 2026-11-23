@@ -119,5 +119,8 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
     `clamp` of the log-odds is not converted. At those lints it has 26 hits (`default_numeric_fallback`,
     `arithmetic_side_effects`, `indexing_slicing`, two `as`, one `allow`); a change there is a release, so it is left for
     the owner. Its `float_arithmetic` is expected to stay off (RCA-FLT: a crate allowed floats sets it per crate).
-  - `try_from(..).unwrap_or(..)` on conversions; the integration tests in `tests/` still use plain operators
-    (RCA-EXC-5 allows it).
+  - `try_from(..).unwrap_or(..)` on conversions: the database counts, a stored share, and the lengths are done (a count
+    or a share that does not fit is an error, `OrOverflow`; a length or a constant is `len_i64`, LEN-1). About 37 remain
+    that substitute `i32::MAX`, `0` or a default for a value that does not fit (audit counts as `i32`, a stored `detail`
+    or `schema_version`, the organization's `i16` month and stalled days, the abuse guard's remaining budget). Each
+    needs its own read. The integration tests in `tests/` still use plain operators (RCA-EXC-5 allows it).

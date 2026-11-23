@@ -985,7 +985,7 @@ pub(super) async fn campaign_funnel(
     }
     format::json(CampaignFunnel {
         campaign,
-        leads: usize::try_from(leads).unwrap_or(0),
+        leads: usize::try_from(leads).ok().or_overflow("leads")?,
         won_deals: attributed_deals.len(),
         won_revenue_minor: (!masked).then_some(same_currency_revenue),
         won_revenue_other_currencies: (!masked).then_some(other_currency),

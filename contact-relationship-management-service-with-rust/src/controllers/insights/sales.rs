@@ -470,7 +470,7 @@ pub(super) async fn executive(
         }
     }
     let pool = db::pool(&ctx);
-    let count = |n: i64| u64::try_from(n).unwrap_or(0);
+    let count = |n: i64| u64::try_from(n).ok().or_overflow("count");
     let new_leads = count(
         sqlx::query_scalar!(
             "SELECT count(*) AS \"n!\" FROM leads \
@@ -480,7 +480,7 @@ pub(super) async fn executive(
         )
         .fetch_one(pool)
         .await?,
-    );
+    )?;
     let tickets_opened = count(
         sqlx::query_scalar!(
             "SELECT count(*) AS \"n!\" FROM tickets \
@@ -490,7 +490,7 @@ pub(super) async fn executive(
         )
         .fetch_one(pool)
         .await?,
-    );
+    )?;
     // Counted in the database, not by loading every audit row of the window.
     let audited = |entity: &'static str, action: &'static str| {
         sqlx::query_scalar!(
@@ -503,10 +503,12 @@ pub(super) async fn executive(
         )
         .fetch_one(pool)
     };
-    let tickets_resolved =
-        usize::try_from(audited("ticket", "resolved").await?).unwrap_or(usize::MAX);
-    let campaigns_started =
-        usize::try_from(audited("campaign", "running").await?).unwrap_or(usize::MAX);
+    let tickets_resolved = usize::try_from(audited("ticket", "resolved").await?)
+        .ok()
+        .or_overflow("tickets_resolved")?;
+    let campaigns_started = usize::try_from(audited("campaign", "running").await?)
+        .ok()
+        .or_overflow("campaigns_started")?;
     let activities_logged = count(
         sqlx::query_scalar!(
             "SELECT count(*) AS \"n!\" FROM activities \
@@ -516,7 +518,7 @@ pub(super) async fn executive(
         )
         .fetch_one(pool)
         .await?,
-    );
+    )?;
     let consent_withdrawals = count(
         sqlx::query_scalar!(
             "SELECT count(*) AS \"n!\" FROM consent_events \
@@ -526,7 +528,7 @@ pub(super) async fn executive(
         )
         .fetch_one(pool)
         .await?,
-    );
+    )?;
     Ok(conditional(
         &headers,
         serde_json::json!(ExecutivePack {

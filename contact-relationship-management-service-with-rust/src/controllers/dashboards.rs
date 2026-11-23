@@ -71,7 +71,7 @@ async fn open_deals_by_stage(
     let mut open_deals = 0usize;
     for row in rows {
         let (stage, currency, total) = (row.stage, row.currency, row.total);
-        let n = usize::try_from(row.n).unwrap_or(0);
+        let n = usize::try_from(row.n).ok().or_overflow("stage_count")?;
         let total = total
             .parse::<i128>()
             .ok()
@@ -250,7 +250,7 @@ async fn sales_dashboard(
         .collect();
     Metrics::global()
         .deals_open
-        .set(i64::try_from(open_deals).unwrap_or(i64::MAX));
+        .set(crate::rules::bounds::len_i64(open_deals));
     Ok(conditional(
         &headers,
         serde_json::json!(SalesDashboard {
@@ -286,7 +286,7 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
     }
     Metrics::global()
         .tickets_open
-        .set(i64::try_from(open.len()).unwrap_or(i64::MAX));
+        .set(crate::rules::bounds::len_i64(open.len()));
     let rows: Vec<PriorityRow> = by_priority
         .into_iter()
         .map(|(priority, (open, breached))| PriorityRow {

@@ -132,7 +132,7 @@ async fn load_pool(
     // Everyone the rows are compared with: contacts the caller may read, then leads.
     let database = db::pool(ctx);
     let mut contact_rows =
-        rows::first_contacts(database, i64::try_from(DUPLICATE_POOL).unwrap_or(i64::MAX)).await?;
+        rows::first_contacts(database, crate::rules::bounds::len_i64(DUPLICATE_POOL)).await?;
     contact_rows.retain(|row| {
         auth::authorize_record(
             caller,

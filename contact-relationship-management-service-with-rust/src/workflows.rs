@@ -115,7 +115,7 @@ pub struct Workflow {
 
 /// A row limit as the database takes it.
 fn limit(n: usize) -> i64 {
-    i64::try_from(n).unwrap_or(i64::MAX)
+    crate::rules::bounds::len_i64(n)
 }
 
 /// One `workflows` row as a run reads it.

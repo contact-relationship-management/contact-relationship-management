@@ -263,6 +263,26 @@ pub fn open(stored: &str) -> Result<String, CryptoError> {
 mod tests {
     use super::*;
 
+    #[test]
+    fn every_crypto_error_says_what_failed_and_never_the_field() {
+        assert!(CryptoError::Malformed.to_string().contains("malformed"));
+        assert!(
+            CryptoError::UnknownKey("k1".into())
+                .to_string()
+                .contains("`k1`")
+        );
+        assert!(
+            CryptoError::Authentication
+                .to_string()
+                .contains("authentication")
+        );
+        assert!(
+            CryptoError::Seal
+                .to_string()
+                .contains("could not be encrypted")
+        );
+    }
+
     fn spec(ids: &[(&str, u8)]) -> String {
         ids.iter()
             .map(|(id, byte)| format!("{id}:{}", STANDARD.encode([*byte; 32])))

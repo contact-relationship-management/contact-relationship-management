@@ -830,7 +830,7 @@ async fn contact_duplicates(
     let mut rows = rows::other_contacts(
         pool,
         target.pid,
-        i64::try_from(DUPLICATE_POOL + 1).unwrap_or(i64::MAX),
+        crate::rules::bounds::len_i64(DUPLICATE_POOL + 1),
     )
     .await?;
     let truncated = rows.len() > DUPLICATE_POOL;
