@@ -592,4 +592,9 @@ the way the Keycloak path already accepts one. They have no server of their own.
   MOB-14). Storing nothing and holding the token in memory are what let one app serve a personal device; a managed
   device adds managed app configuration for the three settings and leaves wipe, passcode and copy controls to the
   device management. Neither needs the app to be a device administrator.
+- **Record text is not copied onto any device (2026-11-23, MOB-15).** The product owner's rule is that record text is
+  never copied onto a personal device. An app cannot know which kind of device it is on, and a deployer's setting would
+  be a switch that can be set wrong, so the apps give no way to copy record text out on any device. The cost is that a
+  rep cannot paste a phone number into another app; the call and the email are made from the contact's own record, if
+  that is built later, and never through the clipboard.
 - **What would change it.** A deployer who needs offline use: a task with its own threat model.

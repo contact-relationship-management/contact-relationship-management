@@ -88,7 +88,29 @@ Every request sends `Accepts-version: 1.0` (the path stays `/api`; versioning is
   - *Personal.* The user types the settings, as now. MOB-1 and MOB-2 are what make a personal device acceptable: no
     record is written to its storage and no token outlives the process, so nothing of the organization's stays on it
     after the app ends. The app does not read the address book, photos, other apps, or a device identifier, and does not
-    ask for the permissions that would.
+    ask for the permissions that would. Record text is never copied onto it (MOB-15).
+- **MOB-15 Record text is never copied onto a device.** The text of a record (a contact's name, job title, phone and
+  email; an activity's subject and note; a deal's or ticket's title; any other field the service returns) MUST NOT be
+  copied out of the app onto the device, whoever owns it. The app cannot tell a personal device from a managed one with
+  any certainty, so the rule holds on every install; there is no setting that relaxes it. The app has no way to do it,
+  not a policy against it:
+  - *No copy out.* Record text cannot be selected, copied, dragged, shared, printed or exported, and no screen offers
+    "copy", "share" or "open in" for it. The app never writes record text to the clipboard or the pasteboard, and does
+    not take part in Universal Clipboard or Handoff.
+  - *No index, no surface outside the app.* Record text is not given to Spotlight, the Android app search or shortcuts,
+    autofill, a notification, a widget, a Live Activity, a share extension, an app intent or Siri, Assistant or
+    Shortcuts. The app sends no notification that carries record text.
+  - *No trace in logs.* No log line, crash report, analytics event or error message the user can copy carries record text;
+    an error names the field or the status, not the value (as `json::stored` does in the service).
+  - *Hidden when not in front.* The app-switcher snapshot and the recent-apps thumbnail show no record text (a blank or
+    blurred cover on iOS; `FLAG_SECURE` on Android). On Android a screenshot and screen recording of a record screen are
+    blocked by the same flag; on iOS the app hides record text while the screen is being captured or mirrored.
+  - *Typing does not teach the keyboard.* The log-activity form turns off keyboard learning and autocorrect personalization
+    (`IME_FLAG_NO_PERSONALIZED_LEARNING` on Android; the corresponding text-input traits on iOS), so what the rep types is
+    not kept in the device's dictionary. What the user typed is held in memory until it is sent and then dropped (MOB-1).
+  - *What the app cannot stop, and says so.* A photograph of the screen, a person reading it, an iOS screenshot taken
+    in a way the app is not told about, and a device that is itself compromised. The rule is that the app does not copy
+    the text, not that no copy can exist.
 
 ## Lily Design System
 
@@ -116,7 +138,9 @@ GitHub Actions yet: the Swift stage needs macOS with Xcode and the Kotlin stage 
 
 ## Not built
 
-Managed app configuration and its tests (MOB-14), layouts for tablets (MOB-13), tests on a tablet or a
+Managed app configuration and its tests (MOB-14), the checks that no record text leaves the app (MOB-15; a code search
+found no clipboard, share or selection use, but there is no cover for the app-switcher snapshot, no `FLAG_SECURE`, and
+no test), layouts for tablets (MOB-13), tests on a tablet or a
 split-screen layout, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
 search through `/api/search`, attachments, other locales, tokens kept across launches, biometric unlock, an App Store or
 Play Store build (signing, privacy labels, store listing), UI tests on a device or simulator, and an accessibility audit

@@ -1850,7 +1850,7 @@ publish their configuration or data.*
 tickets, and log a call, from a native app on my phone.*
 
 Asked for by the product owner on 2026-11-23. The rules are in [mobile-apps/index.md](mobile-apps/index.md) (MOB-1 to
-MOB-14); the decision is CRM-D28.
+MOB-15); the decision is CRM-D28.
 
 - An iOS app (Swift, SwiftUI) and an Android app (Kotlin, Jetpack Compose) draw their content with the Lily Design
   System for each platform.
@@ -1861,9 +1861,12 @@ MOB-14); the decision is CRM-D28.
 - The apps run on phones and tablets (MOB-13), and on devices the organization manages and on personal ones (MOB-14).
   A managed device can supply the server, issuer and client ID as managed app configuration; a value that fails the
   check is an error, never a default. Neither kind of device needs enrolment for the app to run.
+- Record text is never copied onto a device (MOB-15): no copy, share, export, clipboard, index, notification, widget,
+  log line, app-switcher snapshot or keyboard-learning trace carries it. The app cannot tell a personal device from a
+  managed one, so this holds on every install.
 - An amount is exact and a masked one is "Hidden", never zero; a list is whole or an error; a write carries an
   `Idempotency-Key`.
 - Built 2026-11-23 (CRM-T302, CRM-T303), tested by unit tests and a simulator or emulator build (CRM-T304).
-- Not built: managed app configuration and tablet layouts (MOB-13, MOB-14, CRM-T305), offline use, editing, consent
+- Not built: managed app configuration, tablet layouts and the no-copy checks (MOB-13 to MOB-15, CRM-T305), offline use, editing, consent
   changes, push, other locales, store builds, device UI tests, an accessibility audit with users of assistive
   technology.
