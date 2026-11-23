@@ -2865,5 +2865,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     organization calendar and the search hit's record id no longer substitute a bad value (the first stops start-up,
     the next two are errors that name the setting or field, the last carries the `Uuid` instead of parsing it back).
   - **Decided:** a malformed `Accept-Language` `q` value, or a header that is not text, is a `422` (owner, 2026-11-22).
-  - **Not done:** `Option::unwrap_or_default` is banned, with `OrEmpty::or_empty` at about 30 sites still to re-read for whether absent is the whole story; `as` conversions and the other RCA-ENF-1 lints; the matcher crate's `clippy.toml` and `clamp`; `try_from(..).unwrap_or(..)` on
-    conversions; string slicing by byte index; and `ci-check.sh all`. The integration tests still use plain operators.
+  - **Lints (2026-11-23):** every lint of RCA-ENF-1 is on in the service and domain crates (casts, `string_slice`,
+    `integer_division`, `modulo_arithmetic`, `default_numeric_fallback`, floats, `allow_attributes`), each exception a
+    reasoned `#[expect]`.
+  - **Not done:** the matcher crate (published on its own; 26 hits at those lints, its `clamp` and no `clippy.toml`; a
+    change there is a release); `OrEmpty::or_empty` at about 30 sites still to re-read for whether absent is the whole
+    story; `try_from(..).unwrap_or(..)` on conversions; and `ci-check.sh all`. The integration tests still use plain
+    operators.

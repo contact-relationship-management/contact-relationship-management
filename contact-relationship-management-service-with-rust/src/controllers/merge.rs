@@ -417,7 +417,7 @@ async fn record_merge(
         json!({ "moved": done.moved.moved, "dropped": done.moved.dropped }),
         // What an unmerge needs. Ids, states and field names: no personal data.
         json!({
-            "version": 1,
+            "version": 1_i32,
             "survivor_consent": done.before.0,
             "merged_consent": done.before.1,
             "filled": done.filled,

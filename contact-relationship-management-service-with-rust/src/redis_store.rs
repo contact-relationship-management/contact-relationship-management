@@ -62,7 +62,7 @@ impl Shared {
         let mut conn = self.conn.clone();
         let (count, ttl): (u64, i64) = redis::pipe()
             .atomic()
-            .incr(key, 1)
+            .incr(key, 1_i32)
             .cmd("EXPIRE")
             .arg(key)
             .arg(span_secs)

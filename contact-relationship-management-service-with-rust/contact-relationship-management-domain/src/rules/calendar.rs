@@ -96,12 +96,13 @@ fn time_of(text: &str) -> Option<Time> {
 /// One or two ASCII digits at the start of `text`, and what follows them.
 fn digits(text: &str) -> Option<(i8, &str)> {
     let count = text.bytes().take(2).take_while(u8::is_ascii_digit).count();
-    let value = text[..count].bytes().try_fold(0_i8, |value, digit| {
+    let (head, tail) = text.split_at_checked(count)?;
+    let value = head.bytes().try_fold(0_i8, |value, digit| {
         value
             .checked_mul(10)?
             .checked_add(i8::try_from(digit.checked_sub(b'0')?).ok()?)
     })?;
-    (count > 0).then(|| (value, &text[count..]))
+    (count > 0).then_some((value, tail))
 }
 
 impl Calendar {

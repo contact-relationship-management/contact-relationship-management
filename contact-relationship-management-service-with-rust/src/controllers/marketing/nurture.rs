@@ -71,7 +71,7 @@ pub(super) async fn create_sequence(
             problems
                 .push("steps[].template_pid cannot be given with a subject or body".to_string());
         }
-        if step.delay_hours < 0 {
+        if step.delay_hours < 0_i32 {
             problems.push("delay_hours must be non-negative".to_string());
         }
         if let Some(subject) = &step.subject

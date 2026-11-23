@@ -206,7 +206,7 @@ async fn claim_due(pool: &PgPool, now: Timestamp) -> Result<Vec<i32>, sqlx::Erro
          RETURNING id",
         SEND_BATCH,
         now,
-        f64::from(i32::try_from(CLAIM_SECONDS).unwrap_or(300)),
+        f64::from(i32::try_from(CLAIM_SECONDS).unwrap_or(300_i32)),
     )
     .fetch_all(pool)
     .await
@@ -356,7 +356,7 @@ async fn send_one(
         return txn.commit().await;
     }
     report.attempted = report.attempted.tally(1);
-    let attempts = prepared.attempts.tally(1);
+    let attempts = prepared.attempts.tally(1_i32);
     let outcome = sender
         .post(&prepared.url, &prepared.headers, prepared.body.clone())
         .await;

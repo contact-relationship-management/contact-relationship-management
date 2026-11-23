@@ -203,7 +203,7 @@ fn add_idempotency(doc: &mut Value) {
         let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "Idempotency-Key", "in": "header", "required": false,
             "description": "Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After.",
-            "schema": { "type": "string", "minLength": 1, "maxLength": 255 } }));
+            "schema": { "type": "string", "minLength": 1_i32, "maxLength": 255_i32 } }));
         crate::json::put(operation, &["parameters"], Value::Array(parameters));
         crate::json::put(
             operation,
@@ -228,7 +228,7 @@ fn add_paging(doc: &mut Value) {
         let mut parameters = operation["parameters"].as_array().cloned().or_empty();
         parameters.push(json!({ "name": "limit", "in": "query", "required": false,
             "description": format!("Rows per page, 1 to {cap}; default {cap}. Out of range is 422."),
-            "schema": { "type": "integer", "minimum": 1, "maximum": cap } }));
+            "schema": { "type": "integer", "minimum": 1_i32, "maximum": cap } }));
         parameters.push(json!({ "name": "cursor", "in": "query", "required": false,
             "description": "Opaque, signed position from a previous Link rel=next, for the same path and filters only. Anything else is 422.",
             "schema": { "type": "string" } }));

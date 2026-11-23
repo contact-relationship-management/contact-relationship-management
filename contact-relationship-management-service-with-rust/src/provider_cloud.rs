@@ -117,7 +117,7 @@ pub fn sigv4_signature(
         "{method}\n{path}\n{query}\n{canonical_headers}\n{signed}\n{}",
         sha256_hex(body)
     );
-    let day = &amz_date[..8];
+    let day: String = amz_date.chars().take(8).collect();
     let scope = format!("{day}/{region}/{service}/aws4_request");
     let to_sign = format!(
         "AWS4-HMAC-SHA256\n{amz_date}\n{scope}\n{}",
@@ -178,7 +178,8 @@ pub fn ses_headers(
         .map(|(n, _)| n.as_str())
         .collect::<Vec<_>>()
         .join(";");
-    let scope = format!("{}/{}/ses/aws4_request", &amz_date[..8], creds.region);
+    let day: String = amz_date.chars().take(8).collect();
+    let scope = format!("{day}/{}/ses/aws4_request", creds.region);
     let mut out = vec![
         ("x-amz-date".to_string(), amz_date),
         (

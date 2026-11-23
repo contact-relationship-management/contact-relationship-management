@@ -32,7 +32,8 @@ impl From<std::io::Error> for StoreError {
 
 fn place(dir: &Path, key: Uuid) -> PathBuf {
     let name = key.to_string();
-    dir.join(&name[..2]).join(name)
+    let shard: String = name.chars().take(2).collect();
+    dir.join(shard).join(name)
 }
 
 /// Run the scan command on `path`: exit 0 is clean, 1 is infected, anything else is a failure.
@@ -52,8 +53,8 @@ async fn scan(command: &str, path: &Path) -> Result<(), StoreError> {
             "the scan could not start: {error}"
         ))),
         Ok(Ok(output)) => match output.status.code() {
-            Some(0) => Ok(()),
-            Some(1) => Err(StoreError::Infected),
+            Some(0_i32) => Ok(()),
+            Some(1_i32) => Err(StoreError::Infected),
             other => Err(StoreError::ScanFailed(format!(
                 "the scan answered {}",
                 other.map_or_else(|| "with a signal".to_string(), |c| c.to_string())

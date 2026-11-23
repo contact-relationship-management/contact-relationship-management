@@ -125,7 +125,7 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> Option<ScoreBreakdown> {
         .is_some_and(|d| !d.is_empty() && !FREEMAIL.contains(&d));
     let recency = match facts.days_since_last_activity {
         Some(days) => recency_points(days, weights.recent_activity)?,
-        None => 0,
+        None => 0_i32,
     };
     let rules = vec![
         fired(
@@ -160,11 +160,14 @@ pub fn score(facts: &LeadFacts, weights: &Weights) -> Option<ScoreBreakdown> {
         .iter()
         .try_fold(0_i32, |sum, rule| sum.checked_add(rule.points))?;
     // SCORE-1: a total outside 0 to 100 takes the score's own floor or ceiling.
-    let score =
-        super::bounds::within(total, 0..=100).unwrap_or(if total.is_negative() { 0 } else { 100 });
-    let label = if score >= 70 {
+    let score = super::bounds::within(total, 0_i32..=100_i32).unwrap_or(if total.is_negative() {
+        0_i32
+    } else {
+        100_i32
+    });
+    let label = if score >= 70_i32 {
         "hot"
-    } else if score >= 40 {
+    } else if score >= 40_i32 {
         "warm"
     } else {
         "cold"

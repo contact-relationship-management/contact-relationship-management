@@ -25,12 +25,12 @@ pub fn forecast_by_currency(deals: &[OpenDeal]) -> Result<BTreeMap<String, i64>,
     let mut totals: BTreeMap<String, i64> = BTreeMap::new();
     for deal in deals {
         // A probability is a percentage; one outside 0 to 100 has no forecast, and no fallback.
-        let percent = super::bounds::within(deal.probability_percent, 0..=100)
+        let percent = super::bounds::within(deal.probability_percent, 0_i32..=100_i32)
             .ok_or_else(|| "a deal probability is outside 0 to 100".to_string())?;
         let weighted = deal
             .amount_minor
             .checked_mul(i64::from(percent))
-            .map(|v| v / 100)
+            .and_then(|v| v.checked_div(100))
             .ok_or_else(|| "forecast arithmetic overflows".to_string())?;
         let slot = totals.entry(deal.currency.clone()).or_insert(0);
         *slot = slot

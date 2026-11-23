@@ -7,7 +7,7 @@ use contact_relationship_management::consent_profiles::{self, Decision};
 use contact_relationship_management::db;
 use contact_relationship_management::models::rows;
 use contact_relationship_management::rules::consent_regime::{Basis, Blocked, Layer, Regime};
-use contact_relationship_management::time::{Date, Timestamp};
+use contact_relationship_management::time::Date;
 use serial_test::serial;
 use uuid::Uuid;
 
@@ -149,12 +149,14 @@ async fn stored_profiles_drive_one_auditable_decision_per_channel() {
             "marketing",
             "sms",
             None,
-            Timestamp::now(),
+            // The service's clock, which follows the database that stamped the evidence: the host's
+            // can be a few milliseconds behind it, which would put the evidence in the future.
+            contact_relationship_management::clock::now(),
             day,
         )
         .await
         .unwrap();
-        assert!(decision.sends());
+        assert!(decision.sends(), "{:?}", decision.outcome);
         assert!(matches!(decision.outcome, Ok(Basis::Implied { .. })));
         let record = decision.record().unwrap();
         assert_eq!(record["basis"], "implied");

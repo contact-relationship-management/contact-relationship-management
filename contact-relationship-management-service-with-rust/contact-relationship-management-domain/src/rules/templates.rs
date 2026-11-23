@@ -365,13 +365,15 @@ pub fn parse(source: &str) -> Result<Vec<Segment>, ParseError> {
     let mut rest = source;
     while let Some(start) = rest.find("{{") {
         if start > 0 {
-            out.push(Segment::Text(rest[..start].to_string()));
+            out.push(Segment::Text(
+                rest.get(..start).ok_or(ParseError::Unclosed)?.to_string(),
+            ));
         }
         let after = rest
             .get(start.checked_add(2).ok_or(ParseError::Unclosed)?..)
             .ok_or(ParseError::Unclosed)?;
         let end = after.find("}}").ok_or(ParseError::Unclosed)?;
-        let name = after[..end].trim();
+        let name = after.get(..end).ok_or(ParseError::Unclosed)?.trim();
         if !known(name) {
             return Err(ParseError::Unknown(name.to_string()));
         }

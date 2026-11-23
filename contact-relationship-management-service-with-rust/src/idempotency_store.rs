@@ -73,7 +73,7 @@ pub async fn lookup(db: &PgPool, scope: &str, key: &str) -> Result<Option<Stored
     Ok(row.map(|row| Stored {
         fingerprint: row.fingerprint,
         state: row.state,
-        status: row.status.unwrap_or(200),
+        status: row.status.unwrap_or(200_i32),
         content_type: row.content_type,
         body: row.body.or_empty(),
     }))

@@ -542,7 +542,7 @@ async fn create_pipeline(
     }
     for stage in &payload.stages {
         problems.require_text("stages[].name", &stage.name);
-        if !(0..=100).contains(&stage.probability_percent) {
+        if !(0_i32..=100_i32).contains(&stage.probability_percent) {
             problems.push(format!(
                 "probability {} out of range 0-100",
                 stage.probability_percent

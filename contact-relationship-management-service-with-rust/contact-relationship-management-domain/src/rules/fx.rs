@@ -78,6 +78,11 @@ pub fn parse_rate(text: &str) -> Result<i64, String> {
 /// A rate in billionths as a decimal, trailing zeros dropped (`1270000000` is `1.27`).
 #[must_use]
 pub fn format_rate(ppb: i64) -> String {
+    #[expect(
+        clippy::integer_division,
+        clippy::modulo_arithmetic,
+        reason = "RCA-EXC-2: ONE is the constant 1_000_000_000, nonzero and not -1, so neither can fail"
+    )]
     let (whole, parts) = (ppb / ONE, ppb % ONE);
     if parts == 0 {
         return whole.to_string();

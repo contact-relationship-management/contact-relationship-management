@@ -54,7 +54,7 @@ fn number(s: &str, min: usize, max: usize) -> Option<(&str, i64)> {
             .checked_mul(10)?
             .checked_add(i64::from(digit.checked_sub(b'0')?))?;
     }
-    Some((&s[digits..], value))
+    Some((s.get(digits..)?, value))
 }
 
 /// A field after any leading space: one to `width` digits.
@@ -121,7 +121,7 @@ fn nanoseconds(s: &str) -> Option<(&str, i32)> {
 /// and else exactly one colon, and two digits of minutes.
 fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
     if let Some(b'Z' | b'z') = s.as_bytes().first() {
-        return Some((&s[1..], 0));
+        return Some((s.get(1..)?, 0));
     }
     let (negative, s) = if let Some(rest) = s.strip_prefix('+') {
         (false, rest)
@@ -141,7 +141,7 @@ fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
         }
     };
     let hours = two(s, b'0'..=b'9')?;
-    let s = &s[2..];
+    let s = s.get(2..)?;
     let s = if relaxed {
         s.trim_start_matches(|c: char| c == ':' || c.is_whitespace())
     } else {
@@ -152,7 +152,7 @@ fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
         .checked_mul(3600)?
         .checked_add(minutes.checked_mul(60)?)?;
     Some((
-        &s[2..],
+        s.get(2..)?,
         if negative {
             seconds.checked_neg()?
         } else {
@@ -164,7 +164,7 @@ fn offset(s: &str, relaxed: bool) -> Option<(&str, i32)> {
 /// The instant, from fields `chrono` would have accepted: an offset under a day, and a leap second
 /// read as the second before it.
 fn instant(ymd: [i64; 3], hms: [i64; 3], nanos: i32, offset: i32) -> Option<Timestamp> {
-    if offset.abs() >= 86_400 {
+    if offset.abs() >= 86_400_i32 {
         return None;
     }
     let [h, mi, s] = hms;
@@ -187,7 +187,7 @@ fn instant(ymd: [i64; 3], hms: [i64; 3], nanos: i32, offset: i32) -> Option<Time
 pub fn timestamp(text: &str) -> Option<Timestamp> {
     let (s, ymd) = ymd(text, true)?;
     let s = match s.as_bytes().first()? {
-        b't' | b'T' | b' ' => &s[1..],
+        b't' | b'T' | b' ' => s.get(1..)?,
         _ => return None,
     };
     let (s, h) = field(s, 2)?;
@@ -195,14 +195,14 @@ pub fn timestamp(text: &str) -> Option<Timestamp> {
     let (s, sec) = field(s.trim_start().strip_prefix(':')?, 2)?;
     let (s, nanos) = match s.strip_prefix('.') {
         Some(rest) => nanoseconds(rest)?,
-        None => (s, 0),
+        None => (s, 0_i32),
     };
     let s = s.trim_start();
     let (s, offset) = if let Some((_, rest)) = s
         .split_at_checked(3)
         .filter(|(utc, _)| utc.eq_ignore_ascii_case("UTC"))
     {
-        (rest, 0)
+        (rest, 0_i32)
     } else {
         offset(s, true)?
     };
@@ -225,7 +225,7 @@ pub fn rfc3339(text: &str) -> Option<Timestamp> {
     let (s, mo) = fixed(s.strip_prefix('-')?, 2)?;
     let (s, d) = fixed(s.strip_prefix('-')?, 2)?;
     let s = match s.as_bytes().first()? {
-        b't' | b'T' | b' ' => &s[1..],
+        b't' | b'T' | b' ' => s.get(1..)?,
         _ => return None,
     };
     let (s, h) = fixed(s, 2)?;
@@ -233,7 +233,7 @@ pub fn rfc3339(text: &str) -> Option<Timestamp> {
     let (s, sec) = fixed(s.strip_prefix(':')?, 2)?;
     let (s, nanos) = match s.strip_prefix('.') {
         Some(rest) => nanoseconds(rest)?,
-        None => (s, 0),
+        None => (s, 0_i32),
     };
     let (s, offset) = offset(s, false)?;
     s.is_empty().then_some(())?;

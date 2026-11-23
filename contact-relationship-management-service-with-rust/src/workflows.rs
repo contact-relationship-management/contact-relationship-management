@@ -720,7 +720,7 @@ async fn set_field(
     fire(
         txn,
         &Event::contact("contact_updated", row.pid),
-        ctx.depth.tally(1),
+        ctx.depth.tally(1_i32),
         Some(ctx.by),
     )
     .await?;
@@ -982,7 +982,7 @@ async fn tick(pool: &PgPool, workflow: &Workflow) -> Result<u64> {
         return Ok(0);
     };
     let after = state.scan_after_id;
-    let every = state.every_minutes.unwrap_or(60);
+    let every = state.every_minutes.unwrap_or(60_i32);
     let rows = sqlx::query!(
         "SELECT c.id, c.pid FROM contacts c WHERE c.deleted_at IS NULL \
          AND c.merged_into_pid IS NULL AND c.id > $2 \
@@ -1020,7 +1020,7 @@ async fn tick(pool: &PgPool, workflow: &Workflow) -> Result<u64> {
         }
     }
     if exhausted && !stopped_early {
-        cursor = 0;
+        cursor = 0_i32;
     }
     sqlx::query!(
         "UPDATE workflows SET scan_after_id = $2 WHERE pid = $1",

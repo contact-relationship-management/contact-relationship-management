@@ -147,11 +147,11 @@ impl Task for Seed {
         .execute(&mut *txn)
         .await?;
         let stage_defs = [
-            ("Qualification", 10, false, false),
-            ("Discovery", 25, false, false),
-            ("Proposal", 55, false, false),
-            ("Won", 100, true, false),
-            ("Lost", 0, false, true),
+            ("Qualification", 10_i32, false, false),
+            ("Discovery", 25_i32, false, false),
+            ("Proposal", 55_i32, false, false),
+            ("Won", 100_i32, true, false),
+            ("Lost", 0_i32, false, true),
         ];
         let mut stage_pids = Vec::new();
         for (position, (name, probability, is_won, is_lost)) in stage_defs.iter().enumerate() {
@@ -162,7 +162,7 @@ impl Task for Seed {
                 stage,
                 pipeline,
                 name,
-                i32::try_from(position).unwrap_or(0),
+                i32::try_from(position).unwrap_or(0_i32),
                 probability,
                 is_won,
                 is_lost,
@@ -195,7 +195,7 @@ impl Task for Seed {
                 amount_minor,
                 currency,
                 crate::time::Date::from_ymd(2026, 9, 30),
-                i32::try_from(i).unwrap_or(0),
+                i32::try_from(i).unwrap_or(0_i32),
                 closed.then(crate::clock::now),
                 stage_index == 3,
                 (stage_index == 4).then_some("budget cut"),
@@ -235,7 +235,7 @@ impl Task for Seed {
                 if i % 2 == 0 { "web" } else { "referral" },
                 format!("Demo Lead {:02}", i.tally(1)),
                 format!("lead{i}@initech.example"),
-                if i % 2 == 0 { 10 } else { 30 },
+                if i % 2 == 0 { 10_i32 } else { 30_i32 },
                 status,
             )
             .execute(&mut *txn)
@@ -243,10 +243,10 @@ impl Task for Seed {
         }
         // SLA policies for every priority.
         for (priority, first, resolution) in [
-            ("low", 480, 4320),
-            ("normal", 240, 1440),
-            ("high", 60, 480),
-            ("urgent", 15, 240),
+            ("low", 480_i32, 4_320_i32),
+            ("normal", 240_i32, 1_440_i32),
+            ("high", 60_i32, 480_i32),
+            ("urgent", 15_i32, 240_i32),
         ] {
             sqlx::query!(
                 "INSERT INTO sla_policies (pid, priority, first_response_minutes, \

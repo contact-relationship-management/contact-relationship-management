@@ -31,6 +31,7 @@ Each call site cites its ID in a comment. A fallback is a valid value of its fig
 | QUOTA-REMAINING-1 | What is still to win to meet a quota (CRM-R59) | The quota is met | Zero | Nothing is left to win once it is met. |
 | CACHE-3 | The generation stamp of the insight cache | Nanoseconds since the epoch do not fit an `i64` (after 2262) | The largest `i64` | It is still a stamp; the horizon is past any deployment's life. |
 | AUDIT-GENESIS-1 | The `prev_hash` of the first audit row | There is no previous row | The empty hash (`GENESIS_PREV_HASH`) | The chain begins there; every other row names its predecessor's hash. |
+| LEN-1 | A length as a `u64` (`bounds::len_u64`) | A `usize` wider than 64 bits | The largest `u64` | Never reached on a supported target, where a `usize` is at most 64 bits. |
 | SCORE-1 | A lead score (CRM-D5) | The rule weights total below 0 or above 100 | 0 or 100 | The score is defined on 0 to 100; the breakdown still lists every rule. |
 
 ## Input out of range or malformed is an error
@@ -83,8 +84,15 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
 
 ## Where it stands (2026-11-22)
 
-- Both crates warn on `arithmetic_side_effects`, `indexing_slicing`, `panic`, `unreachable`, `todo`, `unimplemented`,
-  `unwrap_used` and `expect_used` outside tests (CI runs clippy with `-D warnings`).
+- Both crates warn, outside tests, on every lint of RCA-ENF-1: `arithmetic_side_effects`, `indexing_slicing`,
+  `string_slice`, `panic`, `unreachable`, `todo`, `unimplemented`, `unwrap_used`, `expect_used`, `integer_division`,
+  `modulo_arithmetic`, `default_numeric_fallback`, `as_conversions`, `cast_lossless`, `cast_possible_truncation`,
+  `cast_possible_wrap`, `cast_precision_loss`, `cast_sign_loss`, `checked_conversions`, `float_arithmetic`, `float_cmp`,
+  `lossy_float_literal`, `allow_attributes` and `allow_attributes_without_reason` (CI runs clippy with `-D warnings`,
+  in the default, the Keycloak-only and the all-features builds). Every exception is an `#[expect(.., reason = ..)]`
+  (RCA-EXC-6): a length as `u64` is `rules::bounds::len_u64` (LEN-1); the three display ratios keep an `as` and
+  `f64` division with a reason; sqlx's `as &[T]` argument override is a reasoned `expect` on its function; a division
+  by a nonzero constant says RCA-EXC-2. A string is cut with `get`, `split_at_checked` or `chars().take`, never an index.
 - `Timestamp` and `Date` have no operators in production: `checked_add`, `checked_sub`, `checked_add_days`,
   `checked_sub_days` and `duration_since`. The operators exist only for tests (`time::test_operators`).
 - No `saturating_*`, `wrapping_*`, `overflowing_*` or `clamp` in production code of the service and domain crates.
@@ -107,8 +115,9 @@ RCA-ERR-4). A `422` says "`<figure>` could not be calculated" (`arith::overflow`
     event transport, where a name that is not `memory` or `outbox` stops start-up. `OrEmpty` still stands at about 30
     sites that were not each re-read for whether "absent" is the whole story (`reports.rs` reads a missing currency
     as `""`; `clients.rs` a missing department as `""`).
-  - `as` conversions and the other lints of RCA-ENF-1 (`as_conversions`, `cast_*`, `integer_division`,
-    `float_arithmetic`, `string_slice`, `allow_attributes`).
-  - The matcher crate has no `clippy.toml`, and its `clamp` of the log-odds is not converted.
+  - The matcher crate (published and versioned on its own): it has no `clippy.toml`, none of the lints above, and its
+    `clamp` of the log-odds is not converted. At those lints it has 26 hits (`default_numeric_fallback`,
+    `arithmetic_side_effects`, `indexing_slicing`, two `as`, one `allow`); a change there is a release, so it is left for
+    the owner. Its `float_arithmetic` is expected to stay off (RCA-FLT: a crate allowed floats sets it per crate).
   - `try_from(..).unwrap_or(..)` on conversions; the integration tests in `tests/` still use plain operators
     (RCA-EXC-5 allows it).

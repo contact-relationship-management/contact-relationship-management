@@ -141,13 +141,13 @@ async fn create_policy(
     let mut problems = Problems::new();
     problems.require_token("priority", tokens::PRIORITIES, &payload.priority);
     payload.escalate_to = crate::rules::user_ref::normalise_opt(payload.escalate_to.take());
-    if payload.first_response_minutes <= 0 || payload.resolution_minutes <= 0 {
+    if payload.first_response_minutes <= 0_i32 || payload.resolution_minutes <= 0_i32 {
         problems.push("SLA minutes must be positive".to_string());
     }
     if payload.first_response_minutes > payload.resolution_minutes {
         problems.push("first response target exceeds the resolution target".to_string());
     }
-    if payload.max_wait_minutes.is_some_and(|m| m <= 0) {
+    if payload.max_wait_minutes.is_some_and(|m| m <= 0_i32) {
         problems.push_field("max_wait_minutes", "must be positive");
     }
     let action = payload.wait_limit_action.as_deref().unwrap_or("flag");
@@ -158,7 +158,7 @@ async fn create_policy(
     }
     if payload
         .auto_close_days
-        .is_some_and(|d| !(1..=365).contains(&d))
+        .is_some_and(|d| !(1_i32..=365_i32).contains(&d))
     {
         problems.push_field("auto_close_days", "between 1 and 365");
     }
@@ -622,7 +622,10 @@ async fn ticket_status(
 /// The reference a reply carries for the ticket `pid` (CRM-R88): `T-` and the first eight hex
 /// digits of its pid.
 fn reference(pid: Uuid) -> String {
-    format!("T-{}", &pid.simple().to_string()[..8])
+    format!(
+        "T-{}",
+        pid.simple().to_string().chars().take(8).collect::<String>()
+    )
 }
 
 /// The first `[T-xxxxxxxx]` in `subject`, as its eight hex digits.
@@ -1031,7 +1034,7 @@ async fn update_article(
         return Err(unprocessable("archived articles are read-only"));
     }
     let version = if article.status == "published" {
-        article.version.tally(1)
+        article.version.tally(1_i32)
     } else {
         article.version
     };

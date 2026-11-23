@@ -141,12 +141,16 @@ impl Timestamp {
     fn rfc3339(self, offset: &str) -> String {
         let zoned = self.0.to_zoned_datetime(jiff::tz::TimeZone::UTC);
         let nanos = self.0.subsec_nanosecond();
-        let fraction = if nanos == 0 {
+        #[expect(
+            clippy::integer_division,
+            reason = "RCA-EXC-2: the divisors are the constants 1_000 and 1_000_000, nonzero and not -1, and the remainder is zero"
+        )]
+        let fraction = if nanos == 0_i32 {
             String::new()
-        } else if nanos % 1_000_000 == 0 {
-            format!(".{:03}", nanos / 1_000_000)
-        } else if nanos % 1_000 == 0 {
-            format!(".{:06}", nanos / 1_000)
+        } else if nanos % 1_000_000_i32 == 0_i32 {
+            format!(".{:03}", nanos / 1_000_000_i32)
+        } else if nanos % 1_000_i32 == 0_i32 {
+            format!(".{:06}", nanos / 1_000_i32)
         } else {
             format!(".{nanos:09}")
         };
@@ -195,6 +199,10 @@ pub fn days(n: i64) -> Option<SignedDuration> {
 
 /// The whole days in `duration`, toward zero, as `chrono`'s `num_days` counted them.
 #[must_use]
+#[expect(
+    clippy::integer_division,
+    reason = "RCA-EXC-2: the divisor is the constant 86_400, nonzero and not -1; the quotient truncates toward zero as chrono's num_days did (RCA-DIV-2)"
+)]
 pub fn whole_days(duration: SignedDuration) -> i64 {
     duration.as_secs() / 86_400
 }

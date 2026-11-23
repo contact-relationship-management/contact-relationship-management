@@ -30,7 +30,7 @@ pub const MAX_ACTIONS: usize = 5;
 /// Longest name, task summary or event name.
 pub const MAX_TEXT: usize = 120;
 /// Shortest and longest schedule interval, in minutes (five minutes to thirty days).
-pub const EVERY_MINUTES: std::ops::RangeInclusive<i32> = 5..=43_200;
+pub const EVERY_MINUTES: std::ops::RangeInclusive<i32> = 5_i32..=43_200_i32;
 /// How many workflows may fire from one another before the chain is cut.
 pub const MAX_DEPTH: i32 = 3;
 /// Most runs one workflow may make in a minute before it is held back.

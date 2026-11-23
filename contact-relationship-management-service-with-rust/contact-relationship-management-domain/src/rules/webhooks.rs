@@ -27,7 +27,7 @@ pub fn retry_delay_seconds(failed_attempts: i32) -> Option<i64> {
         return None;
     }
     // One delay for each attempt but the last, so every attempt before MAX_ATTEMPTS has one.
-    let index = usize::try_from(failed_attempts.max(1).checked_sub(1)?).ok()?;
+    let index = usize::try_from(failed_attempts.max(1_i32).checked_sub(1)?).ok()?;
     DELAYS.get(index).copied()
 }
 
