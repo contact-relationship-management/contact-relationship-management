@@ -2939,3 +2939,17 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     process per test); its time on Linux CI is not measured. Not done either: fixing the residency test; one build
     fewer in `test-db` (it builds for `cargo run`, `sqlx prepare --check` and `cargo test`); a template database per
     test so the database tests can run side by side; running the patched-matcher `--lib` pass as its own job.
+
+## Code scanning for the mobile apps (CRM-T307)
+
+- [ ] CRM-T307 **CodeQL scans the Swift and Kotlin apps.** Asked for by the product owner on 2026-11-23. (S)
+  - **Why:** GitHub's default setup found the two apps after they landed and tried to build them without Lily, so
+    `Analyze (swift)` and `Analyze (java-kotlin)` failed on `9c8f1a9` (the build said Lily was missing). The default setup
+    cannot run `scripts/fetch-lily.sh`.
+  - **Done:** `.github/workflows/codeql.yml` scans actions, JavaScript and TypeScript, Python, Rust, Kotlin and Swift; the
+    two apps build through `scripts/ci-check.sh mobile-kotlin` and `mobile-swift` (Lily fetched first), so the hosted build
+    is the local one. `.github/codeql/codeql-config.yml` leaves out `vendor/`, `build/`, `node_modules/` and `target/`.
+  - **Not done / not verified:** the first run. A workflow's results are refused while GitHub's default setup is on, so
+    the default setup has to be turned off, which is a repository setting and not in this commit. The Android SDK platform
+    the app needs on a Linux runner, and the Xcode on `macos-latest`, have not been tried (CRM-T304 says the same). Until
+    the default setup is off and a run is green, the repository's code scanning is not known to work.

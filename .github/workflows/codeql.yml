@@ -1,0 +1,51 @@
+name: CodeQL
+# The code scanning that GitHub's default setup ran, as a workflow, because the default setup cannot build the
+# two mobile apps: each needs Lily fetched into vendor/ first (scripts/fetch-lily.sh, CRM-D28). The default
+# setup and a workflow cannot both be on, so this lists every language the default setup scanned (CRM-T307).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { language: actions, runner: ubuntu-latest, build-mode: none, stage: "" }
+          - { language: javascript-typescript, runner: ubuntu-latest, build-mode: none, stage: "" }
+          - { language: python, runner: ubuntu-latest, build-mode: none, stage: "" }
+          - { language: rust, runner: ubuntu-latest, build-mode: none, stage: "" }
+          # The apps build through the same stages as a local run: Lily is fetched, then the app is built.
+          - { language: java-kotlin, runner: ubuntu-latest, build-mode: manual, stage: mobile-kotlin }
+          - { language: swift, runner: macos-latest, build-mode: manual, stage: mobile-swift }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+      - if: matrix.build-mode == 'manual'
+        run: scripts/ci-check.sh ${{ matrix.stage }}
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          category: /language:${{ matrix.language }}

@@ -1,0 +1,8 @@
+# What CodeQL leaves out (CRM-T307). Lily is fetched into vendor/ by scripts/fetch-lily.sh so the mobile apps
+# build; it is another project's code, scanned in its own repository.
+name: contact-relationship-management CodeQL
+paths-ignore:
+  - vendor
+  - "**/build"
+  - "**/node_modules"
+  - "**/target"
