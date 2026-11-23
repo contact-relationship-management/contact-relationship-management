@@ -82,3 +82,59 @@ async fn the_event_shares_a_sqlx_transaction() {
     })
     .await;
 }
+
+/// The relay's poll claims the rows nothing has published, and its ack stamps them, so the next
+/// poll no longer returns them (the Phase-3 relay's two calls, `Model::unpublished` and
+/// `Model::mark_published`).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_relay_poll_claims_unpublished_rows_and_the_ack_marks_them() {
+    use contact_relationship_management::models::event_outbox::Model;
+    let _outbox = crate::scoped_auth::scoped(|s| s.event_transport = EventTransport::Outbox);
+    request::<App, _, _>(|_request, ctx| async move {
+        let pid = uuid::Uuid::new_v4();
+        let pool = db::pool(&ctx);
+        let mut txn = pool.begin().await.unwrap();
+        streaming::emit_in(
+            &mut txn,
+            "lead",
+            "lead_captured",
+            &pid.to_string(),
+            "A lead",
+            Some("a"),
+            None,
+        )
+        .await
+        .unwrap();
+        txn.commit().await.unwrap();
+
+        let mut txn = pool.begin().await.unwrap();
+        let polled = Model::unpublished(&mut txn, 100_000).await.unwrap();
+        let ours: Vec<i32> = polled
+            .iter()
+            .filter(|row| row.entity_pid == pid)
+            .map(|row| row.id)
+            .collect();
+        assert_eq!(ours.len(), 1, "the new row is polled once");
+        assert_eq!(Model::mark_published(&mut txn, &ours).await.unwrap(), 1);
+        txn.commit().await.unwrap();
+
+        let mut txn = pool.begin().await.unwrap();
+        let again = Model::unpublished(&mut txn, 100_000).await.unwrap();
+        assert!(
+            !again.iter().any(|row| row.entity_pid == pid),
+            "an acknowledged row is not polled again"
+        );
+        txn.commit().await.unwrap();
+        let published: bool = sqlx::query_scalar(
+            "SELECT published_at IS NOT NULL FROM event_outbox WHERE entity_pid = $1",
+        )
+        .bind(pid)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        assert!(published);
+    })
+    .await;
+}

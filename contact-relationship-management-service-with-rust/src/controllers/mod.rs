@@ -270,4 +270,36 @@ mod tests {
         }
         assert!(found.is_empty(), "{found:#?}");
     }
+
+    /// An empty problem list is fine; a list is one `422` that names every problem; one problem is
+    /// the same refusal.
+    #[test]
+    fn a_problem_list_is_one_422_naming_every_problem() {
+        assert!(super::ensure_valid(&[]).is_ok());
+        let refused = super::ensure_valid(&["a is bad".to_string(), "b is bad".to_string()])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            refused.contains("a is bad") && refused.contains("b is bad"),
+            "{refused}"
+        );
+        let one = super::invalid("c is bad").to_string();
+        assert!(one.contains("c is bad"), "{one}");
+    }
+
+    /// A record-level rejection keeps its status; a `403` is "forbidden", anything else
+    /// "unauthorized".
+    #[test]
+    fn a_record_rejection_is_forbidden_for_403_and_unauthorized_otherwise() {
+        use axum::http::StatusCode;
+        let forbidden = super::record_rejection((StatusCode::FORBIDDEN, "not yours".to_string()));
+        let text = format!("{forbidden:?}");
+        assert!(text.contains("403") && text.contains("forbidden"), "{text}");
+        let other = super::record_rejection((StatusCode::UNAUTHORIZED, "sign in".to_string()));
+        let text = format!("{other:?}");
+        assert!(
+            text.contains("401") && text.contains("unauthorized"),
+            "{text}"
+        );
+    }
 }

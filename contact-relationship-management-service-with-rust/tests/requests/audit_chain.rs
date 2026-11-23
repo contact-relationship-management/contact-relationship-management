@@ -116,3 +116,59 @@ async fn deal_and_insight_reads_are_audited() {
     })
     .await;
 }
+
+/// `GET /api/audits?owner=&since=` returns the entries whose snapshot names that owner, and no
+/// one else's.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_owner_query_returns_only_that_owners_entries() {
+    use contact_relationship_management::models::audit_logs::Model as Audit;
+    request::<App, _, _>(|request, ctx| async move {
+        let mine = format!("person:{}", uuid::Uuid::new_v4());
+        let theirs = format!("person:{}", uuid::Uuid::new_v4());
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let mut txn = pool.begin().await.unwrap();
+        for (owner, action) in [(&mine, "mine"), (&theirs, "theirs"), (&mine, "mine-again")] {
+            Audit::record_on(
+                &mut txn,
+                "contact",
+                uuid::Uuid::new_v4(),
+                action,
+                Some("test"),
+                Some(serde_json::json!({ "owner": owner })),
+            )
+            .await
+            .unwrap();
+        }
+        txn.commit().await.unwrap();
+
+        let found: Vec<Value> = request
+            .get("/api/audits")
+            .add_query_param("owner", &mine)
+            .add_query_param("since", "2000-01-01T00:00:00Z")
+            .await
+            .json();
+        let actions: Vec<&str> = found
+            .iter()
+            .map(|e| e["action"].as_str().unwrap())
+            .collect();
+        assert_eq!(actions.len(), 2, "{found:?}");
+        assert!(actions.contains(&"mine") && actions.contains(&"mine-again"));
+        assert!(
+            found
+                .iter()
+                .all(|e| e["snapshot"]["owner"] == mine.as_str())
+        );
+
+        // Entries from before `since` are not returned.
+        let none: Vec<Value> = request
+            .get("/api/audits")
+            .add_query_param("owner", &mine)
+            .add_query_param("since", "2999-01-01T00:00:00Z")
+            .await
+            .json();
+        assert!(none.is_empty(), "{none:?}");
+    })
+    .await;
+}
