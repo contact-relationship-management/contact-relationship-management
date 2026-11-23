@@ -857,3 +857,31 @@ async fn the_public_pages_are_in_the_reader_s_language() {
     })
     .await;
 }
+
+/// Every public page refuses a malformed `Accept-Language` with a 422, before it looks at the
+/// link: the unsubscribe, confirm and preferences pages, to read and to submit (RCA-IN-2).
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn every_public_page_refuses_a_malformed_language_header() {
+    use axum::http::{HeaderName, HeaderValue};
+    request::<App, _, _>(|request, _ctx| async move {
+        let accept = HeaderName::from_static("accept-language");
+        let bad = HeaderValue::from_static("de;q=abc");
+        for path in ["/unsubscribe/x", "/confirm/x", "/preferences/x"] {
+            let read = request
+                .get(path)
+                .add_header(accept.clone(), bad.clone())
+                .await;
+            read.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+            // The preferences form needs its two fields before the handler runs; the others ignore them.
+            let sent = request
+                .post(path)
+                .form(&[("purpose", "newsletter"), ("action", "granted")])
+                .add_header(accept.clone(), bad.clone())
+                .await;
+            sent.assert_status(StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}
