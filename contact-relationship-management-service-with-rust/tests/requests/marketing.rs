@@ -549,3 +549,46 @@ async fn a_bad_campaign_is_refused_for_each_fault_and_one_with_no_segment_cannot
     })
     .await;
 }
+
+/// The sequence list shows each sequence with its steps in order and the enrolments still active.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_sequence_list_counts_steps_and_active_enrolments() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let name = format!("Listed Drip {}", Uuid::new_v4());
+        let created: Value = request
+            .post("/api/nurture-sequences")
+            .json(&json!({
+                "name": name,
+                "steps": [
+                    { "delay_hours": 0, "template_ref": "listed-1" },
+                    { "delay_hours": 24, "template_ref": "listed-2" },
+                ],
+            }))
+            .await
+            .json();
+        let pid = created["pid"].as_str().unwrap().to_string();
+
+        let find = |all: &Vec<Value>| -> Value {
+            all.iter()
+                .find(|s| s["sequence"]["pid"] == pid.as_str())
+                .cloned()
+                .unwrap_or_else(|| panic!("the new sequence is listed: {all:?}"))
+        };
+        let before: Vec<Value> = request.get("/api/nurture-sequences").await.json();
+        let listed = find(&before);
+        assert_eq!(listed["steps"].as_array().unwrap().len(), 2, "{listed}");
+        assert_eq!(listed["active_enrollments"], 0, "{listed}");
+
+        let contact = seed_contact!(&request, "Listed Enrollee").await;
+        request
+            .post(&format!("/api/nurture-sequences/{pid}/enrollments"))
+            .json(&json!({ "contact_pid": contact }))
+            .await
+            .assert_status_ok();
+        let after: Vec<Value> = request.get("/api/nurture-sequences").await.json();
+        assert_eq!(find(&after)["active_enrollments"], 1);
+    })
+    .await;
+}
