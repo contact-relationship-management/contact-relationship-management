@@ -2,6 +2,8 @@ name: CodeQL
 # The code scanning that GitHub's default setup ran, as a workflow, because the default setup cannot build the
 # two mobile apps: each needs Lily fetched into vendor/ first (scripts/fetch-lily.sh, CRM-D28). The default
 # setup and a workflow cannot both be on, so this lists every language the default setup scanned (CRM-T307).
+# Swift is in codeql-swift.yml: its build takes about 24 minutes on a macOS runner, so it runs weekly and when the
+# app changes.
 on:
   push:
     branches: [main]
@@ -32,9 +34,8 @@ jobs:
           - { language: javascript-typescript, runner: ubuntu-latest, build-mode: none, stage: "" }
           - { language: python, runner: ubuntu-latest, build-mode: none, stage: "" }
           - { language: rust, runner: ubuntu-latest, build-mode: none, stage: "" }
-          # The apps build through the same stages as a local run: Lily is fetched, then the app is built.
+          # The app builds through the same stage as a local run: Lily is fetched, then the app is built.
           - { language: java-kotlin, runner: ubuntu-latest, build-mode: manual, stage: mobile-kotlin }
-          - { language: swift, runner: macos-latest, build-mode: manual, stage: mobile-swift }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

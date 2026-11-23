@@ -1,0 +1,51 @@
+name: CodeQL (Swift)
+# The Swift app's code scanning (CRM-T307). The build and tests take about 24 minutes on a macOS runner, which GitHub
+# bills at about ten times the Linux rate, so this runs weekly and when the app, its Lily pin or the fetch script
+# changes, and not on every push. The other languages are in codeql.yml.
+on:
+  push:
+    branches: [main]
+    paths:
+      - contact-relationship-management-mobile-app-with-swift/**
+      - lily-design-system.lock
+      - scripts/fetch-lily.sh
+      - .github/workflows/codeql-swift.yml
+      - .github/codeql/codeql-config.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - contact-relationship-management-mobile-app-with-swift/**
+      - lily-design-system.lock
+      - scripts/fetch-lily.sh
+      - .github/workflows/codeql-swift.yml
+      - .github/codeql/codeql-config.yml
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (swift)
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          languages: swift
+          build-mode: manual
+          config-file: ./.github/codeql/codeql-config.yml
+      - run: scripts/ci-check.sh mobile-swift
+      - uses: github/codeql-action/analyze@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
+        with:
+          category: /language:swift

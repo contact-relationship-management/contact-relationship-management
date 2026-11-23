@@ -2935,6 +2935,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Found:** `requests::residency::a_webhook_to_an_undeclared_host_is_refused_when_registered_and_when_sent` passes
     alone and in a full `cargo test` run but fails in a full nextest run, so it leans on something another test sets up
     in the process or the database. `test-db` and `coverage` therefore stay on `cargo test`.
+  - **Flaky e2e test (2026-11-23):** `tour.spec.ts` › "a selected ticket is offered the articles that share its words"
+    failed once on `566e791` (after "Route export" was selected it still showed the suggestions panel) and passed on a
+    rerun of the same code; `fd7dc38`, with the same UI code, had passed. Cause not found. It is a race in the test or
+    the page, not shown to be either.
   - **Not done:** nextest was slower than `cargo test` for the DB-free tests on this Mac (18 s against about 5 s, a
     process per test); its time on Linux CI is not measured. Not done either: fixing the residency test; one build
     fewer in `test-db` (it builds for `cargo run`, `sqlx prepare --check` and `cargo test`); a template database per
@@ -2949,7 +2953,14 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Done:** `.github/workflows/codeql.yml` scans actions, JavaScript and TypeScript, Python, Rust, Kotlin and Swift; the
     two apps build through `scripts/ci-check.sh mobile-kotlin` and `mobile-swift` (Lily fetched first), so the hosted build
     is the local one. `.github/codeql/codeql-config.yml` leaves out `vendor/`, `build/`, `node_modules/` and `target/`.
-  - **Not done / not verified:** the first run. A workflow's results are refused while GitHub's default setup is on, so
-    the default setup has to be turned off, which is a repository setting and not in this commit. The Android SDK platform
-    the app needs on a Linux runner, and the Xcode on `macos-latest`, have not been tried (CRM-T304 says the same). Until
-    the default setup is off and a run is green, the repository's code scanning is not known to work.
+  - **First run (2026-11-23, `1110044`):** both app builds and their tests passed on hosted runners: `mobile-kotlin` in
+    216 s on Ubuntu, `mobile-swift` in 1,462 s (24 minutes) on `macos-latest`. All six scans then failed at the upload,
+    each with "CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled".
+  - **Decided 2026-11-23 (product owner):** the default setup is turned off (it was `configured` for actions,
+    JavaScript and TypeScript, Python and Rust; it is `not-configured` now, and can be switched back on through
+    `code-scanning/default-setup`). Swift is in `codeql-swift.yml` and runs weekly and when the app, `lily-design-system.lock`
+    or `scripts/fetch-lily.sh` changes, because a macOS runner is billed at about ten times the Linux rate; the other
+    five languages are in `codeql.yml` on every push and pull request.
+  - **Not done / not verified:** a green run with the default setup off. Between the default setup going off and that run
+    the repository had no code scanning. A Swift change not under those paths is scanned up to a week later. The Kotlin
+    job's results, and any alert the first scan of the apps raises, have not been read.
