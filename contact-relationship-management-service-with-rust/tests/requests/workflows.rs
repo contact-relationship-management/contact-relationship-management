@@ -795,3 +795,88 @@ async fn a_dry_run_names_who_a_lead_would_go_to_and_a_gone_sequence_is_skipped_w
     })
     .await;
 }
+
+/// A workflow is read by its pid, renamed, refused a name another one has, deleted, and then
+/// is not there: every answer a missing or duplicate one can get.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_workflow_is_read_renamed_refused_a_taken_name_and_deleted() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let tag = uuid::Uuid::new_v4();
+        let (first, second) = (format!("First {tag}"), format!("Second {tag}"));
+        let actions = json!([{ "type": "create_task", "summary": "Say hello", "due_in_days": 1 }]);
+        let a = workflow!(&request, when_created(&first, json!({}), actions.clone()));
+        workflow!(&request, when_created(&second, json!({}), actions.clone()));
+
+        let shown: Value = request.get(&format!("/api/workflows/{a}")).await.json();
+        assert_eq!(shown["name"], first.as_str(), "{shown}");
+
+        // A name another workflow has is refused, and nothing changed.
+        let taken = request
+            .put(&format!("/api/workflows/{a}"))
+            .json(&when_created(&second, json!({}), actions.clone()))
+            .await;
+        assert_eq!(taken.status_code(), 422, "{}", taken.text());
+        assert!(taken.text().contains("already exists"), "{}", taken.text());
+
+        // A workflow that is not there is not found, to replace or to delete.
+        let missing = uuid::Uuid::new_v4();
+        request
+            .put(&format!("/api/workflows/{missing}"))
+            .json(&when_created(
+                &format!("Missing {tag}"),
+                json!({}),
+                actions.clone(),
+            ))
+            .await
+            .assert_status_not_found();
+        request
+            .delete(&format!("/api/workflows/{missing}"))
+            .await
+            .assert_status_not_found();
+
+        // A new name is taken; the workflow is deleted, and then it is gone.
+        request
+            .put(&format!("/api/workflows/{a}"))
+            .json(&when_created(
+                &format!("Renamed {tag}"),
+                json!({}),
+                actions.clone(),
+            ))
+            .await
+            .assert_status_ok();
+        let renamed: Value = request.get(&format!("/api/workflows/{a}")).await.json();
+        assert_eq!(renamed["name"], format!("Renamed {tag}").as_str());
+        let deleted: Value = request.delete(&format!("/api/workflows/{a}")).await.json();
+        assert_eq!(deleted["pid"], a.as_str());
+        request
+            .get(&format!("/api/workflows/{a}"))
+            .await
+            .assert_status_not_found();
+        request
+            .delete(&format!("/api/workflows/{a}"))
+            .await
+            .assert_status_not_found();
+    })
+    .await;
+}
+
+/// The owner a workflow sets must be a worker reference, like the owner anywhere else.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_workflow_that_sets_an_owner_that_is_not_a_worker_is_refused() {
+    request::<App, _, _>(|request, _ctx| async move {
+        let refused = request
+            .post("/api/workflows")
+            .json(&when_created(
+                &format!("Owner {}", uuid::Uuid::new_v4()),
+                json!({}),
+                json!([{ "type": "set_field", "field": "owner_ref", "value": "not a worker" }]),
+            ))
+            .await;
+        assert_eq!(refused.status_code(), 422, "{}", refused.text());
+    })
+    .await;
+}
