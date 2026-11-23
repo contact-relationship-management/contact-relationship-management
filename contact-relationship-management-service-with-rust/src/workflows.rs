@@ -278,6 +278,10 @@ pub fn fire<'a>(
 }
 
 /// How many runs of the workflow completed in the last minute with one of `outcomes`.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 async fn recent_runs(db: &mut PgConnection, workflow: Uuid, outcomes: &[&str]) -> Result<i64> {
     Ok(sqlx::query_scalar!(
         "SELECT count(*) AS \"n!\" FROM workflow_runs WHERE workflow_pid = $1 \

@@ -150,7 +150,7 @@ pub fn check(
     if bytes.is_empty() {
         return Err("the file is empty".to_string());
     }
-    if bytes.len() as u64 > max_bytes {
+    if super::bounds::len_u64(bytes.len()) > max_bytes {
         return Err(format!("the file is larger than {max_bytes} bytes"));
     }
     if !kind.magic.is_empty() && !kind.magic.iter().any(|m| bytes.starts_with(m)) {

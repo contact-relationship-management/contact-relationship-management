@@ -165,6 +165,10 @@ async fn has_open_deal(conn: &mut PgConnection, contact_pid: Uuid) -> Result<boo
 
 /// Whether `contact_pid` currently has an open (`open`/`pending`)
 /// support ticket.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 async fn has_open_ticket(conn: &mut PgConnection, contact_pid: Uuid) -> Result<bool> {
     Ok(sqlx::query_scalar!(
         "SELECT EXISTS (SELECT 1 FROM tickets WHERE contact_pid = $1 AND deleted_at IS NULL \

@@ -10,9 +10,22 @@ pub fn within<T: PartialOrd>(n: T, range: std::ops::RangeInclusive<T>) -> Option
     range.contains(&n).then_some(n)
 }
 
+/// A length as a `u64`. A `usize` is at most 64 bits on every supported target, so this is the length
+/// itself; on a target where it were wider, the declared fallback is the largest `u64` (LEN-1).
+#[must_use]
+pub fn len_u64(len: usize) -> u64 {
+    u64::try_from(len).unwrap_or(u64::MAX) // LEN-1
+}
+
 #[cfg(test)]
 mod tests {
     use super::within;
+
+    #[test]
+    fn a_length_is_itself_as_a_u64() {
+        assert_eq!(super::len_u64(0), 0);
+        assert_eq!(super::len_u64(41), 41);
+    }
 
     #[test]
     fn a_figure_is_in_range_or_none_never_moved_to_a_bound() {

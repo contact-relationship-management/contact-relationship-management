@@ -136,7 +136,8 @@ async fn list(State(ctx): State<AppContext>) -> Result<Response> {
     )
     .fetch_all(db::pool(&ctx))
     .await?;
-    let unreviewed = grants.iter().filter(|g| g.reviewed_at.is_none()).count() as u64;
+    let unreviewed =
+        crate::rules::bounds::len_u64(grants.iter().filter(|g| g.reviewed_at.is_none()).count());
     format::json(Grants { unreviewed, grants })
 }
 

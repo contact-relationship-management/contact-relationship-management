@@ -181,7 +181,7 @@ async fn create_for(
             ErrorDetail::new("conflict", "this record already has that link"),
         ));
     }
-    if existing.len() as u64 >= MAX_PER_SUBJECT {
+    if crate::rules::bounds::len_u64(existing.len()) >= MAX_PER_SUBJECT {
         return Err(super::unprocessable("a record can carry at most 50 links"));
     }
     let link = sqlx::query_as!(

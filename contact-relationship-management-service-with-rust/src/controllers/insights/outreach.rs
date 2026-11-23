@@ -354,7 +354,12 @@ pub(super) async fn funnel(
                 .map_or(0, std::collections::HashSet::len)
         };
         let conversion = previous.map(|prev| {
-            #[expect(clippy::cast_precision_loss, reason = "display ratio, not money math")]
+            #[expect(
+                clippy::as_conversions,
+                clippy::cast_precision_loss,
+                clippy::float_arithmetic,
+                reason = "a display ratio, not money math"
+            )]
             let value = (prev != 0).then(|| count as f64 / prev as f64);
             crate::rules::analytics::Ratio {
                 numerator: i64::try_from(count).unwrap_or(i64::MAX),

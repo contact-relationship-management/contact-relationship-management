@@ -502,7 +502,7 @@ const DETAIL_PROBE: i64 = 201;
 
 /// Drop the one row read past [`DETAIL_ROWS`]; true when there was one.
 fn cut<T>(rows: &mut Vec<T>) -> bool {
-    let more = rows.len() as u64 > DETAIL_ROWS;
+    let more = crate::rules::bounds::len_u64(rows.len()) > DETAIL_ROWS;
     rows.truncate(usize::try_from(DETAIL_ROWS).unwrap_or(usize::MAX));
     more
 }

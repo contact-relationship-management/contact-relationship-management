@@ -332,6 +332,10 @@ async fn combine(
 /// Lock both contacts, in a fixed order so two merges (or a merge and an
 /// unmerge) cannot cross. A merged contact is deleted, so the rows are read whatever their
 /// `deleted_at`.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 pub(super) async fn lock_rows(
     txn: &mut PgConnection,
     merged_pid: Uuid,

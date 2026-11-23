@@ -31,7 +31,7 @@ pub struct Link<'a> {
 
 fn put(hasher: &mut Sha256, field: &[u8]) {
     // Length-prefix every field so ("ab","c") and ("a","bc") differ.
-    hasher.update((field.len() as u64).to_be_bytes());
+    hasher.update(super::bounds::len_u64(field.len()).to_be_bytes());
     hasher.update(field);
 }
 

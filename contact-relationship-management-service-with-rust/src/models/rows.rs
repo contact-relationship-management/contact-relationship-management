@@ -271,6 +271,10 @@ pub async fn forecast_snapshots(
 /// # Errors
 ///
 /// When the query fails.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 pub async fn deal_audits(
     pool: &PgPool,
     actions: &[&str],
@@ -386,6 +390,10 @@ pub async fn ticket_for_update<'e>(
 /// # Errors
 ///
 /// When the query fails.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 pub async fn tickets_with_status<'e>(
     db: impl PgExecutor<'e>,
     statuses: &[&str],
@@ -1434,6 +1442,10 @@ pub async fn working_group<'e>(
 /// # Errors
 ///
 /// When the query fails.
+#[expect(
+    clippy::as_conversions,
+    reason = "`as &[T]` is sqlx's argument type override, not a conversion"
+)]
 pub async fn recent_activities_of_contacts<'e>(
     db: impl PgExecutor<'e>,
     contacts: &[Uuid],

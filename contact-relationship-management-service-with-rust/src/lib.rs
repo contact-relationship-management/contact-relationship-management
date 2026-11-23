@@ -40,7 +40,14 @@
     clippy::indexing_slicing,
     clippy::arithmetic_side_effects,
     clippy::allow_attributes,
-    clippy::allow_attributes_without_reason
+    clippy::allow_attributes_without_reason,
+    clippy::as_conversions,
+    clippy::cast_lossless,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::checked_conversions
 )]
 #![cfg_attr(
     test,
@@ -53,7 +60,14 @@
         clippy::arithmetic_side_effects,
         clippy::disallowed_methods,
         clippy::allow_attributes,
-        clippy::allow_attributes_without_reason
+        clippy::allow_attributes_without_reason,
+        clippy::as_conversions,
+        clippy::cast_lossless,
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::cast_precision_loss,
+        clippy::cast_sign_loss,
+        clippy::checked_conversions
     )
 )]
 // New in Rust 1.99. The tests write `assert!(x.is_empty())`, which reads plainly;

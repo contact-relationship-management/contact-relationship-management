@@ -58,7 +58,10 @@ pub async fn rotate(pool: &PgPool) -> std::result::Result<Vec<(String, u64)>, St
                 .await
                 .map_err(|e| e.to_string())?;
         }
-        report.push((format!("{table}.{column}"), updates.len() as u64));
+        report.push((
+            format!("{table}.{column}"),
+            crate::rules::bounds::len_u64(updates.len()),
+        ));
     }
     report.push((
         "custom_field_values.value (sensitive fields)".to_string(),
@@ -100,7 +103,7 @@ async fn rotate_custom(pool: &PgPool, ring: &crypto::Keyring) -> std::result::Re
         .await
         .map_err(|e| e.to_string())?;
     }
-    Ok(updates.len() as u64)
+    Ok(crate::rules::bounds::len_u64(updates.len()))
 }
 
 /// The task wrapper.

@@ -57,8 +57,8 @@ impl Metrics {
         let sla_breached_total = counter("sla_breached_total", "Total SLA breaches recorded.");
         let deals_open = gauge("deals_open", "Deals currently open.");
         let tickets_open = gauge("tickets_open", "Tickets currently open or pending.");
-        for collector in [
-            Box::new(lead_captured_total.clone()) as Box<dyn prometheus::core::Collector>,
+        let collectors: [Box<dyn prometheus::core::Collector>; 8] = [
+            Box::new(lead_captured_total.clone()),
             Box::new(lead_converted_total.clone()),
             Box::new(deal_won_total.clone()),
             Box::new(deal_lost_total.clone()),
@@ -66,7 +66,8 @@ impl Metrics {
             Box::new(sla_breached_total.clone()),
             Box::new(deals_open.clone()),
             Box::new(tickets_open.clone()),
-        ] {
+        ];
+        for collector in collectors {
             registry
                 .register(collector)
                 .expect("registering a freshly-constructed collector cannot fail");

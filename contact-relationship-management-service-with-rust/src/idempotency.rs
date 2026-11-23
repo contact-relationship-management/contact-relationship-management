@@ -48,7 +48,7 @@ pub fn validate_key(key: &str) -> Result<(), String> {
 pub fn fingerprint(method: &str, path: &str, query: &str, body: &[u8]) -> String {
     let mut hasher = Sha256::new();
     for part in [method.as_bytes(), path.as_bytes(), query.as_bytes(), body] {
-        hasher.update((part.len() as u64).to_be_bytes());
+        hasher.update(crate::rules::bounds::len_u64(part.len()).to_be_bytes());
         hasher.update(part);
     }
     hasher
