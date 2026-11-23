@@ -23,6 +23,15 @@ FEATURES=(--features keycloak)
 # `bench` too, as a reading of the machine rather than a check.
 ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
 
+# The `test` and `pre-push` stages run their tests under cargo-nextest (CRM-T306). A missing tool is a
+# failure, never a quiet fall-back to `cargo test`: the two do not run the same way.
+need_nextest() {
+  command -v cargo-nextest >/dev/null 2>&1 || {
+    echo "ci-check: cargo-nextest is not installed: cargo install --locked cargo-nextest" >&2
+    exit 2
+  }
+}
+
 stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|bench|supply-chain|semver|api-types|coverage|mobile-swift|mobile-kotlin|all|pre-push>}"
 
 case "${stage}" in
@@ -41,7 +50,11 @@ case "${stage}" in
     python3 scripts/check-checked-arithmetic.py
     ;;
   test)
-    (cd "${SVC}" && cargo test --workspace "${FEATURES[@]}")
+    # CRM-T306: cargo-nextest runs the tests (each in its own process); it does not run doctests, so
+    # `cargo test --doc` does. Together they are the tests `cargo test --workspace` ran.
+    need_nextest
+    (cd "${SVC}" && cargo nextest run --workspace "${FEATURES[@]}" \
+      && cargo test --workspace --doc "${FEATURES[@]}")
     # The service depends on the published matcher (the image builds from the
     # service directory alone), so also test it against the matcher in this
     # repository: a matcher change that breaks the service fails here, before
@@ -51,7 +64,7 @@ case "${stage}" in
       && trap 'mv Cargo.lock.ci-keep Cargo.lock' EXIT \
       && cargo test "${FEATURES[@]}" --lib \
         --config "patch.crates-io.contact-relationship-management-matcher.path=\"../${MATCHER}\"")
-    (cd "${MATCHER}" && cargo test)
+    (cd "${MATCHER}" && cargo nextest run && cargo test --doc)
     ;;
   test-db)
     # Needs a Postgres reachable with the PG_* settings (defaults match
@@ -299,8 +312,9 @@ case "${stage}" in
     for each in fmt lint scripts pins secrets clippy; do
       "${PWD}/scripts/ci-check.sh" "${each}"
     done
-    (cd "${SVC}" && cargo test --workspace "${FEATURES[@]}" --lib)
-    (cd "${MATCHER}" && cargo test --lib)
+    need_nextest
+    (cd "${SVC}" && cargo nextest run --workspace "${FEATURES[@]}" --lib)
+    (cd "${MATCHER}" && cargo nextest run --lib)
     (cd "${FE}" && pnpm install --frozen-lockfile && pnpm run lint)
     ;;
   all)

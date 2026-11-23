@@ -32,6 +32,7 @@ steps:
   - name: test
     image: *rust_image
     commands:
+      - cargo install --locked cargo-nextest
       - scripts/ci-check.sh test
 
   - name: test-db

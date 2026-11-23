@@ -2921,3 +2921,21 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     covers the app-switcher snapshot, and the log form does not turn keyboard learning off. Whether the iOS target is
     already universal, and how the screens lay out on a tablet, has not been looked at. No mobile device management
     product has been tried.
+
+## Test speed (CRM-T306)
+
+- [ ] CRM-T306 **Faster tests without less coverage.** Asked for by the product owner on 2026-11-23. (M)
+  - **Measured (2026-11-23):** in CI `rust (test)` took 175 s, of which about 5 s ran tests; the rest is two builds
+    (the second with the local matcher patched in). Locally the 290 database tests add up to 302 s, a median of 0.9 s
+    each and 280 of them between 0.6 and 2 s, so the cost is a floor per test (probably booting the app, not checked),
+    not a few slow tests. One, `schema::a_database_the_history_built_takes_the_baseline_without_running_it`, takes 26 s.
+  - **Done:** `cargo-nextest` runs the `test` stage and the lib tests of `pre-push` (`.config/nextest.toml`; no
+    retries, so a flaky test fails). 637 tests pass locally, the same set `cargo test` ran; doctests stay under
+    `cargo test --doc` (there are none today).
+  - **Found:** `requests::residency::a_webhook_to_an_undeclared_host_is_refused_when_registered_and_when_sent` passes
+    alone and in a full `cargo test` run but fails in a full nextest run, so it leans on something another test sets up
+    in the process or the database. `test-db` and `coverage` therefore stay on `cargo test`.
+  - **Not done:** nextest was slower than `cargo test` for the DB-free tests on this Mac (18 s against about 5 s, a
+    process per test); its time on Linux CI is not measured. Not done either: fixing the residency test; one build
+    fewer in `test-db` (it builds for `cargo run`, `sqlx prepare --check` and `cargo test`); a template database per
+    test so the database tests can run side by side; running the patched-matcher `--lib` pass as its own job.

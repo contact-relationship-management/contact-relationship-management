@@ -1,0 +1,26 @@
+# cargo-nextest (CRM-T306). It runs each test in its own process, so a test cannot lean on what an
+# earlier test left in the process, and it prints every test's time (`cargo nextest run`, last lines).
+#
+# Used by `scripts/ci-check.sh test` and `pre-push` for the tests that need no database. The database
+# tests (`test-db`) and `coverage` still run under `cargo test`, because one of them
+# (`requests::residency::a_webhook_to_an_undeclared_host_is_refused_when_registered_and_when_sent`)
+# passes alone and fails in a full run under nextest, so it leans on something another test sets up.
+# Until that is fixed, nextest is not the gate for them.
+
+[profile.default]
+# Report every failure, not the first.
+fail-fast = false
+# A test that takes more than 30 s is shown as slow; one that takes five minutes is stopped.
+slow-timeout = { period = "30s", terminate-after = 10 }
+# No retries, here or in CI: a test that fails once and passes on a retry is a flaky test, and a retry
+# would hide it. Do not add `retries` without a spec change.
+retries = 0
+
+# The database tests share one database, so they must not run side by side if they are run under nextest
+# (`cargo nextest run --run-ignored only`): one at a time, as `--test-threads=1` does.
+[test-groups.database]
+max-threads = 1
+
+[[profile.default.overrides]]
+filter = "binary(main) & (test(/^requests::/) | test(/^outbox::/) | test(/^router_order::/) | test(/^command_line::/) | test(/^rate_limit::/))"
+test-group = "database"
