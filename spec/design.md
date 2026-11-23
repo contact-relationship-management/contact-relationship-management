@@ -588,5 +588,8 @@ the way the Keycloak path already accepts one. They have no server of their own.
   fetches them from the public Lily repository at the commit in `lily-design-system.lock` into `vendor/` (ignored).
   It is pinned as an action is pinned, by commit, and the repository needs no sibling checkout. When Lily publishes,
   the apps take the published versions.
-- **What would change it.** A deployer who needs offline use, or a mobile device management policy that requires a
-  managed app configuration: either is a task with its own threat model.
+- **Managed and personal devices (2026-11-23).** The product owner requires both, on phones and on tablets (MOB-13,
+  MOB-14). Storing nothing and holding the token in memory are what let one app serve a personal device; a managed
+  device adds managed app configuration for the three settings and leaves wipe, passcode and copy controls to the
+  device management. Neither needs the app to be a device administrator.
+- **What would change it.** A deployer who needs offline use: a task with its own threat model.

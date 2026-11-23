@@ -2908,3 +2908,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Not done:** a hosted job for either (a macOS runner with Xcode 16 or later; the Android SDK platform 37 on
     Linux). The sparse fetch was also run from the public GitHub remote at the pinned commit (15 MB, about 6
     seconds).
+- [ ] CRM-T305 **Managed and personal devices, phones and tablets (MOB-13, MOB-14).** Asked for by the product owner on
+  2026-11-23. (M)
+  - **To do:** read managed app configuration for the server URL, issuer and client ID on iOS and Android, show a
+    managed value as fixed, and fail start-up on one that does not pass the MOB-3 check; layouts that use a wide screen
+    on iPad and Android tablets and survive split-screen and rotation; tests for the configuration rules in both cores;
+    a check on an iPad simulator and a tablet emulator.
+  - **Not done / not verified:** nothing yet. Neither app reads managed configuration today. Whether the iOS target is
+    already universal, and how the screens lay out on a tablet, has not been looked at. No mobile device management
+    product has been tried.

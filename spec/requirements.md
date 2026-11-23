@@ -1850,7 +1850,7 @@ publish their configuration or data.*
 tickets, and log a call, from a native app on my phone.*
 
 Asked for by the product owner on 2026-11-23. The rules are in [mobile-apps/index.md](mobile-apps/index.md) (MOB-1 to
-MOB-12); the decision is CRM-D28.
+MOB-14); the decision is CRM-D28.
 
 - An iOS app (Swift, SwiftUI) and an Android app (Kotlin, Jetpack Compose) draw their content with the Lily Design
   System for each platform.
@@ -1858,8 +1858,12 @@ MOB-12); the decision is CRM-D28.
   tickets with their SLA breaches, and logs an activity about a contact.
 - Sign-in is OIDC with PKCE in the system browser; a demo server with sign-in off works without it and is labelled.
 - Only the settings (server, issuer, client ID) are stored on the phone; a token lasts as long as the process.
+- The apps run on phones and tablets (MOB-13), and on devices the organization manages and on personal ones (MOB-14).
+  A managed device can supply the server, issuer and client ID as managed app configuration; a value that fails the
+  check is an error, never a default. Neither kind of device needs enrolment for the app to run.
 - An amount is exact and a masked one is "Hidden", never zero; a list is whole or an error; a write carries an
   `Idempotency-Key`.
 - Built 2026-11-23 (CRM-T302, CRM-T303), tested by unit tests and a simulator or emulator build (CRM-T304).
-- Not built: offline use, editing, consent changes, push, other locales, store builds, device UI tests, an
-  accessibility audit with users of assistive technology.
+- Not built: managed app configuration and tablet layouts (MOB-13, MOB-14, CRM-T305), offline use, editing, consent
+  changes, push, other locales, store builds, device UI tests, an accessibility audit with users of assistive
+  technology.

@@ -71,6 +71,24 @@ Every request sends `Accepts-version: 1.0` (the path stays `/api`; versioning is
   machine-written draft until a speaker reviews it.
 - **MOB-12 Consent is shown, not changed.** The apps show a contact's marketing consent and never send anything to a
   contact. Changing consent stays in the web UI, which records its evidence (CRM-D21).
+- **MOB-13 Phones and tablets.** Each app runs on phones and on tablets: the iOS app on iPhone and iPad, the Android
+  app on phones and tablets. A screen uses the width it has: a list and the record it opens may sit side by side on a
+  wide screen and one after the other on a narrow one, and nothing is cut off, hidden or made unreachable by the
+  screen size, the orientation, or a split-screen or multi-window layout. Text follows Dynamic Type and the system font
+  scale at every size class (MOB-10).
+- **MOB-14 Managed and personal devices.** Each app works on a device the organization manages (through mobile device
+  management) and on a personal device (BYOD), by the same rules, and needs no enrolment, device-administrator rights or
+  configuration profile to run.
+  - *Managed.* A deployer may supply the server URL, the issuer and the client ID as managed app configuration (iOS
+    `com.apple.configuration.managed`, Android application restrictions). A value supplied that way is shown and cannot be
+    edited in the app, and it passes the MOB-3 check like a typed one: one that fails is an error at start-up, not
+    replaced by a default or by a typed value (RCA-IN-2). Removing the configuration returns the settings to what the user
+    typed. Wiping an app's data, blocking copy to other apps and requiring a passcode are the device management's to
+    enforce; the app does not implement or weaken them.
+  - *Personal.* The user types the settings, as now. MOB-1 and MOB-2 are what make a personal device acceptable: no
+    record is written to its storage and no token outlives the process, so nothing of the organization's stays on it
+    after the app ends. The app does not read the address book, photos, other apps, or a device identifier, and does not
+    ask for the permissions that would.
 
 ## Lily Design System
 
@@ -98,7 +116,8 @@ GitHub Actions yet: the Swift stage needs macOS with Xcode and the Kotlin stage 
 
 ## Not built
 
-Offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
+Managed app configuration and its tests (MOB-14), layouts for tablets (MOB-13), tests on a tablet or a
+split-screen layout, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
 search through `/api/search`, attachments, other locales, tokens kept across launches, biometric unlock, an App Store or
 Play Store build (signing, privacy labels, store listing), UI tests on a device or simulator, and an accessibility audit
 with VoiceOver or TalkBack users.
