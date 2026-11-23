@@ -18,6 +18,10 @@ support, and analytics.
   library: the probability that two contact records are the same person.
 - [contact-relationship-management-ui-with-svelte](contact-relationship-management-ui-with-svelte/) —
   Svelte client for sales, marketing, and support.
+- [contact-relationship-management-mobile-app-with-swift](contact-relationship-management-mobile-app-with-swift/) —
+  iOS app (SwiftUI, Lily Design System for Swift) for a rep or agent away from a desk.
+- [contact-relationship-management-mobile-app-with-kotlin](contact-relationship-management-mobile-app-with-kotlin/) —
+  Android app (Jetpack Compose, Lily Design System for Kotlin), the same screens.
 - [spec](spec/index.md) — the cross-cutting specification, the single source
   of truth for both editions.
 - [contact-relationship-management.github.io](contact-relationship-management.github.io/README.md) —

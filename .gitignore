@@ -7,3 +7,5 @@ coverage/
 sbom/
 build/
 .vibe/
+# Lily Design System, fetched at a pinned commit by scripts/fetch-lily.sh (spec/mobile-apps).
+vendor/

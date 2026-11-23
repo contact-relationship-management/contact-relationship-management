@@ -1,6 +1,6 @@
 # AGENTS.md — Contact Relationship Management
 
-Entry point for AI coding agents at the repository root. Three projects live here; each has its own, longer
+Entry point for AI coding agents at the repository root. Five projects live here; each has its own, longer
 `AGENTS.md`. [`llms.txt`](llms.txt) and [`llms.json`](llms.json) list every document.
 
 | Project | Directory | Guide |
@@ -9,9 +9,12 @@ Entry point for AI coding agents at the repository root. Three projects live her
 | Domain rules (pure Rust library, in the service's workspace) | `contact-relationship-management-service-with-rust/contact-relationship-management-domain` | [README.md](contact-relationship-management-service-with-rust/contact-relationship-management-domain/README.md) |
 | Matcher (pure Rust library) | `contact-relationship-management-matcher-with-rust` | [README.md](contact-relationship-management-matcher-with-rust/README.md) |
 | Client UI (SvelteKit, Svelte 5) | `contact-relationship-management-ui-with-svelte` | [AGENTS.md](contact-relationship-management-ui-with-svelte/AGENTS.md) |
+| iOS app (Swift, SwiftUI, Lily for Swift) | `contact-relationship-management-mobile-app-with-swift` | [AGENTS.md](contact-relationship-management-mobile-app-with-swift/AGENTS.md) |
+| Android app (Kotlin, Jetpack Compose, Lily for Kotlin) | `contact-relationship-management-mobile-app-with-kotlin` | [AGENTS.md](contact-relationship-management-mobile-app-with-kotlin/AGENTS.md) |
 
 Rust 1.100.0 (pinned in `rust-toolchain.toml`; the crates declare `rust-version = "1.98"`, two releases back), Node 26, pnpm,
-Podman.
+Podman. The mobile apps need Xcode 16 or later (Swift 6) or a JDK 17+ with the Android SDK; Lily for Swift and Kotlin is fetched
+at a pinned commit by `scripts/fetch-lily.sh` ([spec/mobile-apps](spec/mobile-apps/index.md), CRM-D28).
 
 ## Works on its own
 
@@ -37,7 +40,8 @@ that makes a sibling required is a bug.
 
 `scripts/ci-check.sh <stage>` is the one entry point for every CI check, so GitHub Actions and Woodpecker run the same
 commands. The stages are `fmt`, `clippy`, `test`, `test-db`, `front-end`, `e2e`, `site`, `scripts`, `lint`, `pins`,
-`secrets`, `mutants`, `bench`, `supply-chain`, `semver`, `api-types` and `coverage`; `all` runs every stage but `mutants` and `bench`, and
+`secrets`, `mutants`, `bench`, `supply-chain`, `semver`, `api-types`, `coverage`, `mobile-swift` and `mobile-kotlin`; `all` runs every
+stage but `mutants`, `bench` and the two mobile stages, and
 `pre-push` the fast ones. A pass of `all` on a clean tree is recorded by `scripts/attest.sh`. A CI step that checks anything outside the script fails `pins`
 (`scripts/check-ci-entry-point.py`). `scripts/install-pre-push.sh` installs a hook that runs `pre-push` on the commit
 being pushed; `CONTACT_RELATIONSHIP_MANAGEMENT_SKIP_PRE_PUSH="why" git push` skips it and records the reason. `scripts/nightly.sh` runs the slow jobs on

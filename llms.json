@@ -335,6 +335,41 @@
       ]
     },
     {
+      "name": "Mobile apps",
+      "links": [
+        {
+          "title": "Mobile apps spec",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/mobile-apps/index.md",
+          "path": "spec/mobile-apps/index.md",
+          "description": "The iOS and Android apps: screens, the rules MOB-1 to MOB-12, Lily at a pinned commit, tests (CRM-R111, CRM-D28)."
+        },
+        {
+          "title": "iOS app README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-swift/README.md",
+          "path": "contact-relationship-management-mobile-app-with-swift/README.md",
+          "description": "The Swift and SwiftUI app: layout, build and test, the demo, sign-in."
+        },
+        {
+          "title": "iOS app agent guide",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-swift/AGENTS.md",
+          "path": "contact-relationship-management-mobile-app-with-swift/AGENTS.md",
+          "description": "Working agreements for the iOS app."
+        },
+        {
+          "title": "Android app README",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-kotlin/README.md",
+          "path": "contact-relationship-management-mobile-app-with-kotlin/README.md",
+          "description": "The Kotlin and Jetpack Compose app: layout, build and test, the demo, sign-in."
+        },
+        {
+          "title": "Android app agent guide",
+          "url": "https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-kotlin/AGENTS.md",
+          "path": "contact-relationship-management-mobile-app-with-kotlin/AGENTS.md",
+          "description": "Working agreements for the Android app."
+        }
+      ]
+    },
+    {
       "name": "Security and compliance",
       "links": [
         {
@@ -524,6 +559,8 @@
   "commands": {
     "full check": "scripts/ci-check.sh",
     "service tests (the --ignored ones need DB_URL)": "cd contact-relationship-management-service-with-rust && cargo test --features keycloak && cargo test --features keycloak -- --ignored --test-threads=1",
+    "ios app tests (macOS with Xcode)": "scripts/ci-check.sh mobile-swift",
+    "android app tests (needs the Android SDK)": "scripts/ci-check.sh mobile-kotlin",
     "ui tests": "cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test",
     "ui live tests (need a running service on :5160)": "pnpm test:live",
     "guided tour (no service needed)": "cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com"

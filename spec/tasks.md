@@ -2872,3 +2872,39 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     change there is a release); `OrEmpty::or_empty` at about 30 sites still to re-read for whether absent is the whole
     story; about 37 `try_from(..).unwrap_or(..)` on conversions (the counts, shares and lengths are done); and `ci-check.sh all`. The integration tests still use plain
     operators.
+
+## Mobile apps ([mobile-apps/index.md](mobile-apps/index.md), CRM-R111, CRM-D28)
+
+- [x] CRM-T302 **The iOS app (Swift, SwiftUI, Lily for Swift).** Asked for by the product owner on 2026-11-23. (L)
+  - **Done:** `contact-relationship-management-mobile-app-with-swift`: `CRMCore` (Foundation only: models, the MOB-3 URL
+    check, money through `Decimal` and the platform formatter, paging that stays on the server's origin, problem
+    documents, PKCE and the OIDC flow with the discovery check, an API client on an ephemeral session that follows no
+    redirect) and `CRMMobileUI` (SwiftUI with `LilyUI` and `LilyThemes`: settings, sign-in through
+    `ASWebAuthenticationSession`, contacts, a contact, logging an activity, deals by stage, tickets). `App/` is the Xcode
+    project for the iOS target. 31 Swift Testing tests (the rules, the client against a stubbed `URLProtocol`, and that
+    every string key has English); the redirect test was checked to fail without the delegate.
+  - **Looked at:** the contacts, contact, deals and tickets screens in the iOS 27 simulator against a stand-in API with
+    synthetic data (not committed), which showed paging, the demo warning, exact amounts and "Hidden".
+  - **Not done / not verified:** sign-in against a real identity provider; the log form and settings screen in the
+    simulator; the real service (the Podman machine was not reachable that day); a device build (signing); UI tests;
+    VoiceOver; Dynamic Type at its largest sizes.
+- [x] CRM-T303 **The Android app (Kotlin, Jetpack Compose, Lily for Kotlin).** Asked for by the product owner on
+  2026-11-23. (L)
+  - **Done:** `contact-relationship-management-mobile-app-with-kotlin`: `:core` (plain Kotlin on the JVM, the same rules
+    as the iOS core, `HttpURLConnection` with caching and redirects off) and `:app` (Compose, Material 3 for the chrome,
+    `lily-compose` and `lily-compose-themes` for the content; one activity that also takes the sign-in redirect; backup
+    off; cleartext only to loopback hosts). 64 JUnit tests in `:core` (the client against the JDK's `HttpServer`) and 7
+    in `:app` (every error, kind and consent state has its own string). The Gradle distribution is pinned by SHA-256.
+  - **Looked at:** contacts, a contact, the log form (its error summary, then a save that reached the stand-in API with
+    its `Idempotency-Key` and `Accepts-version`), deals and tickets on the `Pixel_10_API_37` emulator. The app timed out
+    on `10.0.2.2` there while a shell connected, so it was run through `adb reverse` (README).
+  - **Not done / not verified:** sign-in against a real identity provider (the browser is opened with `ACTION_VIEW`,
+    not a Custom Tab); the real service; a release build (signing, R8); instrumented tests; TalkBack; a large font
+    scale; right-to-left layout. The bottom navigation has text labels and no icons.
+- [x] CRM-T304 **Gates for the apps.** `scripts/fetch-lily.sh` and `lily-design-system.lock`; `ci-check.sh mobile-swift`
+  and `mobile-kotlin`. (M)
+  - **Done:** both stages pass on macOS (Xcode 27.2, JDK 25, Android SDK 37). `check-ci-entry-point.py` records why
+    neither is in `all` or a hosted workflow.
+  - **Not done:** a hosted job for either (a macOS runner with Xcode 16 or later; the Android SDK platform 37 on
+    Linux). The sparse fetch was also run from the public GitHub remote at the pinned commit (15 MB, about 6
+    seconds).

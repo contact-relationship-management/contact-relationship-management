@@ -6,8 +6,18 @@ subproject keeps a detailed changelog:
 
 - [Rust service](contact-relationship-management-service-with-rust/CHANGELOG.md)
 - [Svelte front end](contact-relationship-management-ui-with-svelte/CHANGELOG.md)
+- [iOS app](contact-relationship-management-mobile-app-with-swift/CHANGELOG.md)
+- [Android app](contact-relationship-management-mobile-app-with-kotlin/CHANGELOG.md)
 
 ## [Unreleased]
+
+### Added — iOS and Android apps (CRM-R111, CRM-T302 to CRM-T304)
+
+- Two native clients, Swift with SwiftUI and Kotlin with Jetpack Compose, drawn with the Lily Design System: contacts,
+  a contact's activities, deals and tickets, deals by stage, tickets with SLA breaches, and logging an activity. They
+  call the API with an OIDC token from PKCE sign-in and store nothing but their settings (CRM-D28,
+  [spec/mobile-apps](spec/mobile-apps/index.md)). `scripts/fetch-lily.sh` fetches Lily at a pinned commit;
+  `ci-check.sh mobile-swift` and `mobile-kotlin` test and build them.
 
 ### Fixed — localized numeric input (CRM-T268)
 

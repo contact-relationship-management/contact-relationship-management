@@ -72,6 +72,14 @@
 - [Translation register](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/spec/translation-register.md): Who wrote each locale's strings and whether a native speaker reviewed them.
 - [Strings identical to English](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-ui-with-svelte/spec/locale-review.md): Generated list of translated values that equal the English, for a reviewer.
 
+## Mobile apps
+
+- [Mobile apps spec](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/spec/mobile-apps/index.md): The iOS and Android apps: screens, the rules MOB-1 to MOB-12, Lily at a pinned commit, tests (CRM-R111, CRM-D28).
+- [iOS app README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-swift/README.md): The Swift and SwiftUI app: layout, build and test, the demo, sign-in.
+- [iOS app agent guide](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-swift/AGENTS.md): Working agreements for the iOS app.
+- [Android app README](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-kotlin/README.md): The Kotlin and Jetpack Compose app: layout, build and test, the demo, sign-in.
+- [Android app agent guide](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/contact-relationship-management-mobile-app-with-kotlin/AGENTS.md): Working agreements for the Android app.
+
 ## Security and compliance
 
 - [Security policy](https://github.com/contact-relationship-management/contact-relationship-management/blob/main/SECURITY.md): Scope, reporting, response targets, severity, disclosure, safe harbour.
@@ -114,6 +122,8 @@
 
 - full check: `scripts/ci-check.sh`
 - service tests (the --ignored ones need DB_URL): `cd contact-relationship-management-service-with-rust && cargo test --features keycloak && cargo test --features keycloak -- --ignored --test-threads=1`
+- ios app tests (macOS with Xcode): `scripts/ci-check.sh mobile-swift`
+- android app tests (needs the Android SDK): `scripts/ci-check.sh mobile-kotlin`
 - ui tests: `cd contact-relationship-management-ui-with-svelte && pnpm install && pnpm test && pnpm exec playwright test`
 - ui live tests (need a running service on :5160): `pnpm test:live`
 - guided tour (no service needed): `cd contact-relationship-management-ui-with-svelte && pnpm dev, then sign in as example@example.com`

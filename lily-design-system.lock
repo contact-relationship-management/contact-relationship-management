@@ -1,0 +1,4 @@
+# The Lily Design System commit the mobile apps build against (spec/mobile-apps, CRM-D28).
+# scripts/fetch-lily.sh fetches exactly this commit into vendor/lily-design-system/. Change both lines together.
+remote=https://github.com/LilyDesignSystem/lily-design-system.git
+commit=7e1ceca4e1492d638b066c59a4de3d94c639ee64

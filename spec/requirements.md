@@ -1843,3 +1843,23 @@ publish their configuration or data.*
 - Built 2026-11-20 (CRM-T276): [licence.md](compliance/supplier-assurance/licence.md). It found that the UI's npm
   dependencies and the images' packages have no licence check.
 - Not built: a licence check for the UI's dependencies and the images. It is not legal advice, and no lawyer has read it.
+
+## CRM-R111 — A rep or agent can work from a phone
+
+*As a sales rep between meetings, or a support agent away from a desk, I can look up a contact, see their deals and
+tickets, and log a call, from a native app on my phone.*
+
+Asked for by the product owner on 2026-11-23. The rules are in [mobile-apps/index.md](mobile-apps/index.md) (MOB-1 to
+MOB-12); the decision is CRM-D28.
+
+- An iOS app (Swift, SwiftUI) and an Android app (Kotlin, Jetpack Compose) draw their content with the Lily Design
+  System for each platform.
+- Each lists contacts, shows a contact with its activities, deals and tickets, lists deals by pipeline and stage, lists
+  tickets with their SLA breaches, and logs an activity about a contact.
+- Sign-in is OIDC with PKCE in the system browser; a demo server with sign-in off works without it and is labelled.
+- Only the settings (server, issuer, client ID) are stored on the phone; a token lasts as long as the process.
+- An amount is exact and a masked one is "Hidden", never zero; a list is whole or an error; a write carries an
+  `Idempotency-Key`.
+- Built 2026-11-23 (CRM-T302, CRM-T303), tested by unit tests and a simulator or emulator build (CRM-T304).
+- Not built: offline use, editing, consent changes, push, other locales, store builds, device UI tests, an
+  accessibility audit with users of assistive technology.

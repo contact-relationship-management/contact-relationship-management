@@ -6,7 +6,9 @@
         ▼
  contact-relationship-management-ui-with-svelte  (SvelteKit BFF)
         │  Authorization: Bearer v4.public.…
-        ▼
+        ▼                       iOS / Android app (CRM-D28): OIDC + PKCE,
+        │                       Bearer <access token>, nothing stored
+        ▼                       ▼
  contact-relationship-management-service-with-rust  (Axum + axa + sqlx + PostgreSQL)
         │  EntityRef lookups (read-only, cached, stub-able); the family
         │  bridges (CRM-R72, CRM-R73, CRM-R94), stub-first

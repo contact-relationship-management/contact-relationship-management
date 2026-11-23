@@ -51,6 +51,8 @@ NOT_IN_ALL = {
     "mutants-diff": "it compares with a base commit, which only a push or a pull request names",
     "pre-push": "it repeats stages `all` runs",
     "bench": "it is a reading of the machine for BENCHMARKS.md, not a check",
+    "mobile-swift": "it needs macOS with Xcode (spec/mobile-apps, CRM-T304)",
+    "mobile-kotlin": "it needs the Android SDK, which the other stages do not (spec/mobile-apps, CRM-T304)",
 }
 
 # Stages for this machine only, which no hosted workflow calls, and why.
@@ -58,6 +60,8 @@ LOCAL_ONLY = {
     "all": "the hosted workflow runs the same stages as separate jobs",
     "pre-push": "the hook's subset of stages the hosted workflow already runs",
     "bench": "a shared hosted runner's timings say little; clippy --all-targets builds the benchmarks",
+    "mobile-swift": "no hosted job has a macOS runner with the Xcode it needs yet (CRM-T304)",
+    "mobile-kotlin": "no hosted job installs the Android SDK platform it needs yet (CRM-T304)",
 }
 
 

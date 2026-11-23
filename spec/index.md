@@ -46,6 +46,8 @@ them.
 | ------------------------------------------------------------------------------------------------------------------ | ------------------------------ | --------------------------------------- |
 | [contact-relationship-management-service-with-rust](../contact-relationship-management-service-with-rust/)         | Back-end JSON API              | Rust, axa (Axum + sqlx), PostgreSQL     |
 | [contact-relationship-management-ui-with-svelte](../contact-relationship-management-ui-with-svelte/) | Sales / marketing / support UI | SvelteKit 3, Svelte 5 runes, TypeScript |
+| [contact-relationship-management-mobile-app-with-swift](../contact-relationship-management-mobile-app-with-swift/) | iOS app for reps and agents | Swift 6, SwiftUI, Lily Design System for Swift |
+| [contact-relationship-management-mobile-app-with-kotlin](../contact-relationship-management-mobile-app-with-kotlin/) | Android app for reps and agents | Kotlin, Jetpack Compose, Lily Design System for Kotlin |
 
 ## Specification (topic files)
 
@@ -67,6 +69,7 @@ them.
 | [regulatory.md](regulatory.md)                     | Demo status; data-protection and e-privacy (marketing consent) posture  |
 | [worldwide.md](worldwide.md)                       | Worldwide equity: CRM-R95 (confirmed), CRM-D19 (confirmed), audit, tasks; CRM-D21 (confirmed, in design.md) |
 | [github-pages-site.md](github-pages-site.md)       | The documentation site for GitHub Pages: pages, locales, tests, publish |
+| [mobile-apps/index.md](mobile-apps/index.md)       | The iOS and Android apps: screens, rules MOB-1 to MOB-12, Lily, tests  |
 | [roadmap.md](roadmap.md)                           | Beyond the v1 queue                                                     |
 | [glossary.md](glossary.md)                         | SFA, MQL/SQL, drip, CLV, SLA, …                                         |
 

@@ -1,0 +1,78 @@
+/* English, written with the app (MOB-11). */
+"app.name" = "CRM";
+"tab.contacts" = "Contacts";
+"tab.deals" = "Deals";
+"tab.tickets" = "Tickets";
+"tab.settings" = "Settings";
+
+"settings.title" = "Settings";
+"settings.server" = "Server";
+"settings.server.help" = "The CRM service's address, such as https://crm.example.org. http is allowed only to this device.";
+"settings.issuer" = "Sign-in issuer";
+"settings.issuer.help" = "Your organization's OpenID Connect issuer. Leave it empty for a demo server with sign-in off.";
+"settings.client" = "Client ID";
+"settings.save" = "Save";
+"settings.saved" = "Settings saved.";
+"settings.signout" = "Sign out";
+"settings.stored" = "Only these settings are stored on this device. Contacts, deals and tickets are not, and signing in lasts until the app is closed.";
+
+"signin.title" = "Sign in";
+"signin.body" = "Sign in with your organization's account. The sign-in page opens in the system browser.";
+"signin.button" = "Sign in";
+
+"problem.title" = "There is a problem";
+"field.required" = "required";
+"action.retry" = "Try again";
+"state.loading" = "Loading";
+"state.empty" = "Nothing here yet.";
+"demo.heading" = "Demo server";
+"demo.body" = "This server has sign-in turned off. It must hold synthetic data only.";
+
+"contacts.search" = "Filter by name";
+"contact.jobTitle" = "Job title";
+"contact.status" = "Status";
+"contact.consent" = "Marketing consent";
+"contact.channel" = "Preferred channel";
+"contact.summary" = "Contact summary";
+"contact.activities" = "Activities";
+"contact.deals" = "Deals";
+"contact.tickets" = "Tickets";
+"contact.consentNote" = "Consent is changed in the web application, which records the evidence.";
+
+"log.title" = "Log activity";
+"log.kind" = "Kind";
+"log.summary" = "Summary";
+"log.summary.missing" = "Enter a summary of the activity";
+"log.save" = "Save";
+"log.cancel" = "Cancel";
+"kind.call" = "Call";
+"kind.email" = "Email";
+"kind.meeting" = "Meeting";
+"kind.note" = "Note";
+"kind.task" = "Task";
+
+"deals.unplaced" = "Deals in a stage this app was not sent";
+"deal.hidden" = "Hidden";
+"deal.won" = "Won";
+
+"ticket.breach.firstResponse" = "First response overdue";
+"ticket.breach.resolution" = "Resolution overdue";
+"ticket.priority" = "Priority";
+"ticket.status" = "Status";
+
+"url.empty" = "Enter an address";
+"url.unreadable" = "Enter a full address that starts with https://";
+"url.notHTTPS" = "The address must start with https:// (http is allowed only to this device)";
+"url.noHost" = "The address has no server name";
+"url.hasCredentials" = "Remove the user name and password from the address";
+"url.hasQueryOrFragment" = "Remove the part after ? or # from the address";
+
+"error.tooManyPages" = "The list is longer than this app can show.";
+"error.unsafeNextLink" = "The server sent a link to another address, so it was not followed.";
+"error.unreadable" = "The server's answer could not be read.";
+"error.signIn" = "Sign-in did not finish: %@";
+"error.signInNoIssuer" = "This server needs you to sign in. Sign in again, or set the sign-in issuer in Settings.";
+"consent.granted" = "Granted";
+"consent.withdrawn" = "Withdrawn";
+"consent.never" = "Never given";
+"consent.pending" = "Pending";

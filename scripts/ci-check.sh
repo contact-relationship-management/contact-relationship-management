@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One entry point for every CI check, so GitHub Actions and Woodpecker run
 # byte-identical commands.   Usage: scripts/ci-check.sh <stage>
-#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | mutants-diff | bench | supply-chain | semver | api-types | coverage | all | pre-push
+#   fmt | clippy | test | test-db | front-end | e2e | site | scripts | lint | pins | secrets | mutants | mutants-diff | bench | supply-chain | semver | api-types | coverage | mobile-swift | mobile-kotlin | all | pre-push
 # scripts/check-ci-entry-point.py fails the build if a CI step checks anything outside this file.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -12,6 +12,9 @@ MATCHER=contact-relationship-management-matcher-with-rust
 # The domain rules (CRM-T260), a crate in the service's workspace.
 DOMAIN="${SVC}/contact-relationship-management-domain"
 SITE=contact-relationship-management.github.io
+# The mobile apps (CRM-R111, spec/mobile-apps). Not in `all`: one needs macOS with Xcode, the other the Android SDK.
+IOS=contact-relationship-management-mobile-app-with-swift
+ANDROID=contact-relationship-management-mobile-app-with-kotlin
 # `keycloak` gates the optional Keycloak bearer path and the `test-idp`
 # dev-dependency feature; without it CI never compiles that code.
 FEATURES=(--features keycloak)
@@ -20,7 +23,7 @@ FEATURES=(--features keycloak)
 # `bench` too, as a reading of the machine rather than a check.
 ALL_STAGES=(fmt lint scripts pins secrets semver clippy test api-types coverage front-end e2e site supply-chain test-db)
 
-stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|bench|supply-chain|semver|api-types|coverage|all|pre-push>}"
+stage="${1:?usage: $0 <fmt|clippy|test|test-db|front-end|e2e|site|scripts|lint|pins|secrets|mutants|mutants-diff|bench|supply-chain|semver|api-types|coverage|mobile-swift|mobile-kotlin|all|pre-push>}"
 
 case "${stage}" in
   fmt)
@@ -275,6 +278,20 @@ case "${stage}" in
     # release; run it before publishing. Needs cargo-semver-checks 0.51 or
     # later to read Rust 1.99's rustdoc output.
     (cd "${MATCHER}" && cargo semver-checks)
+    ;;
+  mobile-swift)
+    # CRM-T304: the iOS app's rules and API client (swift test), then a build for the iOS Simulator. Lily for Swift is
+    # fetched at the commit in lily-design-system.lock (CRM-D28).
+    scripts/fetch-lily.sh
+    (cd "${IOS}" && swift test)
+    (cd "${IOS}/App" && xcodebuild -project CRMMobile.xcodeproj -scheme CRMMobile \
+      -destination 'generic/platform=iOS Simulator' -derivedDataPath ../.build/xcode CODE_SIGNING_ALLOWED=NO build)
+    ;;
+  mobile-kotlin)
+    # CRM-T304: the Android app's rules and API client on the JVM, its unit tests, and a debug build. Needs the
+    # Android SDK (ANDROID_HOME). Lily for Kotlin is fetched at the commit in lily-design-system.lock (CRM-D28).
+    scripts/fetch-lily.sh
+    (cd "${ANDROID}" && ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleDebug)
     ;;
   pre-push)
     # What scripts/pre-push-gate.sh runs on the commit being pushed. These stages, and Prettier and

@@ -565,3 +565,28 @@ needs it.
   OIDC. Then SAML is a task of its own, with its own threat model and tests, and this decision is revised.
 - **What the supplier says meanwhile.** The assurance pack and CRM-R100 say sign-in is OIDC only, so a buyer that
   needs SAML learns it at the start of an assessment, not at go-live.
+
+## CRM-D28 — The mobile apps call the API directly with a bearer token, and store nothing
+
+*Decided 2026-11-23, for CRM-R111.*
+
+The iOS and Android apps send their requests to the service's `/api`, with the user's access token as a bearer token,
+the way the Keycloak path already accepts one. They have no server of their own.
+
+- **Why not a back end for the apps.** The Svelte UI has one (the SvelteKit server holds the session and the token)
+  because a browser should not hold a token a script can read. A native app's process is not shared with page scripts,
+  so RFC 8252's pattern applies: a public client, PKCE, the system browser. A second back end would be a second
+  service to secure for no gain.
+- **Why nothing on disk.** A contact is a person-service record and the CRM keeps references, not copies (CRM-D13,
+  [scope.md](scope.md)). A phone is lost more often than a server, and a copy on it is outside the retention sweep,
+  erasure and subject access. So the apps keep records only in memory, turn the HTTP cache off, and keep only the
+  server URL. Offline use would need its own decision: what is kept, encrypted how, and wiped when.
+- **Why tokens in memory.** The same reason, for the credential: an access token in memory goes with the process. The
+  cost is signing in again after a relaunch. Keeping a refresh token in the Keychain or the Android Keystore is a later
+  choice for a deployer who asks.
+- **Lily from a pinned commit.** Lily's Swift and Kotlin libraries are not published yet, so `scripts/fetch-lily.sh`
+  fetches them from the public Lily repository at the commit in `lily-design-system.lock` into `vendor/` (ignored).
+  It is pinned as an action is pinned, by commit, and the repository needs no sibling checkout. When Lily publishes,
+  the apps take the published versions.
+- **What would change it.** A deployer who needs offline use, or a mobile device management policy that requires a
+  managed app configuration: either is a task with its own threat model.
