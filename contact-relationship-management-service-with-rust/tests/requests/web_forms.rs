@@ -882,3 +882,81 @@ async fn a_workflow_the_form_s_lead_fires_rolls_back_alone() {
     })
     .await;
 }
+
+/// Without a signed-link secret there is no confirmation link to send: the lead is still made, nothing
+/// is mailed, and the "sent" mark that limits mail to a stranger is cleared so a later try can send.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_form_with_no_signing_secret_makes_the_lead_and_mails_nothing() {
+    behind_a_proxy();
+    let _boot = forms_before_boot(&["no-secret-form"]);
+    request::<App, _, _>(|request, ctx| async move {
+        let (recorder, _restore) = arrange(vec![form("no-secret-form", "newsletter", None)]);
+        unsubscribe::install(None);
+        let answer = submit!(
+            request,
+            "no-secret-form",
+            "203.0.113.41",
+            json!({ "name": "No Secret", "email": format!("no-secret-{}@example.test", uuid::Uuid::new_v4()) })
+        );
+        assert_eq!(answer.status_code(), StatusCode::ACCEPTED);
+        assert!(recorder.sent().is_empty(), "no link, so no mail");
+        let db = contact_relationship_management::db::pool(&ctx);
+        assert_eq!(
+            count(
+                db,
+                "SELECT count(*) AS n FROM form_submissions \
+                 WHERE form = 'no-secret-form' AND confirmation_sent_at IS NULL"
+            )
+            .await,
+            1,
+            "the mark is cleared when nothing went out"
+        );
+    })
+    .await;
+}
+
+/// A mail server that refuses the connection is a failed send: the visitor is still told it was
+/// accepted, the lead exists, and the "sent" mark is cleared so the next submission can try again.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_mail_server_that_refuses_leaves_the_lead_and_clears_the_send_mark() {
+    behind_a_proxy();
+    let _boot = forms_before_boot(&["refused-form"]);
+    request::<App, _, _>(|request, ctx| async move {
+        let (_recorder, _restore) = arrange(vec![form("refused-form", "newsletter", None)]);
+        // Port 1 on this machine: nothing listens, so the connection is refused at once.
+        mail::set(Sender::Smtp(Box::new(
+            mail::SmtpSender::new(
+                "127.0.0.1",
+                1,
+                mail::Security::None,
+                None,
+                "crm@example.org",
+                false,
+            )
+            .unwrap(),
+        )));
+        let answer = submit!(
+            request,
+            "refused-form",
+            "203.0.113.42",
+            json!({ "name": "Refused", "email": format!("refused-{}@example.test", uuid::Uuid::new_v4()) })
+        );
+        assert_eq!(answer.status_code(), StatusCode::ACCEPTED);
+        let db = contact_relationship_management::db::pool(&ctx);
+        assert_eq!(
+            count(
+                db,
+                "SELECT count(*) AS n FROM form_submissions \
+                 WHERE form = 'refused-form' AND confirmation_sent_at IS NULL"
+            )
+            .await,
+            1,
+            "a send that failed does not count against the hourly limit"
+        );
+    })
+    .await;
+}
