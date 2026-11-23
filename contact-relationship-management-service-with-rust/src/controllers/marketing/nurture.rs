@@ -363,13 +363,19 @@ pub(super) async fn exit_enrollment(
 /// The next `(current_step, next_due_at, status)` of an enrolment, and whether it completed.
 pub(super) type Advanced = ((i32, Option<DateTimeWithTimeZone>, &'static str), bool);
 
+/// The step at a stored index; `None` past the last. A negative index is invalid data, so an
+/// error (RCA-IN-6), not "past the last".
+fn step_at(steps: &[nurture_steps::Model], index: i32) -> Result<Option<&nurture_steps::Model>> {
+    Ok(steps.get(usize::try_from(index).ok().or_overflow("current_step")?))
+}
+
 pub(super) fn advance_enrollment(
     row: &nurture_enrollments::Model,
     steps: &[nurture_steps::Model],
     now: DateTimeWithTimeZone,
 ) -> Option<Advanced> {
     let next_index = row.current_step.checked_add(1)?;
-    match steps.get(usize::try_from(next_index).unwrap_or(usize::MAX)) {
+    match step_at(steps, next_index).ok()? {
         Some(next_step) => {
             let next_due = now.checked_add(jiff::SignedDuration::from_hours(i64::from(
                 next_step.delay_hours,
@@ -547,7 +553,7 @@ async fn advance_one(
         }
     };
     let steps = rows::steps_of(&mut *txn, row.sequence_pid).await?;
-    let Some(step) = steps.get(usize::try_from(row.current_step).unwrap_or(usize::MAX)) else {
+    let Some(step) = step_at(&steps, row.current_step)? else {
         sqlx::query!(
             "UPDATE nurture_enrollments SET status = 'completed', next_due_at = NULL \
              WHERE id = $1 AND deleted_at IS NULL",
@@ -647,4 +653,16 @@ pub(super) async fn list_sequences(State(ctx): State<AppContext>) -> Result<Resp
         });
     }
     format::json(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::step_at;
+
+    /// Past the last step is "none left"; a negative stored index is an error, not "none left".
+    #[test]
+    fn a_negative_stored_step_is_an_error_not_the_end() {
+        assert!(step_at(&[], 0).unwrap().is_none());
+        assert!(step_at(&[], -1).is_err());
+    }
 }
