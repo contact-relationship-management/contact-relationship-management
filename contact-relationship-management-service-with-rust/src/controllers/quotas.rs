@@ -555,7 +555,7 @@ async fn set_split(
             "INSERT INTO deal_splits (deal_pid, owner_ref, share_bps, set_by) VALUES ($1, $2, $3, $4)",
             pid,
             share.owner_ref,
-            i32::try_from(share.share_bps).unwrap_or(0_i32),
+            i32::try_from(share.share_bps).ok().or_overflow("share_bps")?,
             who,
         )
         .execute(&mut *txn)

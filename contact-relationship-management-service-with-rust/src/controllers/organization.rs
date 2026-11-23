@@ -237,8 +237,12 @@ async fn set(
          stalled_after_days = EXCLUDED.stalled_after_days, set_by = EXCLUDED.set_by, \
          updated_at = now()",
         periods::zone_name(&zone),
-        i16::try_from(month).ok().or_overflow("fiscal_year_start_month")?,
-        i16::try_from(stalled_days).ok().or_overflow("stalled_after_days")?,
+        i16::try_from(month)
+            .ok()
+            .or_overflow("fiscal_year_start_month")?,
+        i16::try_from(stalled_days)
+            .ok()
+            .or_overflow("stalled_after_days")?,
         who,
     )
     .execute(&mut *txn)

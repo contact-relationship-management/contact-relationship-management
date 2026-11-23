@@ -101,13 +101,16 @@ struct Stored {
     expires_at: Timestamp,
 }
 
-impl From<Stored> for Target {
-    fn from(row: Stored) -> Self {
-        Self {
+/// A stored detail outside 0 to 255 is invalid data, so reading it is an error (RCA-IN-6).
+impl TryFrom<Stored> for Target {
+    type Error = sqlx::Error;
+
+    fn try_from(row: Stored) -> Result<Self, sqlx::Error> {
+        Ok(Self {
             contact: row.contact_pid,
-            detail: u8::try_from(row.detail).unwrap_or(0),
+            detail: u8::try_from(row.detail).map_err(|e| sqlx::Error::Decode(Box::new(e)))?,
             expires_at: row.expires_at,
-        }
+        })
     }
 }
 
@@ -125,7 +128,7 @@ pub async fn peek<'e>(
     if !well_formed(token) {
         return Ok(None);
     }
-    Ok(sqlx::query_as!(
+    sqlx::query_as!(
         Stored,
         "SELECT contact_pid, detail, expires_at FROM link_tokens \
          WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now()",
@@ -134,7 +137,8 @@ pub async fn peek<'e>(
     )
     .fetch_optional(db)
     .await?
-    .map(Into::into))
+    .map(Target::try_from)
+    .transpose()
 }
 
 /// Spend a token of `kind`: the one request that finds it unspent and unexpired gets what it names,
@@ -151,7 +155,7 @@ pub async fn consume<'e>(
     if !well_formed(token) {
         return Ok(None);
     }
-    Ok(sqlx::query_as!(
+    sqlx::query_as!(
         Stored,
         "UPDATE link_tokens SET used_at = now() \
          WHERE token_hash = $1 AND kind = $2 AND used_at IS NULL AND expires_at > now() \
@@ -161,7 +165,8 @@ pub async fn consume<'e>(
     )
     .fetch_optional(db)
     .await?
-    .map(Into::into))
+    .map(Target::try_from)
+    .transpose()
 }
 
 /// Delete the rows of tokens that expired or were spent more than [`KEEP_DAYS`] ago.

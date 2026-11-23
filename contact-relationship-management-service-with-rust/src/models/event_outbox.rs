@@ -46,7 +46,7 @@ impl OutboxInsert {
     ///
     /// # Errors
     ///
-    /// When `env.pid` is not a UUID, or the envelope fails to serialize.
+    /// When `env.pid` is not a UUID, the schema version does not fit, or the envelope fails to serialize.
     pub fn from_envelope(env: &Envelope, occurred_at: DateTimeWithTimeZone) -> ModelResult<Self> {
         let entity_pid = Uuid::parse_str(&env.pid).map_err(|e| ModelError::Any(Box::new(e)))?;
         let payload = serde_json::to_value(env).map_err(|e| ModelError::Any(Box::new(e)))?;
@@ -57,7 +57,8 @@ impl OutboxInsert {
             kind: env.kind.clone(),
             occurred_at,
             actor: env.actor.clone(),
-            schema_version: i32::try_from(env.schema_version).unwrap_or(1),
+            schema_version: i32::try_from(env.schema_version)
+                .map_err(|e| ModelError::Any(Box::new(e)))?,
             payload,
         })
     }
