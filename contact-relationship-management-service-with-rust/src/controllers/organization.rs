@@ -17,6 +17,7 @@ use sqlx::{PgExecutor, PgPool};
 use uuid::Uuid;
 
 use super::views::owner_of;
+use crate::arith::OrOverflow;
 use crate::auth::MaybeAuthUser;
 use crate::db;
 use crate::json::Json;
@@ -236,8 +237,8 @@ async fn set(
          stalled_after_days = EXCLUDED.stalled_after_days, set_by = EXCLUDED.set_by, \
          updated_at = now()",
         periods::zone_name(&zone),
-        i16::try_from(month).unwrap_or(1),
-        i16::try_from(stalled_days).unwrap_or(14),
+        i16::try_from(month).ok().or_overflow("fiscal_year_start_month")?,
+        i16::try_from(stalled_days).ok().or_overflow("stalled_after_days")?,
         who,
     )
     .execute(&mut *txn)
