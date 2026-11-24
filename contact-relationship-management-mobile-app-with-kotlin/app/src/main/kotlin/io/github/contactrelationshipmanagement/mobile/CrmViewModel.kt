@@ -1,6 +1,8 @@
 package io.github.contactrelationshipmanagement.mobile
 
 import android.app.Application
+import android.content.Context
+import android.content.RestrictionsManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -15,6 +17,7 @@ import io.github.contactrelationshipmanagement.mobile.core.ContactDetail
 import io.github.contactrelationshipmanagement.mobile.core.DealBoard
 import io.github.contactrelationshipmanagement.mobile.core.IdempotencyKey
 import io.github.contactrelationshipmanagement.mobile.core.Listed
+import io.github.contactrelationshipmanagement.mobile.core.ManagedConfig
 import io.github.contactrelationshipmanagement.mobile.core.OidcClient
 import io.github.contactrelationshipmanagement.mobile.core.Session
 import io.github.contactrelationshipmanagement.mobile.core.Settings
@@ -62,6 +65,9 @@ class CrmViewModel(application: Application) : AndroidViewModel(application) {
     var clientIdText by mutableStateOf("")
     var formErrors by mutableStateOf<SettingsForm.Errors?>(null)
         private set
+    /** True while the deployer supplies the settings (MOB-14): the fields are shown and cannot be edited. */
+    var managed by mutableStateOf(false)
+        private set
     var savedNotice by mutableStateOf(false)
         private set
     var settings by mutableStateOf<Settings?>(null)
@@ -91,17 +97,65 @@ class CrmViewModel(application: Application) : AndroidViewModel(application) {
     val browserRequests = browser.receiveAsFlow()
 
     init {
-        val saved = store.load()
-        serverText = saved.server
-        issuerText = saved.issuer
-        clientIdText = saved.clientId
-        settings = (SettingsForm.check(saved.server, saved.issuer, saved.clientId) as? SettingsForm.Result.Valid)?.settings
+        applyConfiguration()
         if (settings == null) screen = Screen.Home(Tab.Server)
+    }
+
+    /**
+     * Managed configuration wins while it is supplied; a supplied value that fails the check is an error, not a default
+     * and not what was typed (MOB-14, RCA-IN-2). With none supplied, the settings are what the user typed and saved.
+     */
+    fun applyConfiguration() {
+        val restrictions = getApplication<Application>().getSystemService(Context.RESTRICTIONS_SERVICE) as RestrictionsManager
+        val bundle = restrictions.applicationRestrictions
+        fun supplied(key: String): String? = if (bundle.containsKey(key)) bundle.getString(key).orEmpty() else null
+        val server = supplied("server_url")
+        val issuer = supplied("issuer_url")
+        val clientId = supplied("client_id")
+        when (val config = ManagedConfig.read(server, issuer, clientId)) {
+            ManagedConfig.Result.None -> {
+                val wasManaged = managed
+                managed = false
+                val saved = store.load()
+                serverText = saved.server
+                issuerText = saved.issuer
+                clientIdText = saved.clientId
+                useSettings((SettingsForm.check(saved.server, saved.issuer, saved.clientId) as? SettingsForm.Result.Valid)?.settings)
+                if (wasManaged) formErrors = null
+            }
+            is ManagedConfig.Result.Managed -> {
+                managed = true
+                serverText = server.orEmpty()
+                issuerText = issuer.orEmpty()
+                clientIdText = clientId.orEmpty()
+                formErrors = null
+                useSettings(config.settings)
+            }
+            is ManagedConfig.Result.Invalid -> {
+                managed = true
+                serverText = server.orEmpty()
+                issuerText = issuer.orEmpty()
+                clientIdText = clientId.orEmpty()
+                formErrors = config.errors
+                useSettings(null)
+            }
+        }
+    }
+
+    private fun useSettings(next: Settings?) {
+        if (next == settings) return
+        signOut()
+        settings = next
+        contacts = Load.Idle
+        deals = Load.Idle
+        tickets = Load.Idle
+        if (next == null) screen = Screen.Home(Tab.Server)
     }
 
     private fun client(): ApiClient? = settings?.let { s -> ApiClient(s.server) { session.accessToken } }
 
     fun saveSettings() {
+        if (managed) return
         savedNotice = false
         when (val result = SettingsForm.check(serverText, issuerText, clientIdText)) {
             is SettingsForm.Result.Invalid -> formErrors = result.errors

@@ -138,9 +138,7 @@ GitHub Actions yet: the Swift stage needs macOS with Xcode and the Kotlin stage 
 
 ## Not built
 
-Managed app configuration and its tests (MOB-14), the checks that no record text leaves the app (MOB-15; a code search
-found no clipboard, share or selection use, but there is no cover for the app-switcher snapshot, no `FLAG_SECURE`, and
-no test), layouts for tablets (MOB-13), tests on a tablet or a
+Managed app configuration on iOS and a run of it on Android (MOB-14; the Android core rules are tested), the iOS checks that no record text leaves the app (MOB-15: the app-switcher cover, hiding while captured, text-input traits) and a device run of the Android ones (`FLAG_SECURE`, keyboard learning off), a test that no log line carries record text, layouts for tablets (MOB-13), tests on a tablet or a
 split-screen layout, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
 search through `/api/search`, attachments, other locales, tokens kept across launches, biometric unlock, an App Store or
 Play Store build (signing, privacy labels, store listing), UI tests on a device or simulator, and an accessibility audit

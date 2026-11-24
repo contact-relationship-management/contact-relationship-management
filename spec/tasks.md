@@ -2916,11 +2916,17 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     a check on an iPad simulator and a tablet emulator. For MOB-15: record text that cannot be selected or copied,
     no clipboard writes, no index or notification surface, `FLAG_SECURE` and the app-switcher cover, keyboard learning
     off in the log form, and a test that no log line carries record text.
-  - **Not done / not verified:** nothing yet. Neither app reads managed configuration today, and neither has been tested against MOB-15. A search of the code found no clipboard, share or
-    text-selection use (plain Compose and SwiftUI text is not selectable), but nothing sets `FLAG_SECURE`, nothing
-    covers the app-switcher snapshot, and the log form does not turn keyboard learning off. Whether the iOS target is
-    already universal, and how the screens lay out on a tablet, has not been looked at. No mobile device management
-    product has been tried.
+  - **Done (Android, 2026-11-24):** `ManagedConfig` in the core (seven tests: nothing supplied, valid, server alone, bad
+    server, issuer without server, supplied blank, issuer without client ID); the app reads application restrictions
+    (`app_restrictions.xml`) at start and on every resume, shows managed values as fixed with a notice, hides Save, and
+    treats a supplied value that fails the check as an error with no sign-in; `FLAG_SECURE` on the window; the log
+    form turns off autocorrect and adds `IME_FLAG_NO_PERSONALIZED_LEARNING`. The Kotlin build and unit tests pass.
+  - **Not done / not verified:** none of the Android changes has been run on an emulator or device, so `FLAG_SECURE`,
+    the keyboard flag (added through a Compose text-input interceptor) and the restrictions read are verified only
+    by compiling. No test sets restrictions or inspects the editor info. iOS has none of it: no managed configuration
+    (`com.apple.configuration.managed`), no app-switcher cover, no hiding while captured, no text-input traits. Tablet
+    layouts (MOB-13) and the test that no log line carries record text are not started, and whether the iOS target is
+    universal has not been looked at. No mobile device management product has been tried.
 
 ## Test speed (CRM-T306)
 

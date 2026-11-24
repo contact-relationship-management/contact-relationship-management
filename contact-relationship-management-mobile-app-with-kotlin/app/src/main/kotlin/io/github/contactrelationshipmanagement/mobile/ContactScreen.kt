@@ -133,7 +133,8 @@ fun LogActivityScreen(model: CrmViewModel, pid: String) {
                 model::setLogSummary,
                 isError = summaryError != null,
                 minLines = 3,
-                modifier = semantics.fillMaxWidth().focusRequester(summaryFocus),
+                keyboardOptions = NoAutocorrect,
+                modifier = semantics.fillMaxWidth().focusRequester(summaryFocus).noKeyboardLearning(),
             )
         }
         Button(onClick = { model.sendLog(pid) }, enabled = !form.sending) {

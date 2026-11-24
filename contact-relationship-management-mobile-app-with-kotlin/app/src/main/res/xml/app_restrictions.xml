@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Managed app configuration (MOB-14): the three settings a deployer may supply. All optional; each is checked like a typed value. -->
+<restrictions xmlns:android="http://schemas.android.com/apk/res/android">
+    <restriction android:key="server_url" android:title="@string/server_url_label" android:description="@string/server_url_hint" android:restrictionType="string" />
+    <restriction android:key="issuer_url" android:title="@string/issuer_label" android:description="@string/issuer_hint" android:restrictionType="string" />
+    <restriction android:key="client_id" android:title="@string/client_id_label" android:description="@string/client_id_hint" android:restrictionType="string" />
+</restrictions>

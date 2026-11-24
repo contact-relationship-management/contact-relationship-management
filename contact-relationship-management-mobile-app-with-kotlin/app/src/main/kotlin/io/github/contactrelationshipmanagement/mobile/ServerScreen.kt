@@ -43,12 +43,13 @@ fun ServerScreen(model: CrmViewModel) {
             clientError?.let { add(LilyProblem(it) { clientFocus.requestFocus() }) }
         }
         if (problems.isNotEmpty()) ErrorSummary(stringResource(R.string.problem_title), problems)
+        if (model.managed) LilyAlert(stringResource(R.string.managed_notice), kind = AlertKind.Info)
         if (model.savedNotice) LilyAlert(stringResource(R.string.saved), kind = AlertKind.Success)
 
-        UrlField(stringResource(R.string.server_url_label), stringResource(R.string.server_url_hint), serverError, true, model.serverText, serverFocus) {
+        UrlField(stringResource(R.string.server_url_label), stringResource(R.string.server_url_hint), serverError, true, model.serverText, serverFocus, !model.managed) {
             model.serverText = it
         }
-        UrlField(stringResource(R.string.issuer_label), stringResource(R.string.issuer_hint), issuerError, false, model.issuerText, issuerFocus) {
+        UrlField(stringResource(R.string.issuer_label), stringResource(R.string.issuer_hint), issuerError, false, model.issuerText, issuerFocus, !model.managed) {
             model.issuerText = it
         }
         Field(
@@ -60,11 +61,12 @@ fun ServerScreen(model: CrmViewModel) {
                 value = model.clientIdText,
                 onValueChange = { model.clientIdText = it },
                 singleLine = true,
+                enabled = !model.managed,
                 isError = clientError != null,
                 modifier = semantics.fillMaxWidth().focusRequester(clientFocus),
             )
         }
-        Button(onClick = model::saveSettings) { Text(stringResource(R.string.save)) }
+        if (!model.managed) Button(onClick = model::saveSettings) { Text(stringResource(R.string.save)) }
 
         if (model.settings?.oidc != null) {
             LilyCard(modifier = Modifier.fillMaxWidth(), heading = stringResource(R.string.sign_in)) {
@@ -91,6 +93,7 @@ private fun UrlField(
     required: Boolean,
     value: String,
     focus: FocusRequester,
+    editable: Boolean,
     onChange: (String) -> Unit,
 ) {
     Field(label = label, description = hint, error = error, required = required, requiredLabel = stringResource(R.string.required)) { semantics ->
@@ -98,6 +101,7 @@ private fun UrlField(
             value = value,
             onValueChange = onChange,
             singleLine = true,
+            enabled = editable,
             isError = error != null,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
             modifier = semantics.fillMaxWidth().focusRequester(focus),

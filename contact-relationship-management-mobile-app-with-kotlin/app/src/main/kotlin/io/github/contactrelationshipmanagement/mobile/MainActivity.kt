@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,6 +18,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // MOB-15: no screenshot, screen recording or recent-apps thumbnail of a record screen.
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
         lifecycleScope.launch {
             model.browserRequests.collect { url ->
@@ -29,6 +32,12 @@ class MainActivity : ComponentActivity() {
         }
         handle(intent)
         setContent { CrmApp(model) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // A deployer may change or remove the managed configuration while the app is open (MOB-14).
+        model.applyConfiguration()
     }
 
     override fun onNewIntent(intent: Intent) {
