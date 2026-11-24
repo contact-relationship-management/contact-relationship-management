@@ -3097,9 +3097,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   `contact-relationship-management-domain` 0.3.0 and `contact-relationship-management` 0.3.0, from `022c0f0`. The annotated tag
   `v0.3.0` ran `release.yml` (success). `scripts/image-smoke.sh` and `scripts/ui-image-smoke.sh` now default to the v0.3.0
   digests and both pass (31 and 23 checks); `SECURITY.md` names v0.3.0 as the latest release. (S)
-  - **Not done:** the site. `bin/publish-github-pages` was refused as non-fast-forward: the `github-pages` remote carries
-    the zh-tw and it-it locale commits from another session's unpushed work. It was not forced; run it again once that work
-    is on `main`. The GHCR packages were not checked for visibility (owner-only).
+  - **Site, published later the same day:** `bin/publish-github-pages` was refused as non-fast-forward, because the
+    `github-pages` remote's history (the locale commits, `7dd1769`) differed from the subtree split. It was not forced: a
+    merge commit with the split's tree and both parents (`e284b50`) went up as a fast-forward, and the Deploy to GitHub Pages
+    run succeeded; the live site and `/zh-tw/` return 200. Only those two pages were fetched, and nothing was looked at in a
+    browser.
+  - **Not done:** the GHCR packages were not checked for visibility (owner-only); hosted CI on `36bf46c` was not seen.
 - [ ] CRM-T313 **Keep earlier versions of a knowledge-base article (F1).** Proposed 2026-11-24 from
       [lessons/20261124](lessons/20261124/index.md). `service-support.md` says prior versions are kept read-only;
       `update_article` overwrites title and body. Add an `article_versions` table, write the old text in the update's
