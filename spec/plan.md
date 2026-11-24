@@ -207,6 +207,27 @@ a review of every function. Sizes are guesses. The capability survey reads
 vendors' documentation, not their products, and says nothing about real users
 of this CRM. Each task re-checks its finding before work starts.
 
+## Lessons from an independent review, 2026-11-24
+
+Assessment and advice are in [lessons/20261124/index.md](lessons/20261124/index.md); the tasks are CRM-T313 to CRM-T324 in
+[tasks.md](tasks.md). The source is anonymous on purpose: name no organization, person, or figure from it anywhere.
+**Proposed, nothing built.** Assessed by reading: F1 was re-checked against `update_article` (it overwrites the body and
+keeps no earlier text); F2 to F4 and the ticket findings are as the file states, checked on 2026-11-24 at `36bf46c`.
+
+| Order | Work | Why now |
+|---|---|---|
+| 1 | Fix the four places the specification promises what the code does not (F1 to F4) | A written promise that is not kept is the finding the review turns on; each is small |
+| 2 | Ticket movement history and reopen history (idea 2) | History not recorded now cannot be rebuilt later |
+| 3 | Outcome and told-on (idea 1), then themes (idea 3) | The core of "answered, not just responded to" |
+| 4 | Leadership pack outcomes (idea 6) | Small once 1 to 3 exist |
+| 5 | Purpose and scope change, then commitments, ownership, contact load, engagement, networks, account teams | The owner decided on 2026-11-24 that CRM covers partner and public engagement; the specification still describes a commercial model |
+| 6 | Record-level access on tickets | Independent of the rest; needed before any sensitive use |
+
+**Decisions needed from the owner** (they gate tasks, not the whole list): whether a ticket carries an outcome the contact
+can read; whether ownership periods may be kept and for how long; whether F4 is a fault or the privacy rule working.
+Promotion and engagement need separate consent purposes. Not advised: a trust or health score, staff as contacts, a review
+register, themes found by a model, measures of individual agents.
+
 ## Local-first CI/CD (2026-11-04)
 
 Research and advice are in [local-ci-cd.md](local-ci-cd.md); the tasks are CRM-T184 to CRM-T192 in [tasks.md](tasks.md). CRM already has the entry point (`scripts/ci-check.sh`) and a Woodpecker file that calls it, so its remaining work is a local container helper, a pre-push gate, an attestation and a second remote. Not taken: `act` as the plan, a Forgejo runner, a GitHub self-hosted runner.

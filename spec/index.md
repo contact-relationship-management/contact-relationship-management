@@ -71,6 +71,7 @@ them.
 | [github-pages-site.md](github-pages-site.md)       | The documentation site for GitHub Pages: pages, locales, tests, publish |
 | [mobile-apps/index.md](mobile-apps/index.md)       | The iOS and Android apps: screens, rules MOB-1 to MOB-15, Lily, tests  |
 | [roadmap.md](roadmap.md)                           | Beyond the v1 queue                                                     |
+| [lessons/20261124/index.md](lessons/20261124/index.md) | Ideas from an independent review, proposed; four spec-versus-code gaps (CRM-T313 to CRM-T324) |
 | [glossary.md](glossary.md)                         | SFA, MQL/SQL, drip, CLV, SLA, …                                         |
 
 ## Specification-driven delivery (SDD)

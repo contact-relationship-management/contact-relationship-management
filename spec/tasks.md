@@ -3100,3 +3100,40 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Not done:** the site. `bin/publish-github-pages` was refused as non-fast-forward: the `github-pages` remote carries
     the zh-tw and it-it locale commits from another session's unpushed work. It was not forced; run it again once that work
     is on `main`. The GHCR packages were not checked for visibility (owner-only).
+- [ ] CRM-T313 **Keep earlier versions of a knowledge-base article (F1).** Proposed 2026-11-24 from
+      [lessons/20261124](lessons/20261124/index.md). `service-support.md` says prior versions are kept read-only;
+      `update_article` overwrites title and body. Add an `article_versions` table, write the old text in the update's
+      transaction, and a read-only list endpoint. (S)
+      - **Not done / not verified:** nothing built; the retention period for old text needs the owner.
+- [ ] CRM-T314 **Take and record a reason when an article is archived (F2).** `audit.md` says the reason is in the snapshot;
+      `article_status` writes no snapshot and takes no reason. (S)
+- [ ] CRM-T315 **Service level attainment over a period (F3).** `analytics-reporting.md` promises attainment; `sla_dashboard`
+      returns open and breached counts for now. Add a period parameter and the attained share, with the list behind it. (S)
+- [ ] CRM-T316 **Decide F4: owner change and escalation in the audit.** Owner changes record the field name only and
+      escalations record `to`, not `from`. This is a question for the owner (privacy rule or fault); CRM-T322 gives an answer
+      that keeps the rule. Decide, then record it in `audit.md`. (S)
+- [ ] CRM-T317 **Ticket movement and reopen history (idea 2).** A reassignment action with a reason, an append-only movement
+      history, a "waiting with whom" value, a stuck list, and each resolution kept when a ticket is reopened with a reopen
+      count. No league table of agents. Do this early: history not recorded cannot be rebuilt. (M)
+- [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
+      contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,
+      and a "resolved and not told" measure. Tickets from before show `outcome unknown`; an auto-close (CRM-R82) is not
+      agreement. (M)
+- [ ] CRM-T319 **Ticket themes and recurrence (idea 3).** A deployment-set theme chosen by a person (CRM-D13: never inferred),
+      an action and closed-on date, a recurrence view, `no theme` counted, and the small-group rule (CRM-R78). (M)
+- [ ] CRM-T320 **Leadership pack outcomes (idea 6).** Breached, reopened, stuck, resolved and not told, oldest open,
+      commitments moved, themes returned, each with its list, on the first page. No combined health figure. After
+      CRM-T315, T317, T318 and T319. (S)
+- [ ] CRM-T321 **Record-level access on tickets.** The ticket handlers have no record-level check: anyone through the general
+      read gate reads any ticket. Add it; the first step before any restricted or confidential concern channel, and raised in
+      priority by the public-engagement decision. Also say on the web form where sensitive concerns go. (M)
+- [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
+      changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
+      rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)
+- [ ] CRM-T323 **Purpose and scope change for partner and public engagement.** Decided by the owner on 2026-11-24. `purpose.md`
+      and `scope.md` still describe a commercial model; change them before code for engagement exercises, contact load,
+      networks (roles and dates) or account teams. Promotion and engagement need separate consent purposes. (S)
+- [ ] CRM-T324 **Engagement exercises, contact load, networks, account teams (ideas 7, 8, 10, 11).** After CRM-T323. Each is
+      its own spec edit, code edit and test edit; none is designed here beyond the lessons file. (L)
+      - **Not done / not verified:** the whole group of CRM-T313 to CRM-T324 is proposed from one anonymous review read by
+      one session; no CRM user was asked, and no test was run.

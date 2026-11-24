@@ -25,7 +25,7 @@ editing history.
 ## Knowledge base
 
 Articles `draft → published → archived`; published edits bump
-`version` (prior versions retained read-only). Keyword search
+`version` (prior versions retained read-only; **not built**: an update overwrites the text, CRM-T313). Keyword search
 (ILIKE v1) serves both agents and — roadmap — a public portal.
 Linking an article to a ticket logs a note activity, so "answered
 by KB" is measurable.

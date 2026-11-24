@@ -2,6 +2,9 @@
 
 Beyond the v1 queue ([tasks.md](tasks.md)):
 
+- **Answers, not only responses (proposed, 2026-11-24)** — a ticket outcome the person is told, ticket movement and reopen
+  history, themes with recurrence, commitments, ownership continuity, engagement exercises and contact load; see
+  [lessons/20261124/index.md](lessons/20261124/index.md) and CRM-T313 to CRM-T324. Nothing is built.
 - **Real ESP adapter** — SMTP and the Brevo, Mailjet, SES, Azure,
   Mailgun and SendGrid adapters are built behind the send seam, with
   bounce, complaint, open and click webhooks (CRM-T39, CRM-R58); none

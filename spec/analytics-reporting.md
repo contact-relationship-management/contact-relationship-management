@@ -15,7 +15,7 @@ reads (ETag; tag excludes `as_of`) stamped with `as_of`.
 | **Pipeline by stage** | open-deal count + Σ amount per stage, per currency |
 | **Forecast** | stage-weighted Σ (amount × probability) by close period and owner ([sales-automation](sales-automation.md)) |
 | **Campaign ROI** | funnel + (attributed won revenue − cost) ÷ cost ([marketing-automation](marketing-automation.md)) |
-| **SLA health** | open tickets by priority × breach state; first-response and resolution attainment over a period |
+| **SLA health** | open tickets by priority × breach state; first-response and resolution attainment over a period (**not built**: open and breached counts for now only, CRM-T315) |
 | **CLV** | per account: Σ won-deal `amount_minor` per currency (v1 revenue-sum definition; margin/discounting is roadmap) |
 | **Activity feed** | recent activities by team / owner / kind — the coaching and audit surface |
 
