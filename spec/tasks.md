@@ -3070,4 +3070,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     `axa-test` 0.13 (not tried), TypeScript 7 (a major version; not tried), replacing `chrono` (it is only a test
     dependency of `axum-test`; `aws-lc-rs` and `cron` are already gone, `jiff`, `ring` and `croner` are in use).
     Coverage is measured with `cargo-llvm-cov`, not `cargo-tarpaulin` (the floor in CRM-T309 is an llvm-cov figure).
-    No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.
+    A plain `cargo update` moved `cookie` back to the vulnerable 0.18.2 (RUSTSEC-2026-0594), because 0.18.3 is under the two-day minimum
+    age; the full gate's supply-chain stage caught it. It is pinned again with
+    `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update -p cookie --precise 0.18.3` (the owner approved the override on
+    2026-11-23); run that after any `cargo update` until the age passes. No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.
