@@ -3093,3 +3093,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Ran:** `cargo check --workspace --all-targets`; `test-db` (295 tests, PostgreSQL 18 and Redis 8 under `podman run`).
       - **Not done / not verified:** `scripts/ci-check.sh all` was not rerun; the earlier intermittent
       `_sqlx_migrations does not exist` failures seen in the loop log were with 0.12 under parallel runs, and did not recur.
+- [x] CRM-T312 **Release v0.3.0, 2026-11-24.** Published to crates.io: `contact-relationship-management-matcher` 0.2.2,
+  `contact-relationship-management-domain` 0.3.0 and `contact-relationship-management` 0.3.0, from `022c0f0`. The annotated tag
+  `v0.3.0` ran `release.yml` (success). `scripts/image-smoke.sh` and `scripts/ui-image-smoke.sh` now default to the v0.3.0
+  digests and both pass (31 and 23 checks); `SECURITY.md` names v0.3.0 as the latest release. (S)
+  - **Not done:** the site. `bin/publish-github-pages` was refused as non-fast-forward: the `github-pages` remote carries
+    the zh-tw and it-it locale commits from another session's unpushed work. It was not forced; run it again once that work
+    is on `main`. The GHCR packages were not checked for visibility (owner-only).

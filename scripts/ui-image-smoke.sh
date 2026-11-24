@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run a UI image the way a deployment would, and use it (CRM-T74 follow-up).
-#   scripts/ui-image-smoke.sh [IMAGE]       default: the v0.2.0 multi-arch image by digest
+#   scripts/ui-image-smoke.sh [IMAGE]       default: the v0.3.0 multi-arch image by digest
 #
 # Phase 1, hardened (read-only root, no capabilities, no new privileges, non-root) with the
 # guided tour OFF by default (CONTACT_RELATIONSHIP_MANAGEMENT_DEMO_TOUR unset): the page and its static files are served, every security header is set,
@@ -15,7 +15,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/ui@sha256:50fd8c3cf1ded1c48dd90e47ef5e7c6626d8d910c124ec4a5245405c00bae72c}"
+IMAGE="${1:-ghcr.io/contact-relationship-management/contact-relationship-management/ui@sha256:b5436838353642ed0d2d8b02fb601c523776ca657c367862910b59e76a30ec39}"
 A=crm-ui-smoke-plain B=crm-ui-smoke-tour
 PA=13100 PB=13101
 JAR="$(mktemp -t crm-ui-smoke-jar.XXXXXX)"
