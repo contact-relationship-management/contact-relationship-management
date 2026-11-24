@@ -54,6 +54,18 @@ token's audience must be one the service accepts. The token is kept in memory on
 The server, issuer and client ID, in `UserDefaults`. No record, and no token. The URL session is ephemeral with no
 cache (MOB-1, MOB-2).
 
+## Managed devices, tablets and no copy out
+
+- **Managed configuration (MOB-14).** A deployer may supply `server_url`, `issuer_url` and `client_id` under
+  `com.apple.configuration.managed`. Supplied values are shown as fixed and checked like typed ones; one that fails is an
+  error, not a default. The configuration is read again each time the app becomes active. `ManagedConfig` in CRMCore
+  holds the rule.
+- **iPhone and iPad (MOB-13).** The Contacts tab is a split view: list and contact side by side on an iPad, one after the
+  other on an iPhone.
+- **No record text copied out (MOB-15).** Text selection is off, a blank cover hides every screen while the app is not
+  active or the screen is captured or mirrored, autocorrection is off in the log form (iOS has no switch for keyboard
+  learning on a plain field), and an unreadable answer is reported by field path, never by the text it held.
+
 ## Not built or not verified
 
 See [spec/mobile-apps](../spec/mobile-apps/index.md#not-built). In particular: no UI tests, sign-in not tried against a

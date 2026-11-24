@@ -66,9 +66,9 @@ not): nicknames, initials, typos, accents, transliteration, swapped and
 compound names, a changed surname, a job change, sparse records, a shared
 mailbox or phone, the same name at different employers, look-alike names, and
 families. About half are the hard look-alikes. `tests/tuning.rs` scores them
-(`cargo test --test tuning -- --nocapture`), prints precision, recall and a
+(`cargo test --test main tuning:: -- --nocapture`), prints precision, recall and a
 calibration table, and pins floors so a later change cannot make it worse.
-`cargo test --test tuning -- --ignored --nocapture sweep` searches the
+`cargo test --test main tuning:: -- --ignored --nocapture sweep` searches the
 parameters.
 
 Measured on full records (all fields):

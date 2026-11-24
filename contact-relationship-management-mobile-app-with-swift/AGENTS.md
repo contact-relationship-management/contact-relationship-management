@@ -1,6 +1,6 @@
 # AGENTS.md — iOS app (Swift, SwiftUI, Lily)
 
-Read [spec/mobile-apps](../spec/mobile-apps/index.md) first (MOB-1 to MOB-12, CRM-D28).
+Read [spec/mobile-apps](../spec/mobile-apps/index.md) first (MOB-1 to MOB-15, CRM-D28).
 
 - **Rules go in `CRMCore`** (Foundation only) with a Swift Testing test each; `CRMMobileUI` stays thin.
 - **Nothing on disk** but `Settings` (MOB-1). Do not add a cache, Core Data, SwiftData, a file write or a log of a

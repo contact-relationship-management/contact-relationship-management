@@ -14,6 +14,7 @@ license = "MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR 
 keywords = ["crm", "contacts", "matching", "deduplication", "record-linkage"]
 categories = ["algorithms", "data-structures"]
 include = ["src/**/*", "README.md", "CHANGELOG.md"]
+autotests = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -25,6 +26,11 @@ unicode-normalization = "0.1.26"
 unicode-properties = { version = "=0.1.5", default-features = false, features = ["general-category"] }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 serde_json = "1"
+
+# One integration-test binary (tests/main.rs declares the modules): one link step instead of three.
+[[test]]
+name = "main"
+path = "tests/main.rs"
 
 [[bench]]
 name = "matching"

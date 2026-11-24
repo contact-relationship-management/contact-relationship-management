@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Measure line coverage with cargo-llvm-cov (not tarpaulin: llvm-cov is what the repository's floor, CRM-T309, is
+# measured with) and enforce the floor. Needs PostgreSQL 18 and Redis 8: this starts them on free ports and stops them.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+exec scripts/ci-services.sh run coverage

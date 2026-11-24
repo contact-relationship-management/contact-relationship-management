@@ -115,11 +115,25 @@ test-service:
 	cd $(SERVICE) && make test
 
 ##
-# make test-minimum-supported-rust-version: Check and test on the minimum supported Rust version (N-2) and N-1.
+# make ci-minimum-supported-rust-version: Check and test on the minimum supported Rust version (N-2) and N-1.
 ##
-.PHONY: test-minimum-supported-rust-version
-test-minimum-supported-rust-version:
-	bin/make-test-minimum-supported-rust-version
+.PHONY: ci-minimum-supported-rust-version
+ci-minimum-supported-rust-version:
+	bin/make-ci-minimum-supported-rust-version
+
+##
+# make test-benchmarks: Run the criterion benchmarks (`scripts/ci-check.sh bench`).
+##
+.PHONY: test-benchmarks
+test-benchmarks:
+	bin/test-benchmarks
+
+##
+# make test-coverage: Measure line coverage with cargo-llvm-cov and enforce the floor (`scripts/ci-check.sh coverage`).
+##
+.PHONY: test-coverage
+test-coverage:
+	bin/test-coverage
 
 ##
 # make test-ui: Test the front-end UI.

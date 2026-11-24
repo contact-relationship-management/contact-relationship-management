@@ -90,7 +90,7 @@ SECTIONS = [
         ("Strings identical to English", "contact-relationship-management-ui-with-svelte/spec/locale-review.md", "Generated list of translated values that equal the English, for a reviewer."),
     ]),
     ("Mobile apps", [
-        ("Mobile apps spec", "spec/mobile-apps/index.md", "The iOS and Android apps: screens, the rules MOB-1 to MOB-12, Lily at a pinned commit, tests (CRM-R111, CRM-D28)."),
+        ("Mobile apps spec", "spec/mobile-apps/index.md", "The iOS and Android apps: screens, the rules MOB-1 to MOB-15, Lily at a pinned commit, tests (CRM-R111, CRM-D28)."),
         ("iOS app README", "contact-relationship-management-mobile-app-with-swift/README.md", "The Swift and SwiftUI app: layout, build and test, the demo, sign-in."),
         ("iOS app agent guide", "contact-relationship-management-mobile-app-with-swift/AGENTS.md", "Working agreements for the iOS app."),
         ("Android app README", "contact-relationship-management-mobile-app-with-kotlin/README.md", "The Kotlin and Jetpack Compose app: layout, build and test, the demo, sign-in."),

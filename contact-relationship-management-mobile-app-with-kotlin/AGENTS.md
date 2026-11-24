@@ -1,6 +1,6 @@
 # AGENTS.md — Android app
 
-Read [spec/mobile-apps](../spec/mobile-apps/index.md) first (MOB-1 to MOB-12, CRM-R111, CRM-D28); the root
+Read [spec/mobile-apps](../spec/mobile-apps/index.md) first (MOB-1 to MOB-15, CRM-R111, CRM-D28); the root
 [AGENTS.md](../AGENTS.md) applies too.
 
 - **Logic goes in `core`**, plain Kotlin with a JVM test for each rule. `app` holds the activity, the view model and

@@ -3052,3 +3052,22 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     CI starts clean and is not affected.
   - **Not verified:** the CI coverage job at 97.2. Local and hosted figures agreed within the old floor's margin on the same
     code, not more closely than that.
+
+- [ ] CRM-T310 **Maintenance pass, 2026-11-24: dependencies, alerts, make targets, test binaries, documents.** Asked for by the
+  product owner ("update major project"). (M)
+  - **Done:** `cargo update` in the service and the matcher; `redis` 1.8.3; Svelte 5.59.1, `marked` 18.2.1 and
+    `@vitest/coverage-v8` 5.1.1 in the UI and the site; the matcher's three integration-test files are one binary
+    (`tests/main.rs`, `autotests = false`, as the service's); `make ci-minimum-supported-rust-version`
+    (`bin/make-ci-minimum-supported-rust-version`; the old Makefile target named a script that did not exist),
+    `make test-benchmarks` and `make test-coverage`; the Dependabot alert for `jsonwebtoken` (GHSA-h395-gr6q-cpjc)
+    dismissed as not used, with the reason on GitHub (the crate is reached only through `axum-keycloak-auth`, which
+    enforces `exp`, `nbf` and `aud` itself; revisit when it moves to `jsonwebtoken` 10.3 or later); the secret-scanning
+    alert for the Standard Webhooks specification's published example secret closed as a false positive; `llms.txt` and
+    `llms.json` and the app guides say MOB-1 to MOB-15; both app READMEs describe managed configuration, tablets and
+    no copy out; the `lily-upgrade` and `mobile-apps` branches and worktrees removed (nothing on them was not on `main`).
+    `cargo check --all-targets --all-features` passes on Rust 1.98, 1.99 and 1.100.0 for the service and the matcher.
+  - **Not done:** `jsonschema` 0.63 (cargo would not select it under the repository's resolver rules, so 0.60 stays),
+    `axa-test` 0.13 (not tried), TypeScript 7 (a major version; not tried), replacing `chrono` (it is only a test
+    dependency of `axum-test`; `aws-lc-rs` and `cron` are already gone, `jiff`, `ring` and `croner` are in use).
+    Coverage is measured with `cargo-llvm-cov`, not `cargo-tarpaulin` (the floor in CRM-T309 is an llvm-cov figure).
+    No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.

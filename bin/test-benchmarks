@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Run the criterion benchmarks (the matcher's and the domain rules'). A reading of this machine, not a gate.
+# Extra arguments go to criterion, such as a filter: bin/test-benchmarks '^calendar/'.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+exec scripts/ci-check.sh bench "$@"

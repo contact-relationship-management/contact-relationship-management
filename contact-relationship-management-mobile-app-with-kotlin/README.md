@@ -7,7 +7,7 @@ Material 3 for the app's chrome and the [Lily Design System for Kotlin](https://
 > ⚠️ **Not ready for production.** A first version (CRM-T303). It has been built and unit-tested, not run against a real
 > identity provider or reviewed by users of TalkBack. See [Not built or not verified](#not-built-or-not-verified).
 
-The rules are in [spec/mobile-apps](../spec/mobile-apps/index.md) (MOB-1 to MOB-12), the requirement is CRM-R111 and
+The rules are in [spec/mobile-apps](../spec/mobile-apps/index.md) (MOB-1 to MOB-15), the requirement is CRM-R111 and
 the decision CRM-D28: the app calls the service's `/api` directly with a bearer token, keeps records in memory only, and
 stores nothing but its three settings.
 
@@ -56,10 +56,22 @@ the app. The app checks `state`, exchanges the code with the verifier (no client
 memory until the process ends (MOB-2). The deployer registers a public client with that redirect URI, and gives its
 tokens an audience the service accepts.
 
+## Managed devices, tablets and no copy out
+
+- **Managed configuration (MOB-14).** A deployer may supply `server_url`, `issuer_url` and `client_id` as application
+  restrictions (`res/xml/app_restrictions.xml`). Supplied values are shown as fixed and checked like typed ones; one that
+  fails is an error, not a default. Removing them returns the settings to what the user typed. `ManagedConfig` in the
+  core holds the rule.
+- **Tablets (MOB-13).** A window 600 dp wide or more shows the contact list beside the open contact; other screens keep a
+  line length of at most 720 dp.
+- **No record text copied out (MOB-15).** The window has `FLAG_SECURE` (an `adb screencap` of the app is black), the log
+  form turns off autocorrect and keyboard learning, and an unreadable answer is reported by field path, never by the
+  text it held.
+
 ## Not built or not verified
 
-- **Not verified:** sign-in has not been tried against a real identity provider (Keycloak or another); the app has not
-  been run on an emulator or a device, so no screen has been looked at; nothing has been tried with TalkBack, a large
+- **Not verified:** sign-in has not been tried against a real identity provider (Keycloak or another); the app has been run on a phone
+  emulator (also resized to tablet size) against a stub server, but not on a real device or tablet; nothing has been tried with TalkBack, a large
   font scale or a right-to-left locale.
 - **Not built:** everything in the spec's [Not built](../spec/mobile-apps/index.md#not-built) list, and: Custom Tabs (the
   default browser is opened with `ACTION_VIEW`); a refresh when the token expires (a `401` signs the user out);
