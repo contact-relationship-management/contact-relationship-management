@@ -3052,7 +3052,6 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     CI starts clean and is not affected.
   - **Not verified:** the CI coverage job at 97.2. Local and hosted figures agreed within the old floor's margin on the same
     code, not more closely than that.
-
 - [ ] CRM-T310 **Maintenance pass, 2026-11-24: dependencies, alerts, make targets, test binaries, documents.** Asked for by the
   product owner ("update major project"). (M)
   - **Done:** `cargo update` in the service and the matcher; `redis` 1.8.3; Svelte 5.59.1, `marked` 18.2.1 and
@@ -3081,3 +3080,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     now gives the matcher its own target subdirectory. `scripts/ci-check.sh all` stops at `test-db` and `coverage` without
     a database; here they were run through `podman run` containers because `podman compose` does not work.
     No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.
+- [x] CRM-T311 **axa 0.23.0 and axa-test 0.14.0.** Asked for by the product owner on 2026-11-24, with the publish-age
+      exception approved (both were published about 5 hours before); `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow` overrode
+      it for one `cargo update -p axa -p axa-test`, which also moved `axa-cursor-pagination` 0.1.3, `axa-postgres-job-queue`
+      0.7.0, `axa-redis-cache` 0.3.0 and `axa-request-rate-limit` 0.3.4. `cookie` stays 0.18.3. (S)
+      - **What it changes:** the two versions in the service's `Cargo.toml` and the lockfile. No source changed: the service
+      builds `Defaults` with `..Defaults::default()`, and calls none of the signatures 0.22 and 0.23 changed.
+      - **Tried and not taken:** `Error::with_detail` in place of `Error::CustomError(.., ErrorDetail::new("unprocessable", ..))`:
+      it sets `code` to the status's reason, which would change the codes callers read. `AppRoutes::into_app_with` for
+      `App::router`: `after_routes` is async and the MCP router is merged after the layers, so the hand-built order stays.
+      `Defaults::cors_origins`: the origins come from runtime settings, not a constant.
+      - **Ran:** `cargo check --workspace --all-targets`; `test-db` (295 tests, PostgreSQL 18 and Redis 8 under `podman run`).
+      - **Not done / not verified:** `scripts/ci-check.sh all` was not rerun; the earlier intermittent
+      `_sqlx_migrations does not exist` failures seen in the loop log were with 0.12 under parallel runs, and did not recur.

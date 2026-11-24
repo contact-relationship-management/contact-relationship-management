@@ -257,9 +257,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "axa"
-version = "0.21.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fa587d5e9e7930c656a839d99b1716dbd637060291c32b123125e60508ce7f3"
+checksum = "12310579da83bb23601693721144cd322f619dea9e52c049ef9f55f0a0f8cb95"
 dependencies = [
  "async-trait",
  "axa-cursor-pagination",
@@ -292,9 +292,9 @@ dependencies = [
 
 [[package]]
 name = "axa-cursor-pagination"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7343ae9911dc6136c1248b3d1418401a5f8fcfaf8bec59a5ae2867c467a6d6"
+checksum = "5e1bec30f9c835be9a7009b52a4bae8a3a78dc3e331d0a096abdb63a40a0b7ed"
 dependencies = [
  "axum",
  "base64 0.23.1",
@@ -311,9 +311,9 @@ checksum = "b9bdc35432012724d2a1a528ae83fc1117640f64ef910bbb46df8ad0261ebb15"
 
 [[package]]
 name = "axa-postgres-job-queue"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d19135ee340af653821cbc62708306bb9eb032f51fdb631687089f0c4fbf3331"
+checksum = "c7ad3d9f3b2f307fe0ba316aeeebbc46dffbfd93a9a8bf46081ba70bcefb9be8"
 dependencies = [
  "croner",
  "jiff 1.0.2",
@@ -347,9 +347,9 @@ dependencies = [
 
 [[package]]
 name = "axa-redis-cache"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5445fe8b158d820c6ea6c954f42af15ddc61f3369fca751d1c7e21ded3b3f655"
+checksum = "2601922bb79488d799c3015be5fb60721b20bf6bf49f15793f0addf5dbb70748"
 dependencies = [
  "redis",
  "serde",
@@ -361,9 +361,9 @@ dependencies = [
 
 [[package]]
 name = "axa-request-rate-limit"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ccb32a50723d22038093f78d4ca0054fb3d5dfd6bfb1e9fdc77a1d30b8fab5f"
+checksum = "1fc41ba876dee9dee34d593c449eec6c5caf5f7e67db2b7e611ae88245506e3b"
 dependencies = [
  "axa-problem",
  "axum",
@@ -373,9 +373,9 @@ dependencies = [
 
 [[package]]
 name = "axa-test"
-version = "0.12.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d6fcc6e60d885cae7c348eaab271ff65860d4afb764ccd41bbffa417a84fa53"
+checksum = "e4fc9391698e9241190c2344991344f974db17085f1f4692b98b58fb87231742"
 dependencies = [
  "axa",
  "axum-test",
