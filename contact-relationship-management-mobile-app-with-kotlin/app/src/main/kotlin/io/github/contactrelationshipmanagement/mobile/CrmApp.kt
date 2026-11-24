@@ -5,6 +5,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
@@ -78,21 +80,29 @@ fun CrmApp(model: CrmViewModel) {
                                 } else {
                                     ContactsScreen(model)
                                 }
-                                Tab.Deals -> DealsScreen(model)
-                                Tab.Tickets -> TicketsScreen(model)
-                                Tab.Server -> ServerScreen(model)
+                                Tab.Deals -> Readable { DealsScreen(model) }
+                                Tab.Tickets -> Readable { TicketsScreen(model) }
+                                Tab.Server -> Readable { ServerScreen(model) }
                             }
                             is Screen.ContactScreen -> if (wide) {
                                 ListAndRecord(model) { ContactScreen(model, screen.pid) }
                             } else {
                                 ContactScreen(model, screen.pid)
                             }
-                            is Screen.LogActivity -> LogActivityScreen(model, screen.pid)
+                            is Screen.LogActivity -> Readable { LogActivityScreen(model, screen.pid) }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/** A screen that is not a list beside a record keeps a readable line length on a wide window: centred, at most 720 dp. */
+@Composable
+private fun Readable(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = 720.dp)) { content() }
     }
 }
 

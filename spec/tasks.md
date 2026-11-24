@@ -2930,7 +2930,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Not verified (tablet):** tapping a contact on the iPad or the iPhone (no tap tool for the simulator was available; the iPhone list
     was seen as one column with chevrons, a screenshot, but not what opens), a real tablet or a tablet system image (the emulator was a phone resized by
     `wm size`, so it is not a rotation or a split-screen window), multi-window and split-screen on either platform,
-    Dynamic Type or font scale at the large sizes, and the other tabs on a wide screen (they stretch to the full width).
+    Dynamic Type or font scale at the large sizes, and the Deals and Tickets tabs on a wide screen (the Server tab was seen centred at 720 dp or less in the resized emulator; the log form, Deals and Tickets use the same wrapper but were not looked at; iOS lists and forms use the system's own width).
   - **Done (error text, 2026-11-24):** a test in each app feeds five malformed contact lists that carry a marker string
     (wrong type, cut off, not a list, a missing field, not JSON) and checks the error names no record text. On Android it
     **failed**: the unreadable-answer error carried kotlinx.serialization's message, which quotes the whole JSON input. Both
