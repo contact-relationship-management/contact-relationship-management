@@ -47,13 +47,46 @@ public final class AppModel {
     /// The last request answered `401`.
     private(set) var needsSignIn = false
 
+    /// True while the deployer supplies the settings (MOB-14): the fields are shown and cannot be edited.
+    private(set) var isManaged = false
+    /// A managed value that failed the check; nothing is used until the deployer fixes it (RCA-IN-2).
+    private(set) var managedProblem: ManagedConfig?
+
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         settings = Settings.load(from: defaults)
-        server = try? ServerURL(settings.server)
-        issuer = settings.issuer.isEmpty ? nil : try? ServerURL(settings.issuer)
+        server = nil
+        issuer = nil
+        applyConfiguration()
+    }
+
+    /// Managed configuration wins while it is supplied; with none, the settings are what the user typed and saved.
+    func applyConfiguration() {
+        let before = (server, issuer)
+        managedProblem = nil
+        let config = ManagedConfig.read(from: defaults)
+        switch config {
+        case .none:
+            isManaged = false
+            settings = Settings.load(from: defaults)
+        case .managed(let server, let issuer, let clientID):
+            isManaged = true
+            settings = Settings(server: server, issuer: issuer, clientID: clientID)
+        case .invalid:
+            isManaged = true
+            settings = Settings(server: "", issuer: "", clientID: "")
+            managedProblem = config
+        }
+        if managedProblem != nil {
+            server = nil
+            issuer = nil
+        } else {
+            server = try? ServerURL(settings.server)
+            issuer = settings.issuer.isEmpty ? nil : try? ServerURL(settings.issuer)
+        }
+        if before.0 != server || before.1 != issuer { signOut() }
     }
 
     var isConfigured: Bool { server != nil }
@@ -64,6 +97,7 @@ public final class AppModel {
 
     /// Checks and keeps `settings`; on a problem nothing changes and the problems come back by field.
     func apply(_ candidate: Settings) -> (server: ServerURLError?, issuer: ServerURLError?) {
+        if isManaged { return (nil, nil) }
         let server = Result { () throws(ServerURLError) in try ServerURL(candidate.server) }
         let issuer: Result<ServerURL?, ServerURLError> =
             candidate.issuer.isEmpty ? .success(nil) : Result { () throws(ServerURLError) in try ServerURL(candidate.issuer) }

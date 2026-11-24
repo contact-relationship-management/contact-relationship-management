@@ -152,6 +152,9 @@ struct LogActivityView: View {
             LilyUI.Field(label: S.logSummary, error: summaryError, required: true, requiredLabel: S.required) {
                 TextField(S.logSummary, text: $summary, axis: .vertical)
                     .lineLimit(3...8)
+                    // MOB-15: iOS offers no switch for keyboard learning on a plain field, so correction and
+                    // prediction are off for it.
+                    .autocorrectionDisabled()
                     .focused($summaryFocused)
             }
         }

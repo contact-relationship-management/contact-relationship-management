@@ -1,3 +1,6 @@
+#if os(iOS)
+import UIKit
+#endif
 // The app's screens: settings until a server is set, sign-in when the server needs it, then the tabs.
 import CRMCore
 import LilyThemes
@@ -7,6 +10,8 @@ import SwiftUI
 public struct RootView: View {
     @State private var model = AppModel()
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var captured = false
 
     public init() {}
 
@@ -26,6 +31,30 @@ public struct RootView: View {
             }
         }
         .lilyTheme(colorScheme == .dark ? .dark : .light)
+        // MOB-15: no record text is selectable, and none is shown in the app switcher or while the screen is captured.
+        .textSelection(.disabled)
+        .overlay { if scenePhase != .active || captured { PrivacyCover() } }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { model.applyConfiguration() } }
+        #if os(iOS)
+        .onAppear { captured = Self.isCaptured }
+        .onReceive(NotificationCenter.default.publisher(for: UIScreen.capturedDidChangeNotification)) { _ in
+            captured = Self.isCaptured
+        }
+        #endif
+    }
+
+    #if os(iOS)
+    /// Recording or mirroring the screen (MOB-15).
+    private static var isCaptured: Bool {
+        UIApplication.shared.connectedScenes.contains { ($0 as? UIWindowScene)?.screen.isCaptured == true }
+    }
+    #endif
+}
+
+/// A blank cover over every screen while the app is not in front or the screen is captured (MOB-15).
+struct PrivacyCover: View {
+    var body: some View {
+        Rectangle().fill(.background).ignoresSafeArea().accessibilityHidden(true)
     }
 }
 

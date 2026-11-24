@@ -23,6 +23,14 @@ struct SettingsView: View {
                         issuerError.map { message in ErrorSummary.Problem(message) { focus = .issuer } },
                     ].compactMap { $0 })
             }
+            if model.isManaged { LilyAlert(kind: .info, message: S.settingsManaged, politeness: .polite) }
+            if case .invalid(let server, let issuer, let clientIDMissing)? = model.managedProblem {
+                ErrorSummary(
+                    title: S.problemTitle,
+                    problems: [server.map { ErrorSummary.Problem(S.serverError($0)) {} },
+                               issuer.map { ErrorSummary.Problem(S.serverError($0)) {} },
+                               clientIDMissing ? ErrorSummary.Problem(S.settingsClientRequired) {} : nil].compactMap { $0 })
+            }
             if saved { LilyAlert(kind: .success, message: S.settingsSaved, politeness: .polite) }
             Section {
                 LilyUI.Field(label: S.settingsServer, description: S.settingsServerHelp, error: serverError, required: true,
@@ -52,8 +60,9 @@ struct SettingsView: View {
                         .textInputAutocapitalization(.never)
                         #endif
                 }
-                Button(S.settingsSave, action: save)
+                if !model.isManaged { Button(S.settingsSave, action: save) }
             }
+            .disabled(model.isManaged)
             Section {
                 InsetText { Text(verbatim: S.settingsStored) }
                 if model.token != nil { Button(S.settingsSignOut, role: .destructive) { model.signOut() } }
@@ -61,6 +70,7 @@ struct SettingsView: View {
         }
         .navigationTitle(S.settingsTitle)
         .onAppear { draft = model.settings }
+        .onChange(of: model.settings) { _, new in draft = new }
     }
 
     private func save() {

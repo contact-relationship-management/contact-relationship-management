@@ -13,6 +13,8 @@
 "settings.client" = "Client ID";
 "settings.save" = "Save";
 "settings.saved" = "Settings saved.";
+"settings.managed" = "These settings are set by your organization and cannot be changed here.";
+"settings.clientRequired" = "Enter the client ID the sign-in uses.";
 "settings.signout" = "Sign out";
 "settings.stored" = "Only these settings are stored on this device. Contacts, deals and tickets are not, and signing in lasts until the app is closed.";
 

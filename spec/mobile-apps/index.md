@@ -106,7 +106,7 @@ Every request sends `Accepts-version: 1.0` (the path stays `/api`; versioning is
     blurred cover on iOS; `FLAG_SECURE` on Android). On Android a screenshot and screen recording of a record screen are
     blocked by the same flag; on iOS the app hides record text while the screen is being captured or mirrored.
   - *Typing does not teach the keyboard.* The log-activity form turns off keyboard learning and autocorrect personalization
-    (`IME_FLAG_NO_PERSONALIZED_LEARNING` on Android; the corresponding text-input traits on iOS), so what the rep types is
+    (`IME_FLAG_NO_PERSONALIZED_LEARNING` on Android; on iOS autocorrection off, because UIKit has no learning switch for a field that is not secure), so what the rep types is
     not kept in the device's dictionary. What the user typed is held in memory until it is sent and then dropped (MOB-1).
   - *What the app cannot stop, and says so.* A photograph of the screen, a person reading it, an iOS screenshot taken
     in a way the app is not told about, and a device that is itself compromised. The rule is that the app does not copy
@@ -138,7 +138,7 @@ GitHub Actions yet: the Swift stage needs macOS with Xcode and the Kotlin stage 
 
 ## Not built
 
-Managed app configuration on iOS and a run of it on Android (MOB-14; the Android core rules are tested), the iOS checks that no record text leaves the app (MOB-15: the app-switcher cover, hiding while captured, text-input traits) and a device run of the Android ones (`FLAG_SECURE`, keyboard learning off), a test that no log line carries record text, layouts for tablets (MOB-13), tests on a tablet or a
+A run on a device, emulator or simulator of managed configuration (MOB-14; the rules in both cores are tested) and of the checks that no record text leaves the app (MOB-15: `FLAG_SECURE`, the iOS cover, hiding while captured, keyboard learning, which iOS cannot turn off on a plain field), a test that no log line carries record text, layouts for tablets (MOB-13), tests on a tablet or a
 split-screen layout, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
 search through `/api/search`, attachments, other locales, tokens kept across launches, biometric unlock, an App Store or
 Play Store build (signing, privacy labels, store listing), UI tests on a device or simulator, and an accessibility audit

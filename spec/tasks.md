@@ -2921,12 +2921,19 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     (`app_restrictions.xml`) at start and on every resume, shows managed values as fixed with a notice, hides Save, and
     treats a supplied value that fails the check as an error with no sign-in; `FLAG_SECURE` on the window; the log
     form turns off autocorrect and adds `IME_FLAG_NO_PERSONALIZED_LEARNING`. The Kotlin build and unit tests pass.
-  - **Not done / not verified:** none of the Android changes has been run on an emulator or device, so `FLAG_SECURE`,
-    the keyboard flag (added through a Compose text-input interceptor) and the restrictions read are verified only
-    by compiling. No test sets restrictions or inspects the editor info. iOS has none of it: no managed configuration
-    (`com.apple.configuration.managed`), no app-switcher cover, no hiding while captured, no text-input traits. Tablet
-    layouts (MOB-13) and the test that no log line carries record text are not started, and whether the iOS target is
-    universal has not been looked at. No mobile device management product has been tried.
+  - **Done (iOS, 2026-11-24):** `ManagedConfig` in CRMCore reads `com.apple.configuration.managed` (seven tests, the same
+    cases as Android, and a non-string value counts as blank); `AppModel` applies it at start and whenever the app
+    becomes active, and the Settings screen shows managed values disabled with a notice and no Save button; a
+    blank cover over every screen while the app is not active (the app-switcher snapshot) or the screen is captured or
+    mirrored; text selection off for the whole app; autocorrection off in the log form. The Xcode project already
+    targets iPhone and iPad (`TARGETED_DEVICE_FAMILY = 1,2`). The package tests and the simulator build pass.
+  - **Not done / not verified:** none of the Android or iOS changes has been run on an emulator, simulator or device,
+    so `FLAG_SECURE`, the Android keyboard flag (added through a Compose text-input interceptor), the restrictions
+    reads, the iOS cover and the capture check are verified only by compiling. No test sets restrictions through
+    the app or inspects the editor info. iOS has no switch for keyboard learning on a plain text field, so MOB-15's
+    "typing does not teach the keyboard" is met there only as far as autocorrection being off; the spec says more
+    than iOS allows. A screen's own layout on a tablet (MOB-13) and the test that no log line carries record text
+    are not started. No mobile device management product has been tried.
 
 ## Test speed (CRM-T306)
 

@@ -28,6 +28,8 @@ enum S {
     static var settingsSaved: String { t("settings.saved") }
     static var settingsSignOut: String { t("settings.signout") }
     static var settingsStored: String { t("settings.stored") }
+    static var settingsManaged: String { t("settings.managed") }
+    static var settingsClientRequired: String { t("settings.clientRequired") }
 
     static var signInTitle: String { t("signin.title") }
     static var signInBody: String { t("signin.body") }
