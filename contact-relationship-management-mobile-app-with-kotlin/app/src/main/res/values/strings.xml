@@ -15,6 +15,7 @@
     <string name="required">required</string>
     <string name="problem_title">There is a problem</string>
 
+    <string name="contacts_select">Choose a contact to see it here.</string>
     <string name="managed_notice">These settings are set by your organization and cannot be changed here.</string>
     <string name="server_title">Server</string>
     <string name="server_url_label">Server URL</string>

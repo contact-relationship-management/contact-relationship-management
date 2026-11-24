@@ -3,15 +3,35 @@ import CRMCore
 import LilyUI
 import SwiftUI
 
+/// The list and the contact it opens (MOB-13): side by side where the screen is wide (iPad, a wide split view), one after
+/// the other where it is narrow (iPhone), by the system's own rule for a split view.
+struct ContactsSplitView: View {
+    let model: AppModel
+    @State private var selection: Contact?
+
+    var body: some View {
+        NavigationSplitView {
+            ContactsView(model: model, selection: $selection)
+        } detail: {
+            if let selection {
+                ContactDetailView(model: model, pid: selection.pid).id(selection.pid)
+            } else {
+                ContentUnavailableView(S.contactsSelect, systemImage: "person.2")
+            }
+        }
+    }
+}
+
 struct ContactsView: View {
     let model: AppModel
+    @Binding var selection: Contact?
     @State private var state: Loadable<[Contact]> = .idle
     @State private var filter = ""
 
     var body: some View {
         LoadView(state: state, retry: load) { contacts in
             let shown = filter.isEmpty ? contacts : contacts.filter { $0.displayName.localizedStandardContains(filter) }
-            List {
+            List(selection: $selection) {
                 DemoBanner(model: model)
                 if shown.isEmpty { Text(verbatim: S.empty) }
                 ForEach(shown) { contact in
@@ -27,7 +47,6 @@ struct ContactsView: View {
             .refreshable { await load() }
         }
         .navigationTitle(S.tabContacts)
-        .navigationDestination(for: Contact.self) { ContactDetailView(model: model, pid: $0.pid) }
         .task { if case .idle = state { await load() } }
     }
 

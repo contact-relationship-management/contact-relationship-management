@@ -43,6 +43,7 @@ enum S {
     static var demoHeading: String { t("demo.heading") }
     static var demoBody: String { t("demo.body") }
 
+    static var contactsSelect: String { t("contacts.select") }
     static var contactsSearch: String { t("contacts.search") }
     static var contactJobTitle: String { t("contact.jobTitle") }
     static var contactStatus: String { t("contact.status") }

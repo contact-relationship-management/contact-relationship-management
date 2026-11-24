@@ -2921,6 +2921,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     (`app_restrictions.xml`) at start and on every resume, shows managed values as fixed with a notice, hides Save, and
     treats a supplied value that fails the check as an error with no sign-in; `FLAG_SECURE` on the window; the log
     form turns off autocorrect and adds `IME_FLAG_NO_PERSONALIZED_LEARNING`. The Kotlin build and unit tests pass.
+  - **Done (tablet layouts, 2026-11-24):** on iPad the Contacts tab is a `NavigationSplitView` (list and contact side by side,
+    a prompt while none is chosen; on iPhone the system collapses it to one screen after the other); on Android a window
+    600 dp wide or more shows the list beside the open contact. Checked: the iPad (11-inch M5) simulator against a
+    stub server shows the list and the prompt side by side (screenshot); the Android emulator, resized to 1600 x 2560
+    at 280 dpi (914 dp) and then 2560 x 1600, shows the list on the left and Ada's record on the right (read from the
+    view hierarchy). The same run showed that `adb screencap` of the app is **black**, which is `FLAG_SECURE` working.
+  - **Not verified (tablet):** tapping a contact on the iPad (no tap tool for the simulator was available), the iPhone
+    layout after the split-view change, a real tablet or a tablet system image (the emulator was a phone resized by
+    `wm size`, so it is not a rotation or a split-screen window), multi-window and split-screen on either platform,
+    Dynamic Type or font scale at the large sizes, and the other tabs on a wide screen (they stretch to the full width).
   - **Done (error text, 2026-11-24):** a test in each app feeds five malformed contact lists that carry a marker string
     (wrong type, cut off, not a list, a missing field, not JSON) and checks the error names no record text. On Android it
     **failed**: the unreadable-answer error carried kotlinx.serialization's message, which quotes the whole JSON input. Both
@@ -2939,7 +2949,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     reads, the iOS cover and the capture check are verified only by compiling. No test sets restrictions through
     the app or inspects the editor info. iOS has no switch for keyboard learning on a plain text field, so MOB-15's
     "typing does not teach the keyboard" is met there only as far as autocorrection being off; the spec says more
-    than iOS allows. A screen's own layout on a tablet (MOB-13) is not started. No mobile device management product has been tried.
+    than iOS allows.  No mobile device management product has been tried.
 
 ## Test speed (CRM-T306)
 

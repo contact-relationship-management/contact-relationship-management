@@ -12,6 +12,7 @@
 "settings.issuer.help" = "Your organization's OpenID Connect issuer. Leave it empty for a demo server with sign-in off.";
 "settings.client" = "Client ID";
 "settings.save" = "Save";
+"contacts.select" = "Choose a contact to see it here.";
 "settings.saved" = "Settings saved.";
 "settings.managed" = "These settings are set by your organization and cannot be changed here.";
 "settings.clientRequired" = "Enter the client ID the sign-in uses.";

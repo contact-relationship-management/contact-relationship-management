@@ -3,6 +3,11 @@ package io.github.contactrelationshipmanagement.mobile
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -22,6 +27,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.Surface
 import io.github.lilydesignsystem.compose.themes.LilyTheme
 import io.github.lilydesignsystem.compose.themes.LilyTokens
+
+/** The width, in dp, from which the list and the record sit side by side (Material's medium window class and up, MOB-13). */
+private const val WIDE_DP = 600
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,20 +69,40 @@ fun CrmApp(model: CrmViewModel) {
             ) { padding ->
                 Surface(Modifier.padding(padding)) {
                     Box {
+                        // MOB-13: on a wide screen the contact list stays beside the contact it opened.
+                        val wide = LocalConfiguration.current.screenWidthDp >= WIDE_DP
                         when (screen) {
                             is Screen.Home -> when (screen.tab) {
-                                Tab.Contacts -> ContactsScreen(model)
+                                Tab.Contacts -> if (wide) {
+                                    ListAndRecord(model) { Text(stringResource(R.string.contacts_select), Modifier.padding(16.dp)) }
+                                } else {
+                                    ContactsScreen(model)
+                                }
                                 Tab.Deals -> DealsScreen(model)
                                 Tab.Tickets -> TicketsScreen(model)
                                 Tab.Server -> ServerScreen(model)
                             }
-                            is Screen.ContactScreen -> ContactScreen(model, screen.pid)
+                            is Screen.ContactScreen -> if (wide) {
+                                ListAndRecord(model) { ContactScreen(model, screen.pid) }
+                            } else {
+                                ContactScreen(model, screen.pid)
+                            }
                             is Screen.LogActivity -> LogActivityScreen(model, screen.pid)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+/** The contact list with [record] beside it (MOB-13). */
+@Composable
+private fun ListAndRecord(model: CrmViewModel, record: @Composable () -> Unit) {
+    Row(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) { ContactsScreen(model) }
+        VerticalDivider()
+        Box(Modifier.weight(2f)) { record() }
     }
 }
 

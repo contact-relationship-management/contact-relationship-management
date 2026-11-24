@@ -23,7 +23,7 @@ public struct RootView: View {
                 NavigationStack { SignInView(model: model) }
             } else {
                 TabView {
-                    Tab(S.tabContacts, systemImage: "person.2") { NavigationStack { ContactsView(model: model) } }
+                    Tab(S.tabContacts, systemImage: "person.2") { ContactsSplitView(model: model) }
                     Tab(S.tabDeals, systemImage: "chart.bar.doc.horizontal") { NavigationStack { DealsView(model: model) } }
                     Tab(S.tabTickets, systemImage: "lifepreserver") { NavigationStack { TicketsView(model: model) } }
                     Tab(S.tabSettings, systemImage: "gear") { NavigationStack { SettingsView(model: model) } }
