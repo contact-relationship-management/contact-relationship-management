@@ -3073,4 +3073,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     A plain `cargo update` moved `cookie` back to the vulnerable 0.18.2 (RUSTSEC-2026-0594), because 0.18.3 is under the two-day minimum
     age; the full gate's supply-chain stage caught it. It is pinned again with
     `CARGO_RESOLVER_INCOMPATIBLE_PUBLISH_AGE=allow cargo update -p cookie --precise 0.18.3` (the owner approved the override on
-    2026-11-23); run that after any `cargo update` until the age passes. No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.
+    2026-11-23); run that after any `cargo update` until the age passes. Gate results (a clean checkout outside `.git`, 2026-11-24): every stage passed; the coverage stage once failed one request
+    test (`openapi_schemas::errors_are_problem_documents`, "connection reset by peer" posting to the in-process server) and
+    passed on two reruns of that test and on a full rerun (97.33%, 295 request tests), so it is an intermittent failure whose
+    cause is not known. Making the matcher's integration binary `main` collided with the service's `main` in this machine's
+    shared target directory (the service report counted the matcher's source as unexecuted, 94.32%); the coverage stage
+    now gives the matcher its own target subdirectory. `scripts/ci-check.sh all` stops at `test-db` and `coverage` without
+    a database; here they were run through `podman run` containers because `podman compose` does not work.
+    No Podman container was removed: those running belong to other projects. The version bump and the publish are not done.
