@@ -73,6 +73,7 @@ them.
 | [roadmap.md](roadmap.md)                           | Beyond the v1 queue                                                     |
 | [lessons/20261124/index.md](lessons/20261124/index.md) | Ideas from an independent review, proposed; four spec-versus-code gaps (CRM-T313 to CRM-T324) |
 | [glossary.md](glossary.md)                         | SFA, MQL/SQL, drip, CLV, SLA, …                                         |
+| [licenses/index.md](licenses/index.md)             | The licence options and the SPDX expression                             |
 
 ## Specification-driven delivery (SDD)
 

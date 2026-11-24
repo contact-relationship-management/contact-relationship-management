@@ -2,8 +2,34 @@
 
 Rust arithmetic in high-reliability software never panics, never wraps, never silently truncates, and never invents a
 number. Financial, governmental, medical and similar systems need this. When a result does not fit, there is no
-result. The operation returns `None` or `Err`. The caller turns that into an error value, a refusal or a stated
-"unknown". It never turns it into a zero, a maximum, a clamp or a wrapped value.
+result. The operation returns `None` or `Err`. The code handles that as close to the operation as it can. When the
+specification states the correct value for that case, the code recovers on the spot with `unwrap_or`. Otherwise it
+returns an error value, a refusal or a stated "unknown". It never substitutes a zero, a maximum, a clamp or a wrapped
+value that the specification did not declare. An input value that is out of range or not a number is always an
+error. It is never clamped, defaulted or replaced by a fallback.
+
+## Purpose
+
+These rules have two purposes. The first is to produce correct figures. The second matters as much: to **detect
+errors of logic and soundness as close as possible to where they happen**. Overflow, underflow, an out-of-range
+input, a division by zero or a lossy conversion is almost never just an arithmetic accident. It is a symptom. A
+wrong assumption, a missing validation, a unit mix-up, corrupt data, or a caller and a callee that disagree about a
+contract. Checked arithmetic acts as a set of assertions spread through the code. Each one checks that the program's
+model of the world still holds.
+
+A symptom is worth most at the point where it first appears. There, the figure, the operation, the operands' origin
+and the violated assumption are all known. Every step it travels unreported, through a clamp, a default, a
+saturated value, a wrap, a `0` for "unknown", or a log line that is then ignored, separates the evidence from the
+cause. The wrong value goes on to be stored, summed, billed, dosed or reported. A defect that could have been a
+precise error at one line becomes a reconciliation mystery weeks later. So these rules prefer, in order:
+
+1. making the invalid state unrepresentable, so the compiler finds the error (RCA-P-5, RCA-DOM);
+2. rejecting invalid input at the boundary where it enters (RCA-P-8, RCA-IN);
+3. reporting a failed operation at the operation itself, with the figure named (RCA-P-4, RCA-NONE-2);
+4. recovering on the spot only where the specification declares the answer, so recovery never hides a defect
+   (RCA-P-7, RCA-DECL-4 to RCA-DECL-6).
+
+Code that makes an error disappear without one of these is a defect, even when every test passes.
 
 This file is the source of truth for specification-driven development. Specifications, designs, code reviews and
 tests cite its requirements by ID (for example `RCA-INT-2`). The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY
@@ -28,14 +54,33 @@ follow RFC 2119 and RFC 8174.
 - **RCA-P-2. No silent wrong answer.** Production arithmetic MUST NOT wrap, truncate, saturate, round or lose
   precision unless the specification for that figure names that behavior. A silently wrong figure is worse than a
   panic, because nothing detects it.
-- **RCA-P-3. An unknown is never a zero.** A result that cannot be computed is absent (`None`) or an error (`Err`). It
-  MUST NOT become `0`, `T::MAX`, `T::MIN`, `Default::default()` or any other sentinel. Zero is a real value with a real
-  meaning: zero balance, zero dose, zero days remaining.
+- **RCA-P-3. An unknown is never a zero.** A result that cannot be computed, and has no declared fallback, is absent
+  (`None`) or an error (`Err`). It MUST NOT become `0`, `T::MAX`, `T::MIN`, `Default::default()` or any other sentinel.
+  Zero is a real value with a real meaning: zero balance, zero dose, zero days remaining. A declared fallback
+  (RCA-P-7) is not an unknown. It is the answer the specification gives for that case.
 - **RCA-P-4. Failure is typed and attributable.** Every arithmetic failure MUST surface as a typed error that names the
   figure and the operation, so an operator can tell *which* number failed and *why*.
 - **RCA-P-5. Make invalid values unrepresentable.** Domain types SHOULD enforce range, unit and currency when they are
   constructed. This leaves fewer places where arithmetic can fail.
 - **RCA-P-6. Defense in depth.** Types, lints, build profile and tests each enforce these rules.
+- **RCA-P-7. Recover at the source.** A failure is recoverable when the specification states the correct value for
+  that case. Code SHOULD recover from it right at the checked operation, with `unwrap_or` and the declared fallback.
+  This keeps the reason in view where the failure happens, and keeps error types small. It also stops a recoverable
+  case from travelling up the stack as an error that a distant caller has to interpret.
+- **RCA-P-8. Invalid input is an error.** A fallback is the correct answer for a failed *operation on valid inputs*.
+  It is never a substitute for an invalid *input*. A supplied value that is out of range, not a number, or otherwise
+  invalid MUST be rejected with an error that names the figure (RCA-IN). It MUST NOT be moved to the nearest bound,
+  replaced by a default, or replaced by a fallback. Quietly substituting a value hides the caller's mistake and gives
+  an answer to a question nobody asked.
+- **RCA-P-9. Fail close to the cause.** A failure MUST be detected and reported at the earliest point where it can be
+  known: an invalid input where it enters, an invariant at the operation that depends on it, a broken contract at
+  the call that breaks it. Code MUST NOT turn a detectable inconsistency into a plausible value that a later step
+  might or might not notice. When the right place to check is unclear, check earlier. Where a value is assumed rather
+  than proved, code SHOULD assert it with a checked operation or a validating constructor. It SHOULD NOT trust it.
+- **RCA-P-10. Soundness over convenience.** A change that turns an error into a value is a change in behavior. It
+  hides future defects. It MUST be declared in the specification, never introduced as a refactor or a "fix". Removing
+  a clamp, a saturation or a silent default means making the case an error, unless the declaration names the answer
+  for a failed operation (RCA-P-7). It never means swapping one substitute value for another.
 
 ## Numeric figure declarations
 
@@ -52,12 +97,31 @@ In specification-driven development, the specification declares each figure befo
   | Unknown | How is "not known" represented? | `Option<Money>`; `None` is shown as "unknown" |
   | Rounding | When precision is lost, which way? | Half-to-even at 2 decimal places, once, at the end |
   | Overflow | What happens out of range? | `Err(ArithmeticError::Overflow { figure: "invoice_total", .. })` |
+  | Fallback | Is there a correct value when an operation fails? | None: an invoice total that overflows is an error |
+  | Invalid input | Which error when a supplied value is out of range or malformed? | `Err(InputError::OutOfRange { figure: "invoice_total", .. })` (always an error, RCA-IN-2) |
+  | Absent input | What happens when an input is not supplied at all? | Required: `Err(InputError::Missing { figure: "invoice_total" })` |
 
-- **RCA-DECL-2.** Code MUST NOT pick a rounding mode that the declaration does not name. A declaration MUST NOT name
-  wrapping, saturation or clamping (RCA-INT-4, RCA-INT-6).
+- **RCA-DECL-2.** Code MUST NOT pick a rounding mode or a fallback that the declaration does not name. A declaration
+  MUST NOT name wrapping. When a declaration bounds a computed result, it names the bound as a fallback (RCA-DECL-4). The code
+  writes it as `checked_*` plus `unwrap_or`, not as `saturating_*` or `clamp` (RCA-INT-4, RCA-INT-6).
 - **RCA-DECL-3.** When the code and the declaration disagree, the declaration is correct and the code is a defect.
   When the declaration is missing or ambiguous, the implementer MUST raise it before writing code. The implementer MUST
   NOT choose a behavior silently.
+- **RCA-DECL-4.** A declaration SHOULD name a fallback wherever the domain has a correct answer for a failed
+  operation, so that code can recover at the source (RCA-P-7). A fallback MUST be a valid value of the figure, within
+  its declared range, and the declaration MUST say why it is correct. Examples:
+
+  | Figure | Failure | Declared fallback | Why it is correct |
+  |---|---|---|---|
+  | `remaining_quota` | `limit - used` underflows | `0` | Usage above the limit (after the limit is lowered) leaves no quota |
+  | `retry_delay_ms` | `base * 2^attempt` overflows | `MAX_DELAY_MS` | The delay is capped at `MAX_DELAY_MS` by design |
+  | `digits_minus_one` | `ilog10(0)` is undefined | `0` | Zero has one digit, like 1 to 9 |
+
+- **RCA-DECL-5.** A failure that signals invalid, corrupt or inconsistent data is not recoverable. Its declaration
+  MUST NOT name a fallback for it. Such a failure MUST become an error or an "unknown".
+- **RCA-DECL-6.** A declaration MUST NOT name a fallback, default or bound for an input value that is out of range or
+  malformed. An input outside its valid range is invalid data (RCA-DECL-5), so it is an error (RCA-IN-2). A
+  declaration that does so is a defect, and the implementer MUST raise it (RCA-DECL-3) rather than implement it.
 
 ## Integer operations
 
@@ -105,39 +169,71 @@ In specification-driven development, the specification declares each figure befo
 - **RCA-INT-3.** Production code MUST NOT use the `strict_*` methods. They panic by design.
 - **RCA-INT-4.** Production code MUST NOT use saturating or wrapping arithmetic: any `saturating_*` or `wrapping_*`
   method on any type, `std::num::Saturating<T>` or `std::num::Wrapping<T>`. There is no exception (RCA-EXC-3,
-  RCA-EXC-4). A saturated result is an invented `MIN` or `MAX`; a wrapped result is an invented anything.
+  RCA-EXC-4). A saturated result is an undeclared `MIN` or `MAX`; a wrapped result is an invented anything. Where the
+  declaration names a bound for a computed result, write `checked_*` plus `unwrap_or(BOUND)` (RCA-NONE-2). This keeps the bound visible,
+  cited and tested.
 - **RCA-INT-5.** `overflowing_*` MUST NOT be used: its first value is the wrapped result. Use `checked_*`.
 - **RCA-INT-6.** These methods never overflow and MAY be used freely: `abs_diff` (returns the unsigned type),
   `unsigned_abs`, `min`, `max`, `count_ones`, `leading_zeros`, `trailing_zeros`, `is_positive`, `is_negative` and
-  `signum`. `clamp` MUST NOT be applied to an external figure: an out-of-range value is an error, not a bound.
+  `signum`. `clamp` MUST NOT be applied to an external figure: an out-of-range value is an error, not a bound and not a fallback
+  (RCA-IN-2). When
+  `min` or `max` bounds an external figure, the declaration MUST name the bound, and the call MUST cite it.
+  `x.max(lo).min(hi)` is a clamp and MUST NOT be used on an external figure.
 - **RCA-INT-7.** Arithmetic on `std::num::NonZero<T>` (for example `NonZero<u64>`) MUST also use its checked methods
   (`checked_add`, `checked_mul`, `checked_pow`).
 
 ## Handling the absent result
 
-- **RCA-NONE-1.** Production code MUST NOT unwrap the result of a checked operation. Each of these turns the `None` back
-  into a panic or an invented number:
+- **RCA-NONE-1.** Production code MUST NOT turn the result of a checked operation into a panic or an undeclared
+  value:
 
   ```rust
   // All forbidden in production code:
   a.checked_add(b).unwrap();
   a.checked_add(b).expect("cannot overflow");
-  a.checked_add(b).unwrap_or(0);
-  a.checked_add(b).unwrap_or(u64::MAX);
-  a.checked_add(b).unwrap_or_default();
-  a.checked_add(b).unwrap_or_else(|| 0);
-  a.checked_add(b).map_or(0, |v| v);
   unsafe { a.checked_add(b).unwrap_unchecked() };
+  a.checked_add(b).unwrap_or_default(); // the fallback is implicit, so the reader cannot see it
+  a.checked_add(b).unwrap_or(0);        // forbidden when no declaration names 0 as the fallback
   ```
 
-- **RCA-NONE-2.** Production code MUST handle the `None` in one of these ways:
-  1. **Propagate** it with `?` in a function that returns `Option<T>`, when "unknown" is a legitimate answer for the
+- **RCA-NONE-2.** Production code MUST handle the `None` in one of the ways below. It SHOULD handle it as close to the
+  checked operation as possible, and SHOULD prefer the ways in this order:
+  1. **Recover** with `unwrap_or(fallback)` when the declaration names a fallback for that failure (RCA-DECL-4). Use
+     `unwrap_or_else(|| ...)` when the fallback is costly to compute. Use `map_or(fallback, f)` or `map_or_else` when
+     the success value is transformed too.
+  2. **Match** on it when the two branches do meaningfully different work, for example refusing a transaction.
+  3. **Convert** it with `ok_or(...)` or `ok_or_else(...)` and `?` in a function that returns `Result<T, E>`. The error
+     names the figure. Convert at the checked operation, where the figure and the operation are known, not in a distant
      caller.
-  2. **Convert** it with `ok_or(...)` or `ok_or_else(...)` and `?` in a function that returns `Result<T, E>`. The error
-     names the figure.
-  3. **Match** on it when the two branches do meaningfully different work, for example refusing a transaction.
+  4. **Propagate** it with `?` in a function that returns `Option<T>`, when "unknown" is a legitimate answer for the
+     caller.
 
   ```rust
+  // Recover at the source with a declared fallback.
+
+  /// Spec QUOTA-2: usage above the limit (after the limit is lowered) leaves no quota.
+  fn remaining_quota(limit: u64, used: u64) -> u64 {
+      limit.checked_sub(used).unwrap_or(0) // QUOTA-2
+  }
+
+  /// Spec RETRY-1: the delay is BASE_DELAY_MS * 2^attempt, capped at MAX_DELAY_MS.
+  const BASE_DELAY_MS: u64 = 100;
+  const MAX_DELAY_MS: u64 = 60_000;
+
+  fn retry_delay_ms(attempt: u32) -> u64 {
+      2_u64
+          .checked_pow(attempt)
+          .and_then(|factor| BASE_DELAY_MS.checked_mul(factor))
+          .unwrap_or(MAX_DELAY_MS) // RETRY-1: overflow means "past the cap"
+          .min(MAX_DELAY_MS) // RETRY-1: the cap
+  }
+
+  /// Spec FMT-4: zero has one digit, like 1 to 9.
+  fn digits_minus_one(n: u64) -> u32 {
+      n.checked_ilog10().unwrap_or(0) // FMT-4
+  }
+
+  // No declared fallback: convert to a named error at the source.
   fn line_total(unit_price: u64, quantity: u32) -> Result<u64, ArithmeticError> {
       unit_price
           .checked_mul(u64::from(quantity))
@@ -145,9 +241,16 @@ In specification-driven development, the specification declares each figure befo
   }
   ```
 
-- **RCA-NONE-3.** A `None` from arithmetic MUST NOT be logged and then discarded. It either reaches the caller or
-  becomes a user-visible refusal or "unknown".
-- **RCA-NONE-4.** When a figure is displayed, "unknown" MUST look different from zero ("—" or "unknown", not "0"). Its
+- **RCA-NONE-3.** A fallback passed to `unwrap_or`, `unwrap_or_else`, `map_or` or `map_or_else` MUST:
+  1. be the fallback that the figure's declaration names, with a comment at the call that cites the declaration;
+  2. be a valid value of the figure, within its declared range;
+  3. not stand in for "unknown" (RCA-P-3), for invalid data (RCA-DECL-5), or for an invalid input (RCA-IN-2);
+  4. not panic, and, for a closure, not have side effects beyond computing the value.
+
+  The fallback SHOULD be a named constant, unless the declaration names a literal and the comment cites it.
+- **RCA-NONE-4.** A `None` from arithmetic MUST NOT be logged and then discarded. It is replaced by its declared
+  fallback, reaches the caller, or becomes a user-visible refusal or "unknown".
+- **RCA-NONE-5.** When a figure is displayed, "unknown" MUST look different from zero ("—" or "unknown", not "0"). Its
   stored form MUST also differ from zero (`NULL` or an absent field, not `0`).
 
 ## Errors
@@ -170,6 +273,17 @@ In specification-driven development, the specification declares each figure befo
       OutOfRange { figure: &'static str },
       #[error("{figure}: {reason}")]
       Domain { figure: &'static str, reason: &'static str },
+  }
+
+  /// Input failures (RCA-IN). Kept apart from arithmetic failures, so the error points at the caller's input.
+  #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+  pub enum InputError {
+      #[error("{figure}: required but not supplied")]
+      Missing { figure: &'static str },
+      #[error("{figure}: not a number")]
+      NotANumber { figure: &'static str },
+      #[error("{figure}: must be in {range}")]
+      OutOfRange { figure: &'static str, range: &'static str },
   }
   ```
 
@@ -222,10 +336,67 @@ In specification-driven development, the specification declares each figure befo
 - **RCA-CONV-4.** Integer to float conversion MUST use `f64::from` (which exists only for lossless sources such as
   `u32` and `i32`), or MUST check that the value's magnitude is at most 2^53 before converting.
 - **RCA-CONV-5.** Parsing MUST use `str::parse::<T>()` or `T::from_str_radix` and handle the `Err`. Parsing already
-  rejects out-of-range input. The `Err` MUST NOT be unwrapped or replaced with a default.
+  rejects out-of-range input. The `Err` MUST NOT be unwrapped, discarded with `.ok()`, or replaced with a default or
+  fallback (RCA-IN-2).
 - **RCA-CONV-6.** Platform-sized integers (`usize`, `isize`) MUST NOT be stored, serialized or used in domain
   calculations. Use fixed-width types (`u32`, `u64`, `i64`) for domain figures, and convert at the boundary with
   `usize::try_from` / `u64::try_from`.
+
+## Input validation
+
+An input is any external figure as it enters the program. Examples are a request path, query or body parameter, a
+header, a form field, a CLI argument, an environment variable, a configuration setting, a file, a message or a
+stored record. The boundary where it enters is the closest point to the cause of a bad value, so the program
+validates there (RCA-P-9).
+
+- **RCA-IN-1. Validate at the boundary.** Each input MUST be parsed and range-checked where it enters, into its
+  domain type (RCA-DOM-2), before any computation uses it. A failure MUST be an error that names the figure and, where
+  safe (RCA-ERR-2), the valid range.
+- **RCA-IN-2. Invalid input is rejected, never replaced.** A supplied input that is out of range, not a number, the
+  wrong unit or format, or otherwise invalid MUST produce an error. Code MUST NOT replace it with:
+  - the nearest bound (`clamp`, `max(lo).min(hi)`, `saturating_*`);
+  - a default, the "absent" value, or `Default::default()`;
+  - a fallback, even a declared one (RCA-DECL-6);
+  - any other value, such as a previous value, a "safe" value or a value from another source.
+
+  | Input | Value | Forbidden | Required |
+  |---|---|---|---|
+  | `?days=` (valid `1 ..= 365`, default `90`) | `9999` or `0` | `365`, `1` or `90` | Client error naming `days` and `1 ..= 365` |
+  | Page size `?limit=` (valid `1 ..= 100`, default `20`) | `0`, `101` or `abc` | `1`, `100` or `20` | Client error naming `limit` and `1 ..= 100` |
+  | Setting `MAIL_BATCH` (valid `1 ..= 1000`, default `200`) | `0`, `-5` or `lots` | `1`, `1000` or `200` | Startup fails, naming `MAIL_BATCH` |
+  | Setting `ATTACHMENT_MAX_BYTES` | Larger than its declared maximum | The maximum, or 10 MiB | Startup fails, naming the setting |
+
+- **RCA-IN-3. Absent is not invalid.** A declaration MAY name a default for an input that is *absent*, meaning not
+  supplied at all. That default MUST apply only when the input is absent. It MUST NOT apply when the input is
+  supplied but invalid. A supplied empty value (`?days=`, `MAIL_BATCH=""`) is invalid unless the declaration says it
+  means absent. Code MUST keep the two cases apart:
+
+  ```rust
+  /// Spec REPORT-2: `days` is 1 ..= 365. When absent, it is 90.
+  fn days_param(raw: Option<&str>) -> Result<Days, InputError> {
+      let Some(text) = raw else {
+          return Ok(Days::DEFAULT); // REPORT-2: absent means the default window
+      };
+      let n: u16 = text.parse().map_err(|_| InputError::NotANumber { figure: "days" })?;
+      Days::try_from(n).map_err(|_| InputError::OutOfRange { figure: "days", range: "1 ..= 365" })
+  }
+
+  // Forbidden: an invalid value silently becomes the default.
+  let days = raw.and_then(|s| s.parse().ok()).filter(|d| (1..=365).contains(d)).unwrap_or(90);
+  ```
+
+- **RCA-IN-4. Configuration fails loudly.** An invalid configuration setting MUST stop startup with an error that
+  names the setting. A reload with an invalid setting MUST be refused, and the running configuration kept, with the
+  refusal reported. The program MUST NOT run with a default in place of a setting that was supplied.
+- **RCA-IN-5. Requests fail visibly.** An invalid request input MUST produce a client error response (for example
+  HTTP 400 or 422) that names the input. It MUST NOT produce a success response computed from a substitute value.
+- **RCA-IN-6. Stored and received data.** An invalid value read from storage or received from another system is
+  corrupt or inconsistent data (RCA-DECL-5). It MUST become an error or an "unknown", and SHOULD be reported, so the
+  writer's defect can be found. It MUST NOT be repaired silently.
+- **RCA-IN-7. Do not weaken rejection.** Changing rejection into substitution is a change in behavior (RCA-P-10).
+  That includes changing a clamp into a default. It MUST NOT be made without a specification change. A test that
+  asserts an input is rejected MUST NOT be edited to assert a substitute value instead. When a change to an input's
+  handling breaks such a test, the change is the defect.
 
 ## Division, remainder and rounding
 
@@ -287,7 +458,7 @@ In specification-driven development, the specification declares each figure befo
   ```
 
 - **RCA-AGG-2.** An average MUST check both the sum and the division. The count MUST be nonzero: an average of no
-  values is unknown, not zero. The midpoint of two values MUST NOT be written as `(a + b) / 2`. Use the `midpoint`
+  values is unknown, not zero, unless the declaration names a fallback for it (RCA-DECL-4). The midpoint of two values MUST NOT be written as `(a + b) / 2`. Use the `midpoint`
   method where the MSRV supports it for the type, or `a.checked_add(b)?.checked_div(2)`. The declaration MUST state
   the rounding.
 - **RCA-AGG-3.** A running total that is kept across calls (a ledger balance, a cumulative dose, a counter in storage)
@@ -471,12 +642,14 @@ In specification-driven development, the specification declares each figure befo
   seconds, time-zone transitions and business days MUST follow a rule the declaration states. They MUST be computed with
   a date library, never by adding a fixed number of seconds.
 - **RCA-TIME-5.** A wall-clock interval (`SystemTime`) can be negative because clocks are adjusted. Measuring elapsed
-  time MUST use `Instant`. A negative wall-clock interval MUST be handled as an error or an unknown, not clamped to zero.
+  time MUST use `Instant`. A negative wall-clock interval MUST be handled as an error, an unknown, or a declared fallback
+  (`checked_*` plus `unwrap_or`), never silently clamped to zero.
 
 ## Lengths, indexes and allocation
 
 - **RCA-LEN-1.** `len() - 1`, `i - 1` and `end - start` MUST be checked. On an empty collection, or when `start > end`,
-  they underflow. Use `checked_sub`, `last()`, `split_last()` or `iter().rev()`, never `saturating_sub`.
+  they underflow. Use `checked_sub`, `last()`, `split_last()` or `iter().rev()`, never `saturating_sub`. Where the
+  declaration names a fallback, write `checked_sub(1).unwrap_or(FALLBACK)`.
 - **RCA-LEN-2.** Indexing (`v[i]`) and slicing (`&s[a..b]`) with external indexes MUST NOT be used. Use `get`,
   `get_mut`, `split_at_checked`, `chunks` and iterators, and handle the `None`. String slicing also panics when an index
   is not on a UTF-8 character boundary.
@@ -510,9 +683,11 @@ and saturation never are.
 - **RCA-EXC-3. No wrapping.** Wrapping has no exception. Hashes, checksums, CRCs and random generators MUST come from
   vetted dependencies (RCA-ENF-6), not workspace code. A sequence number that rolls over MUST be compared and reset
   explicitly with checked operations.
-- **RCA-EXC-4. No saturation.** Saturation and clamping of external figures have no exception, not even for display
-  values, back-off ceilings or counters. Where a bound is wanted, compute the checked result, compare it with the
-  bound, and take the declared action (refuse or report) explicitly.
+- **RCA-EXC-4. No saturation.** `saturating_*`, `Saturating<T>` and `clamp` on external figures have no exception,
+  not even for display values, back-off ceilings or counters. Where a bound on a *computed result* is wanted, declare
+  it as a fallback and write `checked_*` plus `unwrap_or(BOUND)` (RCA-NONE-2). Or compare the checked result with the
+  bound and refuse or report. Either way the bound is visible, cited and tested. An *input* outside its range is never
+  bounded. It is rejected (RCA-IN-2).
 - **RCA-EXC-5. Tests.** Test code MAY use plain operators, `unwrap` and `expect`.
 - **RCA-EXC-6. Recording.** Each exception in production code MUST use `#[expect(lint, reason = "RCA-EXC-n: ...")]`
   rather than `#[allow]`, so that the exception is reported when it is no longer needed. Exceptions MUST NOT be applied
@@ -573,6 +748,7 @@ and saturation never are.
     { path = "core::option::Option::unwrap_or_default", reason = "RCA-P-3: an unknown is never a zero" },
     { path = "std::time::Instant::duration_since", reason = "RCA-TIME-1: use checked_duration_since" },
     { path = "std::time::Instant::saturating_duration_since", reason = "RCA-INT-4: no saturation" },
+    { path = "core::cmp::Ord::clamp", reason = "RCA-INT-6, RCA-IN-2: an out-of-range value is an error, not a bound" },
   ]
   disallowed-types = [
     { path = "core::num::Saturating", reason = "RCA-INT-4: no saturation" },
@@ -595,8 +771,20 @@ and saturation never are.
 
   This is a backstop only; RCA-P-1 still forbids the panic.
 - **RCA-ENF-5. Review grep.** CI MUST fail on `rg -w --type rust '(saturating|wrapping|overflowing)_\w+'` in
-  production code (RCA-INT-4, RCA-INT-5). CI SHOULD also search for unwrapped checked results, which no lint catches:
-  `rg -U --type rust 'checked_\w+\([^;]*?\)\s*\.(unwrap|expect|unwrap_or|unwrap_or_else|unwrap_or_default|map_or)\b'`.
+  production code (RCA-INT-4, RCA-INT-5). CI SHOULD also fail on unwrapped checked results, which no lint catches:
+  `rg -U --type rust 'checked_\w+\([^;]*?\)\s*\.(unwrap|expect|unwrap_unchecked|unwrap_or_default)\b'`. Review SHOULD
+  confirm that each fallback cites its declaration (RCA-NONE-3). This search lists them:
+  `rg -U --type rust 'checked_\w+\([^;]*?\)\s*\.(unwrap_or|unwrap_or_else|map_or|map_or_else)\b'`.
+- **RCA-ENF-7. Input substitution grep.** CI SHOULD fail on a parse or lookup whose error is discarded and replaced
+  (RCA-IN-2, RCA-IN-3), which no lint catches:
+  `rg -U --type rust '\.parse(::<[^>]+>)?\(\)[^;]*?\.(ok\(\)|unwrap_or|unwrap_or_default|unwrap_or_else)\b'` and
+  `rg -U --type rust '(env::var|var_os|get|get_param|query)\([^;]*?\.ok\(\)[^;]*?\.(unwrap_or|unwrap_or_default|unwrap_or_else)\b'`.
+  Each hit MUST either be rewritten to separate absent from invalid (RCA-IN-3), or carry
+  `// RCA-IN-3: absent only` with a citation of the declared default. Clamps are banned by RCA-ENF-2.
+- **RCA-ENF-8. Review of behavior changes.** Review MUST flag any diff that changes an error path into a value:
+  removing a `?`, `Err` or `ok_or`, adding `.ok()`, `unwrap_or`, a default or a bound, or editing an assertion from an
+  error to a value. Each such change MUST cite the specification change that allows it (RCA-P-10, RCA-IN-7). A change
+  summary that says "out-of-range values now take the default" describes a defect, not a feature.
 - **RCA-ENF-6. Dependencies.** A dependency that does arithmetic on external figures (money, decimal, date, units,
   parsing) MUST be audited for panicking operators before adoption, and wrapped behind checked functions if needed.
 
@@ -617,7 +805,8 @@ and saturation never are.
   | Currency | Mismatched currencies, zero-decimal and three-decimal currencies |
 
 - **RCA-TEST-2. Error paths.** Each error variant a function can return MUST be produced by at least one test. The test
-  MUST assert the exact variant and figure name, not just `is_err()`.
+  MUST assert the exact variant and figure name, not just `is_err()`. Each declared fallback MUST be produced by at
+  least one test at the first failing input, and the test MUST assert the exact fallback value.
 - **RCA-TEST-3. Property tests.** Core arithmetic SHOULD have property-based tests (for example with `proptest`) that
   compare the checked result against an oracle computed in a wider type (`i128`, `u128`, or an arbitrary-precision
   integer). The test asserts `Some` exactly when the oracle's result fits, and that the values are equal.
@@ -644,16 +833,24 @@ and saturation never are.
 - **RCA-TEST-6. Fuzzing.** Parsers and calculators that take untrusted input SHOULD be fuzzed (for example with
   `cargo fuzz`) with overflow checks on. Any panic found MUST become a regression test.
 - **RCA-TEST-7. Both profiles.** Tests SHOULD run in debug and release profiles.
+- **RCA-TEST-8. Input rejection.** Each input MUST have tests for: absent (the declared default, or the "missing"
+  error); the declared minimum and maximum (accepted); one below the minimum and one above the maximum (rejected);
+  empty; not a number; and the type limits. Each rejection test MUST assert the exact error and figure name. It MUST
+  also assert that no substitute value was used, for example that no response body was computed and that startup did
+  not proceed.
 
 ## Review checklist
 
 A reviewer or agent verifying a change against this file confirms each item:
 
-1. Every external figure has a declaration (RCA-DECL-1): unit, type, range, unknown, rounding and overflow.
+1. Every external figure has a declaration (RCA-DECL-1): unit, type, range, unknown, rounding, overflow and fallback.
 2. No plain operator or panicking method on an external figure outside a recorded exception (RCA-INT-2, RCA-EXC),
-   and no wrapping, saturating, overflowing or clamping anywhere (RCA-INT-4 to RCA-INT-6).
-3. No checked result is unwrapped, defaulted or replaced by a sentinel (RCA-NONE-1).
-4. Every `None` either propagates, becomes a named error, or becomes a user-visible unknown (RCA-NONE-2 to RCA-NONE-4).
+   and no wrapping, saturating, overflowing or clamping anywhere, including `max(lo).min(hi)` (RCA-INT-4 to
+   RCA-INT-6). Every `min` or `max` that bounds an external figure cites its declaration (RCA-INT-6).
+3. No checked result is unwrapped, defaulted or replaced by an undeclared value. Every `unwrap_or` fallback is
+   declared, in range, and cites its declaration (RCA-NONE-1, RCA-NONE-3).
+4. Every `None` is handled close to its source: it is replaced by its declared fallback, becomes a named error,
+   propagates, or becomes a user-visible unknown (RCA-NONE-2 to RCA-NONE-5).
 5. No numeric `as` conversion; `From` or `TryFrom` is used instead (RCA-CONV-1, RCA-CONV-2).
 6. Every division handles zero, and signed division handles `MIN / -1` (RCA-DIV-1).
 7. Rounding is named, declared and applied once (RCA-DIV-5, RCA-MON-4).
@@ -664,6 +861,12 @@ A reviewer or agent verifying a change against this file confirms each item:
 12. No external index is used for indexing or slicing, and allocations are bounded (RCA-LEN).
 13. Each exception uses `#[expect(..., reason = "RCA-EXC-n: ...")]` with a proof or a citation (RCA-EXC-6).
 14. Edge-value and error-path tests exist for each new arithmetic function (RCA-TEST-1, RCA-TEST-2).
+15. Every input is validated where it enters. An out-of-range or malformed input is an error, never a bound, default
+    or fallback. A default applies only to an absent input (RCA-IN-1 to RCA-IN-5, RCA-TEST-8).
+16. No change turns an error into a value without a specification change, and no rejection test was edited to
+    expect a substitute value (RCA-P-10, RCA-IN-7).
+17. Each failure is reported where it is first detectable, with the figure named. Nothing downstream has to
+    rediscover it (RCA-P-9).
 
 ## Quick reference
 
@@ -675,8 +878,12 @@ A reviewer or agent verifying a change against this file confirms each item:
 | `a.pow(n)` | `a.checked_pow(n)` |
 | `x << n` to multiply | `x.checked_mul(1 << n)` with a constant `n`, or `x.checked_mul(2_u64.checked_pow(n)?)` |
 | `(a + b) / 2` | `a.midpoint(b)`, or checked add then checked divide |
-| `.checked_add(b).unwrap()` | `.checked_add(b).ok_or(ArithmeticError::Overflow { .. })?` |
-| `.unwrap_or(0)` on a checked result | Propagate `None`, or return an error |
+| `.checked_add(b).unwrap()` | `.checked_add(b).unwrap_or(FALLBACK)` when declared, else `.ok_or(ArithmeticError::Overflow { .. })?` |
+| `.unwrap_or_default()`, or `.unwrap_or(0)` with no declaration | Declare the fallback and cite it, or return an error, or propagate `None` |
+| `a.saturating_sub(b)` where the spec names a floor | `a.checked_sub(b).unwrap_or(FLOOR)`, citing the declaration |
+| `input.clamp(lo, hi)`, or an out-of-range input replaced by its default | `Domain::try_from(input)?`, returning an error that names the input (RCA-IN-2) |
+| `s.parse().ok().unwrap_or(DEFAULT)` | `None` → declared default; `Some(s)` → `s.parse()` and validate, or error (RCA-IN-3) |
+| Invalid setting replaced by its default | Fail startup, naming the setting (RCA-IN-4) |
 | `iter.sum()` | `iter.try_fold(0, \|acc, x\| acc.checked_add(x))` |
 | `x as u32` | `u32::try_from(x)` or `u32::from(x)` |
 | `f as i64` | A checked helper as in RCA-CONV-3 |
@@ -687,5 +894,5 @@ A reviewer or agent verifying a change against this file confirms each item:
 | `v[i]`, `&s[a..b]` | `v.get(i)`, `s.get(a..b)` |
 | `v.len() - 1` | `v.len().checked_sub(1)` or `v.last()` |
 | `Vec::with_capacity(n)` with external `n` | Bound `n`, then `try_reserve_exact(n)` |
-| `wrapping_*`, `saturating_*`, `overflowing_*`, `clamp` | `checked_*`, then refuse or report |
+| `wrapping_*`, `saturating_*`, `overflowing_*`, `clamp`, `max(lo).min(hi)` | `checked_*`, then recover with a declared fallback, refuse, or report |
 | `#[allow(clippy::arithmetic_side_effects)]` | `#[expect(clippy::arithmetic_side_effects, reason = "RCA-EXC-n: ...")]` on one statement |
