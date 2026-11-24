@@ -136,8 +136,13 @@ case "${stage}" in
     ;;
   coverage)
     # CRM-T273: the independently versioned matcher has its own complete line census.
+    # Its own target directory: with a shared CARGO_TARGET_DIR (this machine's ~/.cargo/config.toml) the matcher's test binary
+    # `main` and the service's `main` land in one directory, and the service's report then counts the matcher's source as
+    # unexecuted. Each crate's own `target/` already keeps them apart in CI.
     (cd "${MATCHER}" \
       && export RUSTC_WRAPPER='' CARGO_BUILD_RUSTC_WRAPPER='' \
+      && export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-${PWD}/target}/matcher" \
+      && export CARGO_LLVM_COV_TARGET_DIR="${CARGO_TARGET_DIR}" \
       && cargo fetch --locked \
       && cargo llvm-cov clean --workspace \
       && cargo llvm-cov --offline --workspace --all-targets \
