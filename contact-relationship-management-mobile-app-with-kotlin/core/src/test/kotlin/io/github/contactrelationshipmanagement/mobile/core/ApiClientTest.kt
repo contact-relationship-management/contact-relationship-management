@@ -45,6 +45,8 @@ class ApiClientTest {
         routes[key] = { Triple(status, body(), if (link != null) mapOf("Link" to link) else emptyMap()) }
     }
 
+    private val pid = "11111111-1111-4111-8111-111111111111"
+
     private fun contact(pid: String, name: String) =
         """{"pid":"$pid","display_name":"$name","person_ref":"person:$pid","job_title":null,"status":"active","marketing_consent":"granted","preferred_channel":"email","id":1,"extra":"ignored"}"""
 
@@ -130,6 +132,27 @@ class ApiClientTest {
     @Test fun anUnreadableBodyIsAnError() {
         route("GET /api/deals") { """{"not":"a list"}""" }
         assertFailsWith<ApiException.Unreadable> { ApiClient(base) { "t" }.deals() }
+    }
+
+    /** MOB-15: an error the user can see or copy names the problem, never the record text in the body. */
+    @Test fun anUnreadableBodyNeverCarriesRecordText() {
+        val secret = "SECRET-ZEBRA-7731"
+        val bodies = listOf(
+            """[{"pid":"$pid","display_name":5,"job_title":"$secret"}]""", // wrong type
+            """[{"pid":"$pid","display_name":"$secret""",                  // cut off
+            """{"display_name":"$secret"}""",                               // not a list
+            """[{"display_name":"$secret"}]""",                             // required field missing
+            """$secret""",                                                   // not JSON
+        )
+        for (body in bodies) {
+            route("GET /api/contacts") { body }
+            val error = assertFailsWith<ApiException.Unreadable> { ApiClient(base) { "t" }.contacts() }
+            var cause: Throwable? = error
+            while (cause != null) {
+                assertFalse(cause.message.orEmpty().contains(secret), "${cause::class.simpleName}: ${cause.message} for $body")
+                cause = cause.cause
+            }
+        }
     }
 
     @Test fun aRetriedWriteReusesItsKey() {

@@ -51,7 +51,7 @@ class MessagesTest {
         assertEquals(R.string.error_network, Messages.error(ApiException.Network(IOException("refused"))).id)
         assertEquals(R.string.error_too_many_pages, Messages.error(ApiException.TooManyPages()).id)
         assertEquals(R.string.error_foreign_link, Messages.error(ApiException.ForeignNextLink("x")).id)
-        assertEquals(R.string.error_unreadable, Messages.error(ApiException.Unreadable(IllegalStateException())).id)
+        assertEquals(R.string.error_unreadable, Messages.error(ApiException.Unreadable(null)).id)
         assertEquals(R.string.error_refused, Messages.error(ApiException.Refused("x")).id)
     }
 

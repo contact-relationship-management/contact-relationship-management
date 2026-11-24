@@ -29,8 +29,12 @@ public sealed class ApiException(message: String, cause: Throwable? = null) : Ex
     /** The connection failed. */
     public class Network(cause: IOException) : ApiException(cause.message ?: "network error", cause)
 
-    /** A 2xx answer whose body is not what the API documents. */
-    public class Unreadable(cause: Throwable) : ApiException(cause.message ?: "unreadable answer", cause)
+    /**
+     * A 2xx answer whose body is not what the API documents. The message names the field's path and nothing else: the
+     * parser's own message quotes the JSON it read, which is record text (MOB-15), so neither it nor the exception that
+     * carried it is kept.
+     */
+    public class Unreadable(path: String?) : ApiException(if (path == null) "unreadable answer" else "unreadable answer at $path")
 }
 
 /** A whole list, and whether the server gave it without a token (a demo server, MOB-5). */
@@ -149,9 +153,9 @@ internal fun checked(answer: Answer): Answer = when {
 internal fun <T> decode(body: String, serializer: KSerializer<T>): T = try {
     ApiJson.decodeFromString(serializer, body)
 } catch (e: SerializationException) {
-    throw ApiException.Unreadable(e)
+    throw ApiException.Unreadable(fieldPath(e))
 } catch (e: IllegalArgumentException) {
-    throw ApiException.Unreadable(e)
+    throw ApiException.Unreadable(fieldPath(e))
 }
 
 /** Discovery and the token exchange (MOB-4). No bearer token and no `Accepts-version`: these go to the identity provider. */
@@ -178,3 +182,8 @@ public class OidcClient(public val settings: OidcSettings) {
         return token
     }
 }
+
+private val PATH = Regex("""at path: (\$[\w.\[\]]*)""")
+
+/** The `$[0].display_name` a parser error points at, when it names one in the plain form; never any text of the body. */
+internal fun fieldPath(e: Throwable): String? = e.message?.let { PATH.find(it)?.groupValues?.get(1) }

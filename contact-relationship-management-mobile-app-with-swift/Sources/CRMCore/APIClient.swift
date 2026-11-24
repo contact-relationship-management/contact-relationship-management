@@ -45,7 +45,7 @@ public struct APIClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
-        do { request.httpBody = try JSONEncoder.crm.encode(activity) } catch { throw .unreadable("\(error)") }
+        do { request.httpBody = try JSONEncoder.crm.encode(activity) } catch { throw .unreadable(Self.fieldPath(error)) }
         let (data, _) = try await send(request)
         return try decode(data)
     }
@@ -92,8 +92,21 @@ public struct APIClient: Sendable {
         return (data, http)
     }
 
+    /// Where a body could not be read, as a path such as `[0].display_name`, and nothing else. The system's own message
+    /// can quote the text it was reading, which is record text (MOB-15).
+    static func fieldPath(_ error: Error) -> String {
+        let context: DecodingError.Context? =
+            switch error as? DecodingError {
+            case .typeMismatch(_, let c), .valueNotFound(_, let c), .keyNotFound(_, let c), .dataCorrupted(let c): c
+            case nil, .some: nil
+            }
+        guard let context, !context.codingPath.isEmpty else { return "unreadable answer" }
+        let path = context.codingPath.map { $0.intValue.map { "[\($0)]" } ?? ".\($0.stringValue)" }.joined()
+        return "unreadable answer at \(path)"
+    }
+
     func decode<T: Decodable>(_ data: Data) throws(APIError) -> T {
-        do { return try JSONDecoder.crm.decode(T.self, from: data) } catch { throw .unreadable("\(error)") }
+        do { return try JSONDecoder.crm.decode(T.self, from: data) } catch { throw .unreadable(Self.fieldPath(error)) }
     }
 }
 

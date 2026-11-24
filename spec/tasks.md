@@ -2921,6 +2921,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     (`app_restrictions.xml`) at start and on every resume, shows managed values as fixed with a notice, hides Save, and
     treats a supplied value that fails the check as an error with no sign-in; `FLAG_SECURE` on the window; the log
     form turns off autocorrect and adds `IME_FLAG_NO_PERSONALIZED_LEARNING`. The Kotlin build and unit tests pass.
+  - **Done (error text, 2026-11-24):** a test in each app feeds five malformed contact lists that carry a marker string
+    (wrong type, cut off, not a list, a missing field, not JSON) and checks the error names no record text. On Android it
+    **failed**: the unreadable-answer error carried kotlinx.serialization's message, which quotes the whole JSON input. Both
+    apps now give the field's path and nothing else, and the cause is not kept. The iOS test passes; I did not run it
+    against the old code, so whether the old iOS message leaked is not known. The test covers answers the apps cannot
+    read; it does not cover the system's network error text, a refused-sign-in message (Android shows the identity
+    provider's own text) or a crash report, and neither app logs anything today (a search found no log call).
   - **Done (iOS, 2026-11-24):** `ManagedConfig` in CRMCore reads `com.apple.configuration.managed` (seven tests, the same
     cases as Android, and a non-string value counts as blank); `AppModel` applies it at start and whenever the app
     becomes active, and the Settings screen shows managed values disabled with a notice and no Save button; a
@@ -2932,8 +2939,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     reads, the iOS cover and the capture check are verified only by compiling. No test sets restrictions through
     the app or inspects the editor info. iOS has no switch for keyboard learning on a plain text field, so MOB-15's
     "typing does not teach the keyboard" is met there only as far as autocorrection being off; the spec says more
-    than iOS allows. A screen's own layout on a tablet (MOB-13) and the test that no log line carries record text
-    are not started. No mobile device management product has been tried.
+    than iOS allows. A screen's own layout on a tablet (MOB-13) is not started. No mobile device management product has been tried.
 
 ## Test speed (CRM-T306)
 

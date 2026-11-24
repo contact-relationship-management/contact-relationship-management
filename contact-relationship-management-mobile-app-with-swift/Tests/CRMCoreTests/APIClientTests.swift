@@ -116,6 +116,27 @@ struct APIClientTests {
         #expect(hosts == ["crm.example.org"])
     }
 
+    /// MOB-15: an error the user can see or copy names the problem, never the record text in the body.
+    @Test func anUnreadableBodyNeverCarriesRecordText() async throws {
+        let secret = "SECRET-ZEBRA-7731"
+        let bodies = [
+            #"[{"pid":"p","display_name":5,"job_title":"\#(secret)"}]"#,  // wrong type
+            #"[{"pid":"p","display_name":"\#(secret)""#,  // cut off
+            #"{"display_name":"\#(secret)"}"#,  // not a list
+            #"[{"display_name":"\#(secret)"}]"#,  // required field missing
+            secret,  // not JSON
+        ]
+        for body in bodies {
+            StubProtocol.reset(["\(base)/api/contacts": .init(status: 200, body: body)])
+            do {
+                _ = try await client().contacts()
+                Issue.record("a body that is not a contact list was read: \(body)")
+            } catch {
+                #expect(!"\(error)".contains(secret), "\(error)")
+            }
+        }
+    }
+
     @Test func failsRatherThanCutAListShort() async throws {
         var table: [String: StubProtocol.Answer] = [:]
         table["\(base)/api/tickets"] = .init(status: 200, headers: ["Link": #"</api/tickets?p=1>; rel="next""#], body: "[]")
