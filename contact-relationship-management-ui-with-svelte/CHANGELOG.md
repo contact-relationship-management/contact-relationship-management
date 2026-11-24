@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-24
+
 ### Added — the interface in 13 more languages (CRM-T297)
 
 - Bengali, Danish, Indonesian, Italian, Japanese, Korean, Dutch, Portuguese, Russian, Swedish, Swahili, Urdu (right to

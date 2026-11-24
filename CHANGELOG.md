@@ -11,6 +11,8 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-24
+
 ### Changed
 
 - Licence: `CC-BY-SA-4.0` replaces `CC-BY-NC-SA-4.0` in the SPDX expression of every package, `LICENSE.md` and `LICENSES/` (2026-11-24, at the owner's request). Releases already published keep the expression they were published with.
