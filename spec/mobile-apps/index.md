@@ -138,7 +138,7 @@ GitHub Actions yet: the Swift stage needs macOS with Xcode and the Kotlin stage 
 
 ## Not built
 
-A run on a device, emulator or simulator of managed configuration (MOB-14; the rules in both cores are tested) and of the checks that no record text leaves the app (MOB-15: `FLAG_SECURE`, the iOS cover, hiding while captured, keyboard learning, which iOS cannot turn off on a plain field), a test that no log line carries record text, a contact list beside the record on a tablet checked on a real device, tests of split-screen and multi-window, the other tabs laid out for a wide screen, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
+A run on a device, emulator or simulator of managed configuration (MOB-14; the rules in both cores are tested) and of the checks that no record text leaves the app (MOB-15: `FLAG_SECURE`, the iOS cover, hiding while captured, keyboard learning, which iOS cannot turn off on a plain field), a test of the system's network-error text and of a crash report (the unreadable-answer error is tested, and neither app logs), a contact list beside the record on a tablet checked on a real device, tests of split-screen and multi-window, the other tabs laid out for a wide screen, a test with a mobile device management product, offline use, push notifications, editing a contact, deal or ticket, moving a deal between stages, consent changes,
 search through `/api/search`, attachments, other locales, tokens kept across launches, biometric unlock, an App Store or
 Play Store build (signing, privacy labels, store listing), UI tests on a device or simulator, and an accessibility audit
 with VoiceOver or TalkBack users.

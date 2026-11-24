@@ -2949,7 +2949,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     reads, the iOS cover and the capture check are verified only by compiling. No test sets restrictions through
     the app or inspects the editor info. iOS has no switch for keyboard learning on a plain text field, so MOB-15's
     "typing does not teach the keyboard" is met there only as far as autocorrection being off; the spec says more
-    than iOS allows.  No mobile device management product has been tried.
+    than iOS allows. No mobile device management product has been tried.
 
 ## Test speed (CRM-T306)
 
