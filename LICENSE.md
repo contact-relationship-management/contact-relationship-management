@@ -1,6 +1,6 @@
 # License
 
-SPDX-License-Identifier: MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-NC-SA-4.0
+SPDX-License-Identifier: MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-SA-4.0
 
 You may use this software under the terms of any one of these licenses, at
 your option:
@@ -11,7 +11,7 @@ your option:
 - [GPL-2.0-only](https://spdx.org/licenses/GPL-2.0-only.html)
 - [GPL-3.0-only](https://spdx.org/licenses/GPL-3.0-only.html)
 - [OGL-UK-3.0](https://spdx.org/licenses/OGL-UK-3.0.html) (UK Open Government Licence v3.0)
-- [CC-BY-NC-SA-4.0](https://spdx.org/licenses/CC-BY-NC-SA-4.0.html) (Creative Commons Attribution Non Commercial Share Alike 4.0 International)
+- [CC-BY-SA-4.0](https://spdx.org/licenses/CC-BY-SA-4.0.html) (Creative Commons Attribution Share Alike 4.0 International)
 
 This is the expression declared by the Rust service, the matcher and the
 Svelte front end.
@@ -28,4 +28,4 @@ The full text of each license is in its own directory:
 - [GPL-2.0-only](LICENSES/gpl-2.0-only/index.md)
 - [GPL-3.0-only](LICENSES/gpl-3.0-only/index.md)
 - [OGL-UK-3.0](LICENSES/ogl-uk-3.0/index.md)
-- [CC-BY-NC-SA-4.0](LICENSES/cc-by-nc-sa-4.0/index.md)
+- [CC-BY-SA-4.0](LICENSES/cc-by-sa-4.0/index.md)

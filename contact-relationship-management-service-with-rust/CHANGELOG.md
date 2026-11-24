@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Licence: `CC-BY-SA-4.0` replaces `CC-BY-NC-SA-4.0` in the SPDX expression of every package, `LICENSE.md` and `LICENSES/` (2026-11-24, at the owner's request). Releases already published keep the expression they were published with.
+
 ### Added — outside calls limited to a declared list (CRM-T283)
 
 - `CONTACT_RELATIONSHIP_MANAGEMENT_OUTBOUND_HOSTS` lists the outside hosts the service may call. With it, a start

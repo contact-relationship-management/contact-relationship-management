@@ -11,6 +11,10 @@ subproject keeps a detailed changelog:
 
 ## [Unreleased]
 
+### Changed
+
+- Licence: `CC-BY-SA-4.0` replaces `CC-BY-NC-SA-4.0` in the SPDX expression of every package, `LICENSE.md` and `LICENSES/` (2026-11-24, at the owner's request). Releases already published keep the expression they were published with.
+
 ### Added — iOS and Android apps (CRM-R111, CRM-T302 to CRM-T304)
 
 - Two native clients, Swift with SwiftUI and Kotlin with Jetpack Compose, drawn with the Lily Design System: contacts,

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Licence expression: `CC-BY-SA-4.0` replaces `CC-BY-NC-SA-4.0` (2026-11-24, at the owner's request). Releases already published keep the expression they were published with.
 - Phone comparisons preserve all 770 Unicode 18.0 decimal digits, including Adlam and mixed-script numbers (CRM-T270).
 - Two national phone numbers compared without a default calling code must agree on every digit, including a leading zero (CRM-T271).
 - A national number matching only the suffix of an international number is partial evidence, not

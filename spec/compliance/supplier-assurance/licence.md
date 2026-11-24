@@ -1,13 +1,13 @@
 # Licence statement
 
-*Written 2026-11-20 (CRM-T276, CRM-R110).* Not legal advice; not reviewed by a lawyer.
+*Written 2026-11-20 (CRM-T276, CRM-R110); the Creative Commons option changed on 2026-11-24.* Not legal advice; not reviewed by a lawyer.
 
 ## The CRM's own licence
 
 Every package in this repository (the service, the domain crate, the matcher and the UI) is offered under
-`MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-NC-SA-4.0`, at the user's choice ([LICENSE.md](../../../LICENSE.md)).
+`MIT OR Apache-2.0 OR BSD-3-Clause OR GPL-2.0-only OR GPL-3.0-only OR OGL-UK-3.0 OR CC-BY-SA-4.0`, at the user's choice ([LICENSE.md](../../../LICENSE.md)).
 
-- **Hosting is allowed.** Each of the first six allows use and modification for any purpose, commercial hosting included. `CC-BY-NC-SA-4.0` allows non-commercial use only, so a commercial host chooses another option.
+- **Hosting is allowed.** Each of the first six allows use and modification for any purpose, commercial hosting included. `CC-BY-SA-4.0` also allows commercial use, with attribution and, for an adaptation that is shared, the same licence; whether running a modified copy as a service counts as sharing it is a question for the supplier's own lawyer, and a host that wants no such question chooses another option.
 - **None asks a hosted service to publish its source.** No package is under the AGPL or another licence whose duties
   start when software is offered over a network. The GPL options attach duties to *distributing* copies, and a supplier
   that only hosts can choose MIT, Apache-2.0, BSD-3-Clause or OGL-UK-3.0 instead.

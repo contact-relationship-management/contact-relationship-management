@@ -7,7 +7,7 @@ Pipedrive is a commercial CRM focused on the sales pipeline. Contact Relationshi
 | | Pipedrive | Contact Relationship Management |
 | --- | --- | --- |
 | Category | CRM built around activity-based selling | Open-source demonstration software, driven by its specification |
-| Licence | Commercial | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
+| Licence | Commercial | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-SA-4.0, at the user's option |
 | Hosting | Hosted by Pipedrive, with mobile applications | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | The sales pipeline, with add-ons for email marketing, projects and lead generation | Sales, marketing, support and analytics, with recorded consent |
 

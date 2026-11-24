@@ -7,7 +7,7 @@ Salesforce is a commercial, cloud-based CRM platform. Contact Relationship Manag
 | | Salesforce | Contact Relationship Management |
 | --- | --- | --- |
 | Category | AI-powered CRM platform with a unified customer profile | Open-source demonstration software, driven by its specification |
-| Licence | Commercial, priced by seats and features | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
+| Licence | Commercial, priced by seats and features | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-SA-4.0, at the user's option |
 | Hosting | Salesforce's cloud | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | Sales, service, marketing, commerce and AI agents (Agentforce), with Slack connected to CRM data | Sales, marketing, support and analytics, with recorded consent |
 

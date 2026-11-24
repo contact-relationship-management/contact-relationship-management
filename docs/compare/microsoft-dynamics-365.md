@@ -7,7 +7,7 @@ Microsoft Dynamics 365 is Microsoft's commercial business application suite, inc
 | | Microsoft Dynamics 365 | Contact Relationship Management |
 | --- | --- | --- |
 | Category | Agentic CRM for sales, alongside other Dynamics 365 applications | Open-source demonstration software, driven by its specification |
-| Licence | Commercial, per user per month | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-NC-SA-4.0, at the user's option |
+| Licence | Commercial, per user per month | MIT, Apache-2.0, BSD-3-Clause, GPL-2.0-only, GPL-3.0-only, OGL-UK-3.0 or CC-BY-SA-4.0, at the user's option |
 | Hosting | Microsoft's service | Self-hosted: a Rust service, a Svelte interface and PostgreSQL |
 | Focus | Sales, with AI scoring, forecasting and Copilot. Customer Service and Customer Insights are separate applications. | Sales, marketing, support and analytics, with recorded consent |
 
