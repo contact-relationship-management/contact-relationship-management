@@ -3174,7 +3174,13 @@ complete the ordinary production privacy, access and operational checks.
       Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through subject
       access, search, events, erasure and a backup restore, and record which copies are removed, retained under an
       approved schedule or awaiting action. CRM-T279 and CRM-T285 cover parts.
-      - **Not verified:** the database-backed request suites were not run for the done part; it compiles only.
+      - **Verified 2026-11-25:** hosted CI (run on `fb42ef6`, all jobs) passed the database-backed request suites with the
+      done part. Not run locally: Podman was unavailable on the author's machine.
+      - **Confirmed by reading the code, not yet fixed:** an activity on a ticket has `subject_kind = 'ticket'` and the
+      ticket's pid in `subject_pid`. `all_activities_about` (`src/models/rows.rs`) selects by the contact's pid, so subject
+      access leaves out ticket activities; `scrub_linked` (`src/controllers/privacy.rs`) rewrites only
+      `subject_kind = 'contact'`, so their free text survives erasure. The fix changes `sqlx::query!` macros and needs
+      the offline query cache regenerated against a live database, then a test with a marker in a ticket activity.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
       deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search
