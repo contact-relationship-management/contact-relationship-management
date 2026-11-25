@@ -3243,6 +3243,10 @@ complete the ordinary production privacy, access and operational checks.
       readers to current evidence, and retire the earlier audit's suggestion to advertise DTAC compliance. Done when a
       reviewer can tell which mail modes exist, what ran against a live provider, which tag was checked and which evidence
       belongs to the deployer. Owners: product owner and maintainer, before the partner pilot. (S)
+      - **Done 2026-11-25 (docs only):** the regulatory banner names the four mail modes; the first-release checklist and the
+      earlier audit are marked historical; the DTAC advertising suggestion is retired.
+      - **Not done:** the README and other files were not searched for further stale claims; nothing in the repository
+      records a send through a live provider, so none is claimed.
 - [ ] CRM-T334 **Run the real stack under the intended roles.** Exercise sign-in, API, database and browser together. The
       ordinary browser E2E stage runs the tour and stub suites and the UI has a separate live suite; add the
       restricted-ticket (CRM-T326) and erasure (CRM-T325) scenarios there and run them against the release candidate.

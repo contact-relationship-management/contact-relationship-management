@@ -1,5 +1,8 @@
 # 🎯 **PART A: COMMUNITY & GROWTH**
 
+> **Historical (CRM-T333, 2026-11-25).** An earlier, unreviewed audit; it predates v0.3.0. Its suggestion to advertise DTAC
+> compliance is retired. Read current evidence in [spec/tasks.md](../../../spec/tasks.md).
+
 Here is a **comprehensive, actionable quality improvement roadmap** for your Contact Relationship Management open source project, organized by your two categories.
 
 Tasks to help new visitors, promotion, and upskilling.
@@ -24,7 +27,7 @@ Tasks to help new visitors, promotion, and upskilling.
 | **A2.2** | L | H | **Create interactive architecture diagram** - Use [Mermaid](https://mermaid.js.org/) or [Excalidraw](https://excalidraw.com/) to show: service layers, data flow, integration points. Add to `/architecture/` page |
 | **A2.3** | M | H | **Add "Why this CRM?" comparison page** - Create `/why/` page comparing to HubSpot, Salesforce, Zoho, Odoo, SuiteCRM with focus on: open source, privacy-first, offline-capable, family integration |
 | **A2.4** | S | M | **Add social preview images** - Create OpenGraph images for the repo and docs site. Use consistent branding. Tool: [Social Preview Generator](https://social-preview.gallery/) |
-| **A2.5** | M | M | **Add a "Use Cases" page** - Show real scenarios: small business, healthcare (DTAC compliant), government, non-profits, with feature mapping |
+| **A2.5** | M | M | **Add a "Use Cases" page** - Show real scenarios: small business, healthcare (DTAC self-assessed; do not advertise compliance, CRM-T333), government, non-profits, with feature mapping |
 | **A2.6** | S | M | **Fix documentation site 404s** - The site's search index (`/search-index.json`) may be out of date. Regenerate it |
 | **A2.7** | M | H | **Add versioned documentation** - Allow users to view docs for specific releases (v0.1.0, v0.2.0, etc.) |
 

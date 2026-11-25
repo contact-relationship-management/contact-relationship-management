@@ -1,9 +1,13 @@
 # First tagged release: checklist (CRM-T49)
 
+> **Historical (CRM-T333, 2026-11-25).** The release workflow ran on the annotated tag `v0.3.0` and succeeded
+> (CRM-T312); the checks below were written before that and are kept for the next release. What was exercised
+> is in CRM-T312 in [tasks.md](../tasks.md); a signature check of the published images is not recorded there.
+
 The release workflow (`.github/workflows/release.yml`) and the verification
-commands in [operations-runbook.md](operations-runbook.md) have never run on a
-real tag. Until they do, the claim "releases are signed and verifiable" is
-unproven. This checklist proves it with a throwaway release first.
+commands in [operations-runbook.md](operations-runbook.md) had not run on a
+real tag when this checklist was written. This checklist proves "releases are
+signed and verifiable" with a throwaway release first.
 
 ## Before tagging
 

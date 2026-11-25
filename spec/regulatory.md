@@ -1,7 +1,9 @@
 # Regulatory posture
 
-> ⚠️ **Not ready for production.** No real personal data; no real email is
-> sent (delivery is simulated). See the
+> ⚠️ **Not ready for production.** No real personal data. Delivery is simulated unless
+> `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_MODE` is `smtp`, `brevo` or `mailjet` (production also needs
+> `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_ALLOW_PRODUCTION=1`); this file does not record a send through a live provider.
+> The deployer owns the provider's agreement and evidence (CRM-T333). See the
 > [path to production](../locales/en-us/path-to-production/index.md).
 
 The law is recorded **by region** ([the register by region](#the-register-by-region), at the end): no
