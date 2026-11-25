@@ -20244,7 +20244,7 @@ export interface components {
             /** Format: uuid */
             erased: string;
             /**
-             * Format: int64
+             * Format: uint64
              * @description Attachment files still on disk after their rows were deleted; an operator must remove them.
              */
             files_not_removed: number;
