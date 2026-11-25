@@ -3175,8 +3175,13 @@ complete the ordinary production privacy, access and operational checks.
       tickets, and `activity_summaries_scrubbed` counts them. `.sqlx/` was regenerated for the two changed queries. The
       privacy round-trip request test puts a marker in a ticket activity and checks the export and the erased ticket;
       it passed locally against PostgreSQL 18.
+      - **Done 2026-11-25 (ticket event labels):** the `ticket_opened`, `ticket_wait_limit_exceeded` and ticket status-change
+      events no longer carry the ticket's title; the envelope's `name` is empty (`NO_TITLE`, `support.rs`), so the outbox and
+      webhooks never receive it. The privacy round-trip test checks `ticket_opened`; the outbox, webhook, streaming and
+      ticket suites passed locally. Other events still carry a label (knowledge-base articles carry the article title); they
+      were not reviewed here.
       - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
-      volume returns; minimise event labels; keep legally required records under a documented hold with restricted
+      volume returns; review the labels on the remaining events; keep legally required records under a documented hold with restricted
       access. Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through
       subject access, search, events, erasure and a backup restore, and record which copies are removed, retained under
       an approved schedule or awaiting action. The ticket title itself still survives erasure. CRM-T279 and CRM-T285

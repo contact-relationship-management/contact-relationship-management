@@ -13,6 +13,11 @@ use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::paging::Page;
+
+/// The label a ticket event carries. A ticket's title is free text that can name a person or a service they use, and the
+/// event envelope is stored by the outbox and sent to webhooks, so it never goes in (CRM-T325).
+const NO_TITLE: &str = "";
+
 use super::{PidRef, StatusPayload, unprocessable};
 use crate::auth::MaybeAuthUser;
 use crate::db;
@@ -314,7 +319,7 @@ async fn create_ticket(
         "ticket",
         "ticket_opened",
         &pid.to_string(),
-        &payload.title,
+        NO_TITLE,
         caller.actor(),
         None,
     )
@@ -432,7 +437,7 @@ async fn sweep_waiting(
         if now.duration_since(since) <= jiff::SignedDuration::from_mins(i64::from(*limit)) {
             continue;
         }
-        let (pid, title) = (ticket.pid, ticket.title.clone());
+        let pid = ticket.pid;
         if action == "resolve" {
             transition(ctx, caller, pid, "resolved", Some("wait_limit")).await?;
             done.resolved = done.resolved.tally(1);
@@ -470,7 +475,7 @@ async fn sweep_waiting(
             "ticket",
             "ticket_wait_limit_exceeded",
             &pid.to_string(),
-            &title,
+            NO_TITLE,
             caller.actor(),
             Some(serde_json::json!({ "waiting_since": since, "action": action })),
         )
@@ -784,7 +789,6 @@ async fn transition(
         _ => None,
     };
     let from = ticket.status.clone();
-    let title = ticket.title.clone();
     let mut next = ticket;
     next.status = to.to_string();
     if to == "pending" {
@@ -851,7 +855,7 @@ async fn transition(
         "ticket",
         kind,
         &row.pid.to_string(),
-        &title,
+        NO_TITLE,
         caller.actor(),
         None,
     )

@@ -81,6 +81,13 @@ async fn subject_rights_round_trip() {
             .await
             .json();
         let ticket_pid = ticket["pid"].as_str().unwrap().to_string();
+        // The event for the new ticket names it by pid; the title is free text and stays out of the envelope.
+        let events: Vec<Value> = request.get("/api/events/recent").await.json();
+        let opened = events
+            .iter()
+            .find(|e| e["kind"] == "ticket_opened" && e["pid"] == ticket_pid)
+            .expect("the ticket_opened event");
+        assert_eq!(opened["name"], "", "the ticket title is not in the event");
         // An activity on the ticket is keyed to the ticket's pid, and is still about this contact.
         request
             .post("/api/activities")
