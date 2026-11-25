@@ -490,6 +490,10 @@ async fn erase(
 }
 
 /// `POST /api/contacts/{pid}/erase`.
+#[expect(
+    clippy::struct_field_names,
+    reason = "`erased` is the published member name; renaming it would break every client"
+)]
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct Erased {
     erased: Uuid,
