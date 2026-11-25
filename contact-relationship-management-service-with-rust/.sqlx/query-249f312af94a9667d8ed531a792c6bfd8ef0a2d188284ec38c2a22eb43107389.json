@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities WHERE subject_pid = $1 ORDER BY id",
+  "query": "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities WHERE subject_pid = $1 OR (subject_kind = 'ticket' AND subject_pid IN (SELECT pid FROM tickets WHERE contact_pid = $1)) ORDER BY id",
   "describe": {
     "columns": [
       {
@@ -204,5 +204,5 @@
       true
     ]
   },
-  "hash": "363badb0962926974c07e5c916b78d494f5e69c2aa65e1f29593dac93861ffa9"
+  "hash": "249f312af94a9667d8ed531a792c6bfd8ef0a2d188284ec38c2a22eb43107389"
 }

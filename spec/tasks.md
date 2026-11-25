@@ -3167,20 +3167,20 @@ complete the ordinary production privacy, access and operational checks.
 - [ ] CRM-T325 **Erasure gaps (audit finding 2).** Erasure counts attachment rows as deleted and commits the audit entry
       before the files go; `remove_files` returns a failure count the caller discarded. Also a closed ticket's free-text
       title survives contact erasure and ticket creation passes it into the event envelope, which the outbox stores. (M)
-      - **Done 2026-11-25:** the erase response carries `files_not_removed` (service, `schema.d.ts`, one request-test assertion).
+      - **Done 2026-11-25:** the erase response carries `files_not_removed` (service, `schema.d.ts`, one request-test
+      assertion). Hosted CI (run on `fb42ef6`, all jobs) passed the database-backed request suites with it.
+      - **Done 2026-11-25 (ticket activities):** an activity on a ticket has `subject_kind = 'ticket'` and the ticket's pid
+      in `subject_pid`, so subject access (`all_activities_about`, `src/models/rows.rs`) and the erasure scrub
+      (`scrub_linked`, `src/controllers/privacy.rs`) both missed it. Both now include the activities of the contact's
+      tickets, and `activity_summaries_scrubbed` counts them. `.sqlx/` was regenerated for the two changed queries. The
+      privacy round-trip request test puts a marker in a ticket activity and checks the export and the erased ticket;
+      it passed locally against PostgreSQL 18.
       - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
-      volume returns; minimise event labels; check subject access for an activity keyed to the ticket pid (the export
-      collects activities by contact pid); keep legally required records under a documented hold with restricted access.
-      Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through subject
-      access, search, events, erasure and a backup restore, and record which copies are removed, retained under an
-      approved schedule or awaiting action. CRM-T279 and CRM-T285 cover parts.
-      - **Verified 2026-11-25:** hosted CI (run on `fb42ef6`, all jobs) passed the database-backed request suites with the
-      done part. Not run locally: Podman was unavailable on the author's machine.
-      - **Confirmed by reading the code, not yet fixed:** an activity on a ticket has `subject_kind = 'ticket'` and the
-      ticket's pid in `subject_pid`. `all_activities_about` (`src/models/rows.rs`) selects by the contact's pid, so subject
-      access leaves out ticket activities; `scrub_linked` (`src/controllers/privacy.rs`) rewrites only
-      `subject_kind = 'contact'`, so their free text survives erasure. The fix changes `sqlx::query!` macros and needs
-      the offline query cache regenerated against a live database, then a test with a marker in a ticket activity.
+      volume returns; minimise event labels; keep legally required records under a documented hold with restricted
+      access. Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through
+      subject access, search, events, erasure and a backup restore, and record which copies are removed, retained under
+      an approved schedule or awaiting action. The ticket title itself still survives erasure. CRM-T279 and CRM-T285
+      cover parts.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
       deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search

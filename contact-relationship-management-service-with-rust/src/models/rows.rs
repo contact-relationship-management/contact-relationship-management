@@ -1484,7 +1484,8 @@ pub async fn all_consent_events_of<'e>(
     .await
 }
 
-/// Every activity about one subject pid, deleted or not, for the subject's own export.
+/// Every activity about one subject pid, deleted or not, for the subject's own export. A contact's
+/// tickets count: their activities are free text about the contact, keyed to the ticket's pid.
 ///
 /// # Errors
 ///
@@ -1498,7 +1499,9 @@ pub async fn all_activities_about<'e>(
         "SELECT created_at, updated_at, id, pid, subject_kind, subject_pid, kind, occurred_at, \
         actor_ref, summary, due_on, done, deleted_at AS \"deleted_at: DateTimeWithTimeZone\", \
         sentiment, assignee_ref, remind_at AS \"remind_at: DateTimeWithTimeZone\" FROM activities \
-        WHERE subject_pid = $1 ORDER BY id",
+        WHERE subject_pid = $1 \
+        OR (subject_kind = 'ticket' AND subject_pid IN (SELECT pid FROM tickets WHERE contact_pid = $1)) \
+        ORDER BY id",
         subject,
     )
     .fetch_all(db)

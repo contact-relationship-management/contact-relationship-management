@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE activities SET summary = $2 WHERE deleted_at IS NULL AND ((subject_kind = 'contact' AND subject_pid = $1) OR (subject_kind = 'ticket' AND subject_pid IN (SELECT pid FROM tickets WHERE contact_pid = $1)))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6262391fce6ed2a610d159568b31216228512c780571448bdb1232e301db0a3d"
+}

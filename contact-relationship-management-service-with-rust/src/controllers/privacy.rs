@@ -214,8 +214,9 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
     // purpose: `[erased]` is not personal data.
     affected.push(
         sqlx::query!(
-            "UPDATE activities SET summary = $2 WHERE subject_kind = 'contact' \
-             AND subject_pid = $1 AND deleted_at IS NULL",
+            "UPDATE activities SET summary = $2 WHERE deleted_at IS NULL AND (\
+             (subject_kind = 'contact' AND subject_pid = $1) OR (subject_kind = 'ticket' AND subject_pid IN \
+             (SELECT pid FROM tickets WHERE contact_pid = $1)))",
             cpid,
             ERASED,
         )

@@ -81,6 +81,24 @@ async fn subject_rights_round_trip() {
             .await
             .json();
         let ticket_pid = ticket["pid"].as_str().unwrap().to_string();
+        // An activity on the ticket is keyed to the ticket's pid, and is still about this contact.
+        request
+            .post("/api/activities")
+            .json(
+                &json!({ "subject_kind": "ticket", "subject_pid": ticket_pid,
+                            "kind": "note", "summary": "Dana Rivers cannot sign in" }),
+            )
+            .await
+            .assert_status_ok();
+        let export: Value = request
+            .get(&format!("/api/contacts/{contact_pid}/subject-access"))
+            .await
+            .json();
+        assert_eq!(
+            export["activities"].as_array().unwrap().len(),
+            2,
+            "subject access includes the activity on the contact's ticket"
+        );
         assert_eq!(
             request
                 .post(&format!("/api/contacts/{contact_pid}/erase"))
@@ -158,7 +176,18 @@ async fn subject_rights_round_trip() {
             .find(|a| a["action"] == "erased")
             .expect("erased audit row")
             .clone();
-        assert_eq!(erased_entry["snapshot"]["activity_summaries_scrubbed"], 1);
+        assert_eq!(
+            erased_entry["snapshot"]["activity_summaries_scrubbed"], 2,
+            "the contact's own note and the note on its ticket"
+        );
+        let ticket_after: Value = request
+            .get(&format!("/api/tickets/{ticket_pid}"))
+            .await
+            .json();
+        assert!(
+            !ticket_after.to_string().contains("cannot sign in"),
+            "the ticket activity's free text is gone: {ticket_after}"
+        );
         // Every count is named for the statement that produced it; none is
         // another statement's number under the wrong label.
         for key in [
