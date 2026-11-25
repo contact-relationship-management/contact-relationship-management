@@ -3140,3 +3140,150 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       its own spec edit, code edit and test edit; none is designed here beyond the lessons file. (L)
       - **Not done / not verified:** the whole group of CRM-T313 to CRM-T324 is proposed from one anonymous review read by
       one session; no CRM user was asked, and no test was run.
+
+## Health-care use audit (proposed 2026-11-25)
+
+From an external source and documentation audit at revision `59f4ed8` (seven commits after v0.3.0), by a reviewer using the
+label `gpt-6.2-astra-high`. The audit file was folded into this section and removed; the revision is in git history. It
+covers prospective use by a health-care organisation. No patient data, deployed clinical system, real mail provider, mobile
+device or health professional took part. The database-backed request suites were inspected selectively and not run; the full
+CI pipeline, penetration testing, clinical validation and regulatory conformity assessment were outside it. What it ran:
+`scripts/ci-check.sh pins` passed; 328 domain library tests passed; the matcher calibration suite passed both active tests
+(`cargo test --locked --test main tuning:: -- --nocapture`); 21 Svelte unit tests (privacy, idempotency, paging, translation
+register) passed. None of its claims about the future has been tested. CRM-T325 to CRM-T340 are proposed, not scheduled.
+
+**Decision.** Start with a synthetic rehearsal of partner coordination: a partnerships team tracks, with the existing
+accounts, activities and tickets, which community organisation owns a service-directory correction, when it is due and
+whether the partner heard the outcome. Defer patient-identifiable workflows. Before even real partner contact details,
+complete the ordinary production privacy, access and operational checks.
+
+| Proposed use | Decision | What would change it |
+| --- | --- | --- |
+| Partner directory maintenance, service onboarding | Rehearse with fictitious organisations now | A service owner accepts the data inventory, tested access policy, retention and support procedure |
+| Routine patient liaison (an accessible callback) | Design with patients and staff on synthetic cases; a missed or misdirected callback can delay care or disclose attendance | Right recipient, restricted access, accountable owner, working fallback when contact fails |
+| Referral follow-up | Later, a read-limited integration with the clinical system that owns the referral | Both organisations reconcile outstanding work and name the team responsible in an outage |
+| Symptom triage, actionable results, diagnosis, treatment advice | Keep in the established clinical service | A separately specified intended purpose, clinical validation, safety case and regulatory review: a new product decision |
+
+- [ ] CRM-T325 **Erasure gaps (audit finding 2).** Erasure counts attachment rows as deleted and commits the audit entry
+      before the files go; `remove_files` returns a failure count the caller discarded. Also a closed ticket's free-text
+      title survives contact erasure and ticket creation passes it into the event envelope, which the outbox stores. (M)
+      - **Done 2026-11-25:** the erase response carries `files_not_removed` (service, `schema.d.ts`, one request-test assertion).
+      - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
+      volume returns; minimise event labels; check subject access for an activity keyed to the ticket pid (the export
+      collects activities by contact pid); keep legally required records under a documented hold with restricted access.
+      Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through subject
+      access, search, events, erasure and a backup restore, and record which copies are removed, retained under an
+      approved schedule or awaiting action. CRM-T279 and CRM-T285 cover parts.
+      - **Not verified:** the database-backed request suites were not run for the done part; it compiles only.
+- [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
+      route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
+      deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search
+      applies that decision to contacts and deals but returns ticket titles through the general read policy. A clinic name in
+      a title can disclose a relationship with a service. Define which team may list, read, change, reassign and export a
+      ticket; apply the decision before pagination and counts; carry it through linked activities, search, boards, reports
+      and every client. Move it ahead of any confidential intake. For a prospective health deployment, reject the insecure
+      override (`CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE`) in its deployment policy. (L)
+      - **Pass when:** in a two-team test with a synthetic restricted ticket, the assigned team completes its work, the other
+      team's lists and counts reveal nothing, and reassignment removes the former team's access by policy; normal and
+      exceptional access are both verified, with the audit record.
+- [ ] CRM-T327 **Contact boundary: reference only (audit finding 2).** The root rule says store the `person:<uuid>`
+      reference and never a copy of a name. Contact creation requires a display name and writes it with optional given and
+      family names, and search indexes the display name. The personal-data inventory describes these fields accurately; the
+      rule and the behaviour disagree, which matters when a name is corrected upstream, when two people share a name and
+      when a buyer sizes a disclosure. Bring the write path, imports, templates, search and clients into line, plan a
+      migration for existing copies, define a display state for an unavailable registry, and keep standalone development
+      possible with synthetic fixtures. Decide first, with the owner, whether the rule or the behaviour changes. (L)
+- [ ] CRM-T328 **Matcher presentation and calibration (audit finding 3).** On the 105 synthetic labelled pairs, 43
+      full-record pairs scored at least 0.99, and 5 of those 43 were different people: mean stated probability 0.998,
+      observed precision 0.884; recall at that threshold 0.864 on full records and 0.636 on names, employer and title
+      only. The fixture was written by the matcher authors, so the figures describe it alone. The contact screen shows a
+      percentage beside the verdict and the merge action. Show why a pair needs review and which evidence is missing;
+      publish calibration tables from a versioned run so the README follows the fixture; give the reviewer a way to defer;
+      keep ambiguous candidates apart. For patient-related work, require confirmation in the authoritative identity system
+      before linking work or addressing a message. (M)
+      - **Rehearse:** a shared family mailbox, a changed surname, transliteration, an upstream correction; queued work held
+      for review when its recipient changes; a mistaken link traceable through downstream actions.
+- [ ] CRM-T329 **One end-to-end callback scenario (audit finding 4).** The first-response timestamp is set when a call or
+      email activity names the assigned actor and the ticket has no earlier response: it records a staff action, not that
+      anyone answered. A pending ticket pauses its SLA clock; configurable sweeps (default off) can resolve it and later
+      close it, and closure is terminal. Email delivery records provider acceptance as sent, with a documented duplicate-send
+      window after a crash. Staff record request, accountable team, due time, attempted contact, confirmed handover or
+      receipt, and outcome; an unanswered call keeps its own wall-clock age while an SLA is paused; an overdue or failed
+      contact routes to a staffed fallback; closure only after an authorised person records the disposition. Reuse CRM-T317,
+      T318 and T322. Measure the oldest unacknowledged request and the number resolved without an outcome communicated,
+      beside response time. (L)
+      - **Pass when:** a shift change, an unreachable recipient, a duplicate provider event and a service outage all leave
+      every outstanding request with an owner and next action that staff can reconcile with the source system.
+- [ ] CRM-T330 **Consent for care messages (audit finding 5).** The purposes are marketing, newsletter, events and product
+      updates, and the non-default consent lookup selects email. Nothing in the model says a shared mailbox is private, that
+      a relative may act for the patient, or that a message can be read in the available format. A marketing opt-out stays
+      fully effective while the responsible service keeps an explicit route for a necessary administrative contact. Keep
+      campaigns and tracking out of any patient workflow. With the deploying organisation, specify the lawful purpose, the
+      recorded permission required, who may receive which message, the safe channel and when to re-verify; resolve proxy
+      authority and expiry from the authoritative service; give staff a fallback for an unsafe shared phone, expired
+      authority or an unavailable accessible format. Never infer authority from a common address, household match,
+      employment or bridge membership. Unknown permission stops automated dispatch and leaves a task with the responsible
+      team. Test withdrawal after queuing, a revoked carer, confidential correspondence and an interpreter-assisted
+      callback. (M)
+- [ ] CRM-T331 **Duplicate search completeness at scale.** The duplicate-advice handler caps its initial pool at 5,000
+      before checking each candidate's access policy, so the final response can be empty while a genuine duplicate lies
+      outside the pool. The service reports truncation; the benchmark report names signed-in latency on a realistically
+      sized database as unmeasured. Seed a synthetic organisation with tens of thousands of contacts, including labelled
+      pairs on either side of the cap; measure candidate recall and time to results under a restricted role, with a slow or
+      unavailable identity service; make incomplete coverage visible wherever staff act on the result; decide from the
+      numbers whether to add an indexed candidate search. (M)
+- [ ] CRM-T332 **What a dashboard can disclose.** CRM-R78 suppresses small groups in the report builder and documents the
+      limits across overlapping reports and fixed dashboards. For any health deployment, inventory each aggregate and
+      export, restrict breakdowns by role, have the privacy lead review the tables together, and test that a suppressed
+      group stays undisclosed across every view the same user can reach. Keep sales lead scores and customer lifetime value
+      out of decisions about access to care (hazard H6). (M)
+- [ ] CRM-T333 **Reconcile claims that affect configuration or purchasing.** The regulatory introduction describes
+      simulation only, the README allows real mail, and the first-release checklist still describes an unrun release
+      workflow though CRM-T312 records a successful v0.3.0 release. Mark historical assessments with their revision, point
+      readers to current evidence, and retire the earlier audit's suggestion to advertise DTAC compliance. Done when a
+      reviewer can tell which mail modes exist, what ran against a live provider, which tag was checked and which evidence
+      belongs to the deployer. Owners: product owner and maintainer, before the partner pilot. (S)
+- [ ] CRM-T334 **Run the real stack under the intended roles.** Exercise sign-in, API, database and browser together. The
+      ordinary browser E2E stage runs the tour and stub suites and the UI has a separate live suite; add the
+      restricted-ticket (CRM-T326) and erasure (CRM-T325) scenarios there and run them against the release candidate.
+      Evidence: a reproducible run against the release digest, a named policy version and fixtures, and an independent
+      review of the changed access surfaces. Owners: service and operations leads, before personal data. (M)
+- [ ] CRM-T335 **Accessible and language-appropriate contact.** Ask which formats and support people need and show those
+      needs where staff pick the channel; keep the minimum necessary reference in CRM and agree where corrections are made.
+      Native clients already limit token and record persistence; mobile v1 is English-only, and browser locale parity cannot
+      establish translation quality. Evidence: staff and patients complete one callback with a screen reader, large text
+      and a reviewed language or interpreter, on shared and managed devices, with sign-out and inaccessible channels;
+      actual barriers recorded and retested. Owners: service designer, accessibility lead, patient representatives, before
+      patient-facing communication. (M)
+- [ ] CRM-T336 **Outage and data-loss window for a work queue.** Agree a maximum tolerable outage and data-loss window with
+      the team that owns callbacks, rehearse the manual fallback and hand-back, and extend the database failover exercises to
+      attachments, field keys, audit verification and unacknowledged work. Evidence: a timed restore into an isolated
+      environment, a comparison with the source queue, named owners for discrepancies and a recorded decision to resume.
+      Owners: clinical service owner and operations lead, before relying on a queue. (M)
+- [ ] CRM-T337 **Optional reference and acknowledgement adapter.** Only when a partner has a defined integration need. If the
+      partner uses HL7 FHIR R4, consider a profiled Task for the administrative handover; agree identifier issuer, owner,
+      status mapping, version, cancellation and retry semantics. Observations, diagnoses and referral narrative stay in the
+      clinical system. A contract test on synthetic data handles duplicate, out-of-order, cancelled and unknown-person
+      messages without losing work; the CRM still builds and runs with the adapter absent (see
+      [`docs/tutorial-family-bridges.md`](../docs/tutorial-family-bridges.md)). Owner: integration lead. (M)
+- [ ] CRM-T338 **Intended-use statement and clinical safety pack.** Write an intended-use statement naming users, setting,
+      population, function and the decisions someone may take from the output. For England, assess with the buyer whether
+      DCB0129 (manufacturer) and DCB0160 (care organisation) apply; give each hazard an owner, control, test result and
+      residual-risk decision, starting from the October DTAC self-assessment and hazards H1 to H14. Reassess any later
+      proposal to rank clinical urgency or recommend treatment against the intended purpose and the applicable device rules
+      (MHRA intended-purpose guidance). Measure H1, H2 and H12 as in the audit. (M)
+- [ ] CRM-T339 **Obligations by deployment, in the supplier pack.** For UK health data the controller names an Article 6
+      lawful basis and an Article 9 condition. For a US deployment under HIPAA, establish covered-entity and
+      business-associate roles and the written agreements, including subcontractors. The Australian Digital Health Agency
+      clinical governance framework is a model for involving patients and clinicians. Record local decisions, hosting
+      parties, incident contacts and evidence in the supplier pack and shared-responsibility matrix. (S)
+- [ ] CRM-T340 **Patient pilot readiness (the care organisation's, not the software's).** Name the person who can stop the
+      pilot, rehearse returning all outstanding work to the established service, and review wrong-recipient near misses,
+      missed handovers, overdue work and accessibility failures. Thresholds and staffing are agreed locally before launch.
+      Coverage percentage, a delivered email or an empty queue cannot show that the right person got the promised follow-up.
+      Record in the supplier pack that this is a deployer duty. (S)
+      - **Not done / not verified:** the whole group CRM-T325 to CRM-T340 comes from one external review of the source and
+      documents. No clinician, patient or deployer was asked; apart from the part of CRM-T325 marked done, nothing is
+      built and no test was run. Reference links the audit used: UK ICO special-category guidance, US SAFER Guides, US HHS
+      marketing and business-associate guidance, HL7 FHIR R4 Task, NHS England Accessible Information Standard and
+      digital clinical safety assurance, MHRA intended-purpose guidance, Australian Digital Health Agency.

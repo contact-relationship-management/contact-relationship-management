@@ -138,6 +138,7 @@ async fn subject_rights_round_trip() {
             .await
             .json();
         assert_eq!(erased["erased"], contact_pid);
+        assert!(erased["files_not_removed"].is_u64());
         assert_eq!(
             request
                 .get(&format!("/api/contacts/{contact_pid}"))

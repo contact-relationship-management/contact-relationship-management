@@ -477,9 +477,11 @@ async fn erase(
     )
     .await?;
     txn.commit().await?;
-    super::attachments::remove_files(&files).await;
+    // The rows are committed; a file that could not be removed is reported, never hidden.
+    let files_not_removed = super::attachments::remove_files(&files).await;
     format::json(Erased {
         erased: cpid,
+        files_not_removed: u64::try_from(files_not_removed).unwrap_or(u64::MAX),
         note: "anonymised, not deleted: deals/tickets/consent history remain \
                under CRM's own retention posture, keyed to a pid that no \
                longer identifies anyone; coordinate erasure with the \
@@ -491,6 +493,8 @@ async fn erase(
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub(crate) struct Erased {
     erased: Uuid,
+    /// Attachment files still on disk after their rows were deleted; an operator must remove them.
+    files_not_removed: u64,
     note: &'static str,
 }
 

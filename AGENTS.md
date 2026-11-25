@@ -63,4 +63,6 @@ A one-command demo (sign-in off, synthetic data only) is `podman compose up --bu
   the scope boundary in [`spec/scope.md`](spec/scope.md).
 - Consent comes first: nothing is sent to a contact without recorded consent, and a bridge never grants it.
 - Production refuses to start without authentication. Demo settings (`CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_AUTH=0`) are for synthetic data only.
+  `CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE=1` overrides the refusal; never set it for a deployment that holds real or
+  health-related data.
 - Use Podman in instructions and scripts; CI still builds with Docker.
