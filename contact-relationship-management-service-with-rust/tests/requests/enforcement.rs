@@ -75,6 +75,7 @@ fn test_policy() -> String {
           "when": { "svc": ["true"] } },
         { "effect": "deny", "actions": ["read"], "when": { "resource.status": ["inactive"] } },
         { "effect": "allow", "actions": ["read"], "when": { "resource.owner": ["$sub"] } },
+        { "effect": "deny", "actions": ["write"], "when": { "resource.priority": ["urgent"] } },
         { "effect": "allow", "actions": ["write"], "when": { "access": ["write"] } },
         { "effect": "allow", "actions": ["read"], "when": { "env.break_glass": ["true"] } },
         { "effect": "allow", "actions": ["read"], "when": {}, "obligations": ["mask"] }
@@ -366,6 +367,45 @@ async fn enforcement_gates_the_real_stack() {
             !listed.to_string().contains("Private concern"),
             "the list masks the title: {listed}"
         );
+
+        // A record-level deny on writes reaches every ticket change: the policy above refuses
+        // writes to urgent tickets, even to a writer.
+        let urgent = request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "title": "Urgent concern", "priority": "urgent" }))
+            .await;
+        assert_eq!(urgent.status_code(), 200);
+        let urgent_pid = urgent.json::<Value>()["pid"].as_str().unwrap().to_string();
+        for (path, body) in [
+            (format!("/api/tickets/{urgent_pid}"), json!({ "title": "Renamed" })),
+            (format!("/api/tickets/{urgent_pid}/position"), json!({ "position": 0 })),
+            (
+                format!("/api/tickets/{urgent_pid}/priority"),
+                json!({ "priority": "low", "reason": "test" }),
+            ),
+        ] {
+            let refused = request
+                .put(&path)
+                .add_header("authorization", bearer(&writer))
+                .json(&body)
+                .await;
+            assert_eq!(refused.status_code(), 403, "{path}");
+        }
+        let refused = request
+            .post(&format!("/api/tickets/{urgent_pid}/status"))
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "to": "pending" }))
+            .await;
+        assert_eq!(refused.status_code(), 403, "status change");
+        // Read back as the service, which sees it unmasked.
+        let unchanged = request
+            .get(&format!("/api/tickets/{urgent_pid}"))
+            .add_header("authorization", bearer(&service))
+            .await
+            .json::<Value>();
+        assert_eq!(unchanged["ticket"]["title"], "Urgent concern");
+        assert_eq!(unchanged["ticket"]["status"], "open");
 
         // CRM-T32: an account's detail bundles its deals and contacts; they
         // follow the same masking as their own endpoints.

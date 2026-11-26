@@ -134,7 +134,7 @@ async fn targets_for(
 
 /// The record-level decision on `ticket` for `caller` (CRM-T321): its obligations on an allow, a
 /// `403` problem on a deny. A no-op returning no obligations while enforcement is off.
-fn authorize_ticket(
+pub(super) fn authorize_ticket(
     caller: &MaybeAuthUser,
     action: Action,
     ticket: &tickets::Model,

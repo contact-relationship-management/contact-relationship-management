@@ -298,6 +298,11 @@ async fn edit_ticket(
     problems.require_text("title", &title);
     problems.finish()?;
     let mut txn = db::pool(&ctx).begin().await?;
+    // The record-level decision on the locked row comes before the change (CRM-T321).
+    let ticket = rows::ticket_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    super::support::authorize_ticket(&caller, authentication_verifier::Action::Write, &ticket)?;
     let row = sqlx::query_as!(
         tickets::Model,
         "UPDATE tickets SET title = $2 WHERE pid = $1 AND deleted_at IS NULL \
@@ -403,6 +408,7 @@ async fn ticket_position(
     let ticket = rows::ticket_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
+    super::support::authorize_ticket(&caller, authentication_verifier::Action::Write, &ticket)?;
     let column: Vec<_> = rows::ticket_column(&mut *txn, &ticket.status)
         .await?
         .into_iter()

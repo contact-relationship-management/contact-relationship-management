@@ -3137,9 +3137,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       on the detail and the list; it passed locally with the ticket, support, search and privacy suites.
       Unit tests cover the attributes and a deny rule confining urgent tickets to their assignee, through the policy
       engine; `spec/auth.md` lists each record's attributes and drops a `resource.tier` no code derived.
-      - **Not done / not verified:** no deny rule is exercised for tickets over HTTP (the request policy only masks), the list is
-      filtered after the page is cut (CRM-T326 asks for before), and counts, boards, reports, reply, resume, activity
-      creation, exports and the clients were not touched. The web-form wording was not written.
+      - **Done 2026-11-26 (board writes):** the title edit (`PUT /api/tickets/{pid}`) and the board reorder asked no
+      record-level question; both now do, on the locked row. The enforcement test's policy denies writes to urgent tickets,
+      and the test checks that the title edit, reorder, priority and status changes are all refused (`403`) and that
+      nothing changed.
+      - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts,
+      board columns as read, reports, reply, activity creation, exports and the clients were not touched. The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

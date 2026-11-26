@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Field-encryption keys that are set but cannot be loaded (an invalid `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`, or a `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE` that cannot be read) now stop the start. Before, the service logged an error and stored the sealed columns as plaintext unless `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` was on. Unit-tested in `hardening`; no boot test runs with bad keys.
-- Tickets have record-level access (CRM-T321): the policy can match `resource.owner`, `status`, `priority` and `channel` of a ticket on its detail, list, search, status change and priority change. A denied read is omitted from lists and search; `mask` hides the title and activity summaries. Not done: boards, counts, reports, replies, activity creation and exports.
+- Tickets have record-level access (CRM-T321): the policy can match `resource.owner`, `status`, `priority` and `channel` of a ticket on its detail, list, search, title edit, board reorder, status change and priority change. A denied read is omitted from lists and search; `mask` hides the title and activity summaries. Not done: boards, counts, reports, replies, activity creation and exports.
 - Erasing a contact sets the free-text title of its tickets to `[erased]`, and the erasure audit row counts them as `ticket_titles_scrubbed` (CRM-T325). Not verified: ticket text beyond the title, and a backup restore.
 
 ## [0.3.0] — 2026-11-24
