@@ -364,7 +364,8 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
     // can name the person or their circumstances (CRM-T325).
     affected.push(
         sqlx::query!(
-            "UPDATE tickets SET title = $2 WHERE contact_pid = $1 AND title <> $2",
+            "UPDATE tickets SET title = $2 WHERE contact_pid = $1 AND title <> $2 \
+             /* deleted_at set or not: a deleted ticket's title still names the person */",
             cpid,
             ERASED,
         )

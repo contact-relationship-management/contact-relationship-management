@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE tickets SET title = $2 WHERE contact_pid = $1 AND title <> $2 /* deleted_at set or not: a deleted ticket's title still names the person */",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b60fe7cacb29fefc88842d2d2442345cb3253bbda4ebedadd3c2d0cfe9c3fa55"
+}

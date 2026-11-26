@@ -3192,7 +3192,8 @@ complete the ordinary production privacy, access and operational checks.
       were not reviewed here.
       - **Done 2026-11-26 (ticket titles):** erasure sets the free-text title of every ticket of the contact to `[erased]`
       and the audit row counts them (`ticket_titles_scrubbed`); the privacy round-trip request test checks the title and the
-      count and passed locally against PostgreSQL 18, with the ticket and support suites. `.sqlx/` has one new query.
+      count and passed locally against PostgreSQL 18, with the ticket and support suites. `.sqlx/` has one new query. The
+      statement covers soft-deleted tickets too, and says so for the `deleted_at` census test, which the first commit failed.
       Ticket descriptions, if any column holds one, were not reviewed; a backup restore was not exercised.
       - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
       volume returns; review the labels on the remaining events; keep legally required records under a documented hold with restricted
