@@ -2238,3 +2238,69 @@ async fn quotas_and_commission_plans_are_for_admin_and_service_callers_only() {
     })
     .await;
 }
+
+/// A customer's reply by mail reopens a pending ticket with enforcement on (CRM-T321): the inbound
+/// mail service has no signed-in user, so the move is the service's own and no person's
+/// record-level decision applies, as it does not for the SLA sweeps.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test --test enforcement -- --ignored`"]
+async fn an_inbound_reply_reopens_its_ticket_with_enforcement_on() {
+    use contact_relationship_management::{clients, webhook};
+    const SECRET: &str = "inbound-secret-0123456789abcdef-enforced";
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(test_policy());
+        s.webhook_secret = Some(SECRET.to_string());
+    });
+    let writer = sign_as(&kid, "inbound-writer", &[("access", &["write"])]);
+    let service = sign_as(&kid, "inbound-svc", &[("svc", &["true"])]);
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let person = format!("person:{}", uuid::Uuid::new_v4());
+        clients::prime_email(&person, "grace@example.test");
+        let contact = request
+            .post("/api/contacts")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "person_ref": person, "display_name": "Grace" }))
+            .await
+            .json::<Value>();
+        let ticket = request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "title": "Printer", "contact_pid": contact["pid"] }))
+            .await
+            .json::<Value>();
+        let pid = ticket["pid"].as_str().unwrap().to_string();
+        request
+            .post(&format!("/api/tickets/{pid}/status"))
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "to": "pending" }))
+            .await
+            .assert_status_ok();
+        let reference = format!("T-{}", &pid.replace('-', "")[..8]);
+        let body = json!({ "from": "grace@example.test",
+                           "subject": format!("Re: Printer [{reference}]"), "text": "ignored" })
+        .to_string();
+        let timestamp = jiff::Timestamp::now().as_second().to_string();
+        let signature = webhook::sign(SECRET, &timestamp, body.as_bytes());
+        let answered = request
+            .post("/webhooks/inbound-email")
+            .add_header("x-crm-timestamp", timestamp)
+            .add_header("x-crm-signature", signature)
+            .add_header("content-type", "application/json")
+            .bytes(body.into())
+            .await;
+        answered.assert_status_ok();
+        assert_eq!(answered.json::<Value>()["result"], "resumed");
+        let detail = request
+            .get(&format!("/api/tickets/{pid}"))
+            .add_header("authorization", bearer(&service))
+            .await
+            .json::<Value>();
+        assert_eq!(detail["ticket"]["status"], "open");
+    })
+    .await;
+}

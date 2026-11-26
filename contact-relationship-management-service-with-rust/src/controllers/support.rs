@@ -464,7 +464,15 @@ async fn sweep_waiting(
         }
         let pid = ticket.pid;
         if action == "resolve" {
-            transition(ctx, caller, pid, "resolved", Some("wait_limit")).await?;
+            transition(
+                ctx,
+                caller,
+                pid,
+                "resolved",
+                Some("wait_limit"),
+                Mover::Service,
+            )
+            .await?;
             done.resolved = done.resolved.tally(1);
         } else {
             let escalate = action == "escalate";
@@ -539,7 +547,15 @@ async fn sweep_closing(
         if now.duration_since(since) <= allowed {
             continue;
         }
-        transition(ctx, caller, ticket.pid, "closed", Some("auto_close")).await?;
+        transition(
+            ctx,
+            caller,
+            ticket.pid,
+            "closed",
+            Some("auto_close"),
+            Mover::Service,
+        )
+        .await?;
         closed = closed.tally(1);
     }
     Ok(closed)
@@ -654,7 +670,7 @@ async fn ticket_status(
     let mut problems = Problems::new();
     problems.require_token("to", tokens::TICKET_STATUSES, &payload.to);
     problems.finish()?;
-    transition(&ctx, &caller, pid, &payload.to, None).await
+    transition(&ctx, &caller, pid, &payload.to, None, Mover::Person).await
 }
 
 /// The reference a reply carries for the ticket `pid` (CRM-R88): `T-` and the first eight hex
@@ -745,6 +761,7 @@ async fn recognise_reply(ctx: &AppContext, mail: &InboundMail) -> Result<&'stati
                 ticket.pid,
                 "open",
                 Some("inbound_mail"),
+                Mover::Service,
             )
             .await?;
             Ok("resumed")
@@ -788,7 +805,17 @@ async fn ticket_customer_reply(
 ) -> Result<Response> {
     let ticket = find_ticket(db::pool(&ctx), pid).await?;
     match ticket.status.as_str() {
-        "pending" => transition(&ctx, &caller, pid, "open", Some("customer_reply")).await,
+        "pending" => {
+            transition(
+                &ctx,
+                &caller,
+                pid,
+                "open",
+                Some("customer_reply"),
+                Mover::Person,
+            )
+            .await
+        }
         "open" => format::json(ticket),
         other => Err(unprocessable(&format!(
             "a customer reply does not reopen a {other} ticket"
@@ -799,18 +826,32 @@ async fn ticket_customer_reply(
 /// Move the ticket `pid` to `to`, resuming or stopping its SLA clock (CRM-R55); `via` names what
 /// caused it. The ticket is read again and locked in the transaction that changes it, so the
 /// change is decided on the row as it is.
+/// Who moves a ticket, which decides whether a record-level decision applies (CRM-T321).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mover {
+    /// A person, through the API: their record-level write decision on the ticket applies.
+    Person,
+    /// The service on its own rules (a sweep's policy, a verified customer reply): no person's
+    /// decision applies, so one ticket a sweep's caller could not write cannot stop the sweep, and
+    /// an inbound reply, which has no signed-in user, still reopens its ticket.
+    Service,
+}
+
 async fn transition(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
     pid: Uuid,
     to: &str,
     via: Option<&str>,
+    mover: Mover,
 ) -> Result<Response> {
     let mut txn = db::pool(ctx).begin().await?;
     let ticket = rows::ticket_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
-    authorize_ticket(caller, Action::Write, &ticket)?;
+    if mover == Mover::Person {
+        authorize_ticket(caller, Action::Write, &ticket)?;
+    }
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, to)
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
