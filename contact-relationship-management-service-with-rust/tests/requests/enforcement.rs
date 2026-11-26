@@ -2304,3 +2304,81 @@ async fn an_inbound_reply_reopens_its_ticket_with_enforcement_on() {
     })
     .await;
 }
+
+/// An SLA sweep moves tickets on its policy alone, with enforcement on (CRM-T321): a ticket its
+/// caller could not change by hand (the policy refuses writes to urgent tickets) is still closed
+/// when its days have passed, and the sweep is not stopped part-way.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test --test enforcement -- --ignored`"]
+async fn a_sweep_closes_a_ticket_its_caller_could_not_change_by_hand() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        // An operator may do anything, but not write to an urgent ticket by hand.
+        s.abac_policy = Some(
+            json!({ "rules": [
+                { "effect": "allow", "actions": ["read", "write", "delete", "destructive"],
+                  "when": { "svc": ["true"] } },
+                { "effect": "deny", "actions": ["write"], "when": { "resource.priority": ["urgent"] } },
+                { "effect": "allow", "actions": ["read", "write", "delete", "destructive"],
+                  "when": { "access": ["operator"] } }
+            ] })
+            .to_string(),
+        );
+    });
+    let writer = sign_as(&kid, "sweep-operator", &[("access", &["operator"])]);
+    let service = sign_as(&kid, "sweep-svc", &[("svc", &["true"])]);
+    request::<App, _, _>(|request, ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        request
+            .post("/api/sla-policies")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "priority": "urgent", "first_response_minutes": 60,
+                           "resolution_minutes": 240, "auto_close_days": 1 }))
+            .await
+            .assert_status_ok();
+        let made = request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "title": "Swept", "priority": "urgent" }))
+            .await
+            .json::<Value>();
+        let pid = made["pid"].as_str().unwrap().to_string();
+        request
+            .post(&format!("/api/tickets/{pid}/status"))
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "to": "resolved" }))
+            .await
+            .assert_status_ok();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE tickets SET resolved_at = now() - interval '2 days' WHERE pid = '{pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
+        // By hand the writer may not close it.
+        assert_eq!(
+            request
+                .post(&format!("/api/tickets/{pid}/status"))
+                .add_header("authorization", bearer(&writer))
+                .json(&json!({ "to": "closed" }))
+                .await
+                .status_code(),
+            403
+        );
+        let swept = request
+            .post("/api/sla/sweep")
+            .add_header("authorization", bearer(&writer))
+            .await;
+        swept.assert_status_ok();
+        let detail = request
+            .get(&format!("/api/tickets/{pid}"))
+            .add_header("authorization", bearer(&service))
+            .await
+            .json::<Value>();
+        assert_eq!(detail["ticket"]["status"], "closed", "{detail}");
+    })
+    .await;
+}

@@ -3142,7 +3142,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       answered `401` and left the ticket pending, and one ticket the sweep's caller could not write would have stopped
       the sweep. A move now says who makes it (`Mover`): a person's takes their decision, the service's (sweeps,
       verified replies) does not. `an_inbound_reply_reopens_its_ticket_with_enforcement_on` failed with the `401` when
-      the reply was made a person's move, and passes. The sweep case has no test.
+      the reply was made a person's move, and passes. `a_sweep_closes_a_ticket_its_caller_could_not_change_by_hand`, under
+      a policy that refuses writes to urgent tickets, failed with the sweep's `403` when the auto-close was made a
+      person's move, and passes.
       - **Done 2026-11-26 (board writes):** the title edit (`PUT /api/tickets/{pid}`) and the board reorder asked no
       record-level question; both now do, on the locked row. The enforcement test's policy denies writes to urgent tickets,
       and the test checks that the title edit, reorder, priority and status changes are all refused (`403`) and that
