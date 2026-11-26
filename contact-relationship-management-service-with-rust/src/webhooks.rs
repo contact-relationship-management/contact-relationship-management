@@ -244,10 +244,29 @@ struct Prepared {
 enum Loaded {
     /// Nothing to do: it was cancelled or finished since the claim.
     Skip,
-    /// Close it without sending, for this reason.
-    Close(&'static str, i32),
+    /// Close it without sending: with this status, for this reason, after this many attempts.
+    Close(Closed, &'static str, i32),
     /// Send this.
     Send(Prepared),
+}
+
+/// How a delivery that is not sent ends.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Closed {
+    /// Nothing is left to send (the event was pruned): `cancelled`, not a failure.
+    Cancelled,
+    /// It can never be sent (no secret signs it): `dead`, counted as a failure.
+    Dead,
+}
+
+impl Closed {
+    /// The stored `status`.
+    const fn status(self) -> &'static str {
+        match self {
+            Self::Cancelled => "cancelled",
+            Self::Dead => "dead",
+        }
+    }
 }
 
 /// Load a claimed delivery with its subscription and event, and sign it.
@@ -274,7 +293,11 @@ async fn prepare(pool: &PgPool, id: i32, now: Timestamp) -> Result<Loaded, sqlx:
     let (Some(entity), Some(kind), Some(entity_pid), Some(occurred_at)) =
         (row.entity, row.kind, row.entity_pid, row.occurred_at)
     else {
-        return Ok(Loaded::Close("the event is gone", attempts));
+        return Ok(Loaded::Close(
+            Closed::Cancelled,
+            "the event is gone",
+            attempts,
+        ));
     };
 
     let mut secrets: Vec<String> = Vec::new();
@@ -295,7 +318,11 @@ async fn prepare(pool: &PgPool, id: i32, now: Timestamp) -> Result<Loaded, sqlx:
     let refs: Vec<&str> = secrets.iter().map(String::as_str).collect();
     let Ok(signature) = rules::signature_header(&refs, &event_id.to_string(), timestamp, &body)
     else {
-        return Ok(Loaded::Close("no usable signing secret", attempts.tally(1)));
+        return Ok(Loaded::Close(
+            Closed::Dead,
+            "no usable signing secret",
+            attempts.tally(1),
+        ));
     };
     Ok(Loaded::Send(Prepared {
         attempts,
@@ -322,16 +349,11 @@ async fn send_one(
 ) -> Result<(), sqlx::Error> {
     let prepared = match prepare(pool, id, now).await? {
         Loaded::Skip => return Ok(()),
-        Loaded::Close(why, attempts) => {
-            let status = if why == "the event is gone" {
-                "cancelled"
-            } else {
-                "dead"
-            };
-            if status == "dead" {
+        Loaded::Close(closed, why, attempts) => {
+            if closed == Closed::Dead {
                 report.dead = report.dead.tally(1);
             }
-            return finish(pool, id, status, attempts, None, Some(why)).await;
+            return finish(pool, id, closed.status(), attempts, None, Some(why)).await;
         }
         Loaded::Send(prepared) => prepared,
     };
@@ -500,4 +522,17 @@ pub async fn cancel_pending(
     .execute(conn)
     .await?;
     Ok(result.rows_affected())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Closed;
+
+    /// A pruned event cancels the delivery; a delivery nothing can sign is dead. The two are told
+    /// apart by the variant, never by the reason's wording.
+    #[test]
+    fn a_closed_delivery_is_stored_as_cancelled_or_dead() {
+        assert_eq!(Closed::Cancelled.status(), "cancelled");
+        assert_eq!(Closed::Dead.status(), "dead");
+    }
 }

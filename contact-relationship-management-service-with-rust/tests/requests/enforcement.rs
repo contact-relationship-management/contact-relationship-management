@@ -321,20 +321,41 @@ async fn enforcement_gates_the_real_stack() {
             .await;
         assert_eq!(assigned.status_code(), 200);
         let ticket_pid = assigned.json::<Value>()["pid"].as_str().unwrap().to_string();
+        assert_eq!(
+            request
+                .post("/api/activities")
+                .add_header("authorization", bearer(&writer))
+                .json(&json!({ "subject_kind": "ticket", "subject_pid": ticket_pid,
+                               "kind": "note", "summary": "Called back about the concern" }))
+                .await
+                .status_code(),
+            200
+        );
         let as_assignee = request
             .get(&format!("/api/tickets/{ticket_pid}"))
             .add_header("authorization", bearer(&owner))
             .await;
         assert_eq!(as_assignee.status_code(), 200);
-        assert_eq!(as_assignee.json::<Value>()["ticket"]["title"], "Private concern");
+        let as_assignee = as_assignee.json::<Value>();
+        assert_eq!(as_assignee["ticket"]["title"], "Private concern");
+        assert_eq!(
+            as_assignee["activities"][0]["summary"],
+            "Called back about the concern"
+        );
         let as_other = request
             .get(&format!("/api/tickets/{ticket_pid}"))
             .add_header("authorization", bearer(&reader))
             .await;
         assert_eq!(as_other.status_code(), 200);
+        let as_other = as_other.json::<Value>();
         assert_eq!(
-            as_other.json::<Value>()["ticket"]["title"],
+            as_other["ticket"]["title"],
             contact_relationship_management::auth::MASKED
+        );
+        assert_eq!(
+            as_other["activities"][0]["summary"],
+            contact_relationship_management::auth::MASKED,
+            "the ticket's activities are masked with it"
         );
         let listed = request
             .get("/api/tickets")
