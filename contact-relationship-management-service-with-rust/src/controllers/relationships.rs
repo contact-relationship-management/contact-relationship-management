@@ -662,7 +662,7 @@ async fn get_contact(
                 auth::mask_json(v, &["amount_minor"])
             }),
             each(&to_values(&ticket_rows), &|v| {
-                auth::mask_text_json(v, &["description"])
+                auth::mask_text_json(v, &["title"])
             }),
         )
     } else {
@@ -1208,6 +1208,19 @@ async fn create_activity(
         problems.push("only a task has an assignee or a reminder");
     }
     problems.finish()?;
+    // Logging an activity changes its subject's record: the subject's own write decision applies
+    // (CRM-T321). A subject that is not there cannot be decided on, so enforcement refuses it.
+    if auth::require_auth() {
+        let attrs = crate::notifications::subject_attrs(
+            db::pool(&ctx),
+            &payload.subject_kind,
+            payload.subject_pid,
+        )
+        .await?
+        .ok_or(Error::NotFound)?;
+        auth::authorize_record(&caller, authentication_verifier::Action::Write, &attrs)
+            .map_err(record_rejection)?;
+    }
     let occurred_at: DateTimeWithTimeZone = payload.occurred_at.unwrap_or_else(crate::clock::now);
     let pid = Uuid::new_v4();
     let mut txn = db::pool(&ctx).begin().await?;
@@ -1295,6 +1308,7 @@ async fn list_activities(
     )
     .await?;
     let (rows, more) = page.split(rows);
+    let rows = readable_activities(pool, &caller, rows).await?;
     Audit::record_read_on(
         pool,
         "activity",
@@ -1305,6 +1319,51 @@ async fn list_activities(
     )
     .await?;
     page.respond(rows, more)
+}
+
+/// Leave out the activities whose subject `caller` may not read, and mask the summary of those
+/// whose subject it reads masked (CRM-T321): the feed must not show what the subject's own read
+/// would hide. One decision per subject. An activity whose subject is gone is left out, as no
+/// decision can be made on it. With enforcement off every row is returned as it is.
+async fn readable_activities(
+    pool: &PgPool,
+    caller: &MaybeAuthUser,
+    rows: Vec<activities::Model>,
+) -> Result<Vec<activities::Model>> {
+    if !auth::require_auth() {
+        return Ok(rows);
+    }
+    let mut decisions: HashMap<(String, Uuid), Option<bool>> = HashMap::new();
+    let mut shown = Vec::with_capacity(rows.len());
+    for mut row in rows {
+        let key = (row.subject_kind.clone(), row.subject_pid);
+        let decision = if let Some(decision) = decisions.get(&key) {
+            *decision
+        } else {
+            let decision =
+                crate::notifications::subject_attrs(pool, &row.subject_kind, row.subject_pid)
+                    .await?
+                    .and_then(|attrs| {
+                        auth::authorize_record(
+                            caller,
+                            authentication_verifier::Action::Read,
+                            &attrs,
+                        )
+                        .ok()
+                    })
+                    .map(|obligations| obligations.iter().any(|o| o == "mask"));
+            decisions.insert(key, decision);
+            decision
+        };
+        // `None`: denied or gone, so left out; `Some(true)`: read masked.
+        if let Some(masked) = decision {
+            if masked {
+                row.summary = auth::MASKED.to_string().into();
+            }
+            shown.push(row);
+        }
+    }
+    Ok(shown)
 }
 
 /// `PUT /api/activities/{pid}/done` — tick a task activity.

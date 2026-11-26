@@ -318,7 +318,8 @@ async fn enforcement_gates_the_real_stack() {
         let assigned = request
             .post("/api/tickets")
             .add_header("authorization", bearer(&writer))
-            .json(&json!({ "title": "Private concern", "assignee_ref": owner_ref }))
+            .json(&json!({ "title": "Private concern", "assignee_ref": owner_ref,
+                           "contact_pid": owned_contact_pid }))
             .await;
         assert_eq!(assigned.status_code(), 200);
         let ticket_pid = assigned.json::<Value>()["pid"].as_str().unwrap().to_string();
@@ -368,6 +369,36 @@ async fn enforcement_gates_the_real_stack() {
             "the list masks the title: {listed}"
         );
 
+        // The activity feed follows the subject's decision: masked for another reader, plain for
+        // the assignee.
+        let feed = format!("/api/activities?subject_kind=ticket&subject_pid={ticket_pid}");
+        let feed_as_assignee = request
+            .get(&feed)
+            .add_header("authorization", bearer(&owner))
+            .await
+            .json::<Value>();
+        assert_eq!(feed_as_assignee[0]["summary"], "Called back about the concern");
+        let feed_as_other = request
+            .get(&feed)
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json::<Value>();
+        assert_eq!(
+            feed_as_other[0]["summary"],
+            contact_relationship_management::auth::MASKED,
+            "the feed masks what the ticket's own read masks"
+        );
+        // A contact read masked masks the titles of its tickets too.
+        let contact_as_stranger = request
+            .get(&format!("/api/contacts/{owned_contact_pid}"))
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json::<Value>();
+        assert!(
+            !contact_as_stranger.to_string().contains("Private concern"),
+            "{contact_as_stranger}"
+        );
+
         // A record-level deny on writes reaches every ticket change: the policy above refuses
         // writes to urgent tickets, even to a writer.
         let urgent = request
@@ -398,6 +429,13 @@ async fn enforcement_gates_the_real_stack() {
             .json(&json!({ "to": "pending" }))
             .await;
         assert_eq!(refused.status_code(), 403, "status change");
+        let refused = request
+            .post("/api/activities")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "subject_kind": "ticket", "subject_pid": urgent_pid,
+                           "kind": "note", "summary": "Not allowed" }))
+            .await;
+        assert_eq!(refused.status_code(), 403, "an activity on the ticket");
         // Read back as the service, which sees it unmasked.
         let unchanged = request
             .get(&format!("/api/tickets/{urgent_pid}"))

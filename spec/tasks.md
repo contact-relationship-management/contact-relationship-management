@@ -3141,8 +3141,14 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       record-level question; both now do, on the locked row. The enforcement test's policy denies writes to urgent tickets,
       and the test checks that the title edit, reorder, priority and status changes are all refused (`403`) and that
       nothing changed.
+      - **Done 2026-11-26 (activities):** `GET /api/activities` returned every summary with no record-level decision, so a
+      restricted ticket's notes, or a masked contact's, could be read in full there; it now asks the subject's read
+      decision once per subject, leaves out denied or gone subjects and masks the rest as the subject's own read does.
+      `POST /api/activities` asks the subject's write decision (with enforcement on, an unknown subject is a `404`).
+      A masked contact read masked a ticket `description` that tickets do not have; it now masks the ticket titles. The
+      enforcement test checks the feed for two readers, the masked contact's ticket titles and a refused activity.
       - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts,
-      board columns as read, reports, reply, activity creation, exports and the clients were not touched. The web-form wording was not written.
+      board columns as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

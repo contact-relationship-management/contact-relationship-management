@@ -39,6 +39,9 @@ owner's `person:` URN, the form a sign-in subject takes, so a `$sub` rule scopes
 | deal | `owner`, `owner_ref`, `status` (`open`, `won`, `lost`) | amounts |
 | ticket (CRM-T321) | `owner` and `owner_ref` from the assignee, `status`, `priority`, `channel` | title, activity summaries |
 
+An activity follows its subject: the activity feed leaves out activities whose subject the caller may not read and
+masks the summary when the subject is read masked, and logging an activity asks the subject's write decision.
+
 Other records (accounts, leads, campaigns, articles) are decided on the entity alone; no record-level attribute,
 `resource.tier` included, is derived for them. The `mask` obligation also redacts forecast values and campaign
 costs/ROI, while leaving structure (stages, counts, statuses) visible.
