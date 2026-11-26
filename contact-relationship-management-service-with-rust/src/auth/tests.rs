@@ -882,6 +882,86 @@ fn a_deal(
     }
 }
 
+/// A ticket model for the resource-attribute tests.
+fn a_ticket(
+    assignee: Option<uuid::Uuid>,
+    priority: &str,
+) -> crate::models::_entities::tickets::Model {
+    let now = crate::clock::now();
+    crate::models::_entities::tickets::Model {
+        created_at: now,
+        updated_at: now,
+        id: 1,
+        pid: uuid::Uuid::new_v4(),
+        contact_pid: None,
+        account_pid: None,
+        assignee_ref: assignee.map(|a| format!("person:{a}")),
+        title: "Synthetic ticket".to_string(),
+        priority: priority.to_string(),
+        channel: "email".to_string(),
+        status: "open".to_string(),
+        board_position: 0,
+        opened_at: now,
+        first_response_due_at: None,
+        resolution_due_at: None,
+        first_responded_at: None,
+        resolved_at: None,
+        first_response_breached: false,
+        resolution_breached: false,
+        paused_at: None,
+        wait_limit_exceeded_at: None,
+        first_response_paused_seconds: 0,
+        resolution_paused_seconds: 0,
+        deleted_at: None,
+    }
+}
+
+/// A ticket's attributes name its assignee as the owner, and its status, priority and channel
+/// (CRM-T321); an unassigned ticket has no owner.
+#[test]
+fn ticket_resource_attrs_map_assignee_status_priority_and_channel() {
+    let assignee = uuid::Uuid::new_v4();
+    let attrs = ticket_resource_attrs(&a_ticket(Some(assignee), "high"));
+    assert_eq!(attrs["owner"], vec![assignee.to_string()]);
+    assert_eq!(attrs["owner_ref"], vec![format!("person:{assignee}")]);
+    assert_eq!(attrs["status"], vec!["open".to_string()]);
+    assert_eq!(attrs["priority"], vec!["high".to_string()]);
+    assert_eq!(attrs["channel"], vec!["email".to_string()]);
+    let unassigned = ticket_resource_attrs(&a_ticket(None, "normal"));
+    assert!(!unassigned.contains_key("owner"));
+    assert!(!unassigned.contains_key("owner_ref"));
+}
+
+/// Through the shared engine, a policy can confine urgent tickets to their assignee: the
+/// assignee reads one, anyone else is denied, and other tickets stay readable.
+#[test]
+fn ticket_attrs_confine_a_ticket_to_its_assignee() {
+    let me = uuid::Uuid::new_v4();
+    let policy = Policy::from_json(
+        r#"{ "rules": [
+            { "effect": "allow", "actions": ["read"], "when": { "resource.owner": ["$sub"] } },
+            { "effect": "deny", "actions": ["read"], "when": { "resource.priority": ["urgent"] } },
+            { "effect": "allow", "actions": ["read"], "when": {} }
+        ] }"#,
+    )
+    .expect("policy parses");
+    let mut assignee = claims_with_attrs(&[]);
+    assignee.sub = me.to_string();
+    let other = claims_with_attrs(&[]);
+    let urgent = ticket_resource_attrs(&a_ticket(Some(me), "urgent"));
+    let read = |claims: &Claims, resource| {
+        policy
+            .evaluate_with_resource(claims, Action::Read, ENTITY, resource)
+            .allowed
+    };
+    assert!(read(&assignee, &urgent));
+    assert!(!read(&other, &urgent));
+    assert!(read(
+        &other,
+        &ticket_resource_attrs(&a_ticket(Some(me), "normal"))
+    ));
+}
+
 /// The deal resource attributes map owner + open/won/lost status
 /// (`authorization-attributes.md` §9).
 #[test]

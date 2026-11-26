@@ -97,9 +97,11 @@ async fn search(
     let (found, more) = page.split(found);
     let mut shown = Vec::with_capacity(found.len());
     for (hit, pid) in found {
-        // Only contacts and deals carry record-level attributes; the rest are decided on the
+        // Only contacts, deals and tickets carry record-level attributes; the rest are decided on the
         // entity, which the blanket guard has already done.
-        let allowed = if matches!(hit.kind.as_str(), "contact" | "deal") && auth::require_auth() {
+        let allowed = if matches!(hit.kind.as_str(), "contact" | "deal" | "ticket")
+            && auth::require_auth()
+        {
             match crate::notifications::subject_attrs(crate::db::pool(&ctx), &hit.kind, pid).await?
             {
                 Some(attrs) => caller.claims().is_some_and(|c| auth::may_read(c, &attrs)),

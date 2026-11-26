@@ -312,6 +312,40 @@ async fn enforcement_gates_the_real_stack() {
         assert_eq!(deals_as_stranger.status_code(), 200);
         assert!(find_amount(&deals_as_stranger.json::<Value>()).is_null());
 
+        // CRM-T321: record-level ABAC on tickets. The assignee reads the title; another
+        // reader gets it masked, in the detail, its activities and the list.
+        let assigned = request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "title": "Private concern", "assignee_ref": owner_ref }))
+            .await;
+        assert_eq!(assigned.status_code(), 200);
+        let ticket_pid = assigned.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let as_assignee = request
+            .get(&format!("/api/tickets/{ticket_pid}"))
+            .add_header("authorization", bearer(&owner))
+            .await;
+        assert_eq!(as_assignee.status_code(), 200);
+        assert_eq!(as_assignee.json::<Value>()["ticket"]["title"], "Private concern");
+        let as_other = request
+            .get(&format!("/api/tickets/{ticket_pid}"))
+            .add_header("authorization", bearer(&reader))
+            .await;
+        assert_eq!(as_other.status_code(), 200);
+        assert_eq!(
+            as_other.json::<Value>()["ticket"]["title"],
+            contact_relationship_management::auth::MASKED
+        );
+        let listed = request
+            .get("/api/tickets")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json::<Value>();
+        assert!(
+            !listed.to_string().contains("Private concern"),
+            "the list masks the title: {listed}"
+        );
+
         // CRM-T32: an account's detail bundles its deals and contacts; they
         // follow the same masking as their own endpoints.
         let account = request

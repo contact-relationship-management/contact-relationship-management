@@ -3130,6 +3130,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T321 **Record-level access on tickets.** The ticket handlers have no record-level check: anyone through the general
       read gate reads any ticket. Add it; the first step before any restricted or confidential concern channel, and raised in
       priority by the public-engagement decision. Also say on the web form where sensitive concerns go. (M)
+      - **Done 2026-11-26 (the check):** tickets carry record-level attributes (`resource.owner` and `owner_ref` from the
+      assignee, `status`, `priority`, `channel`). The detail read, the list, search, status changes and priority changes
+      ask the policy: a denied read is a `403` on the detail and absent from the list and search; a `mask` obligation
+      replaces the title and the activity summaries. The enforcement request test checks an assignee and another reader
+      on the detail and the list; it passed locally with the ticket, support, search and privacy suites.
+      Unit tests cover the attributes and a deny rule confining urgent tickets to their assignee, through the policy
+      engine; `spec/auth.md` lists each record's attributes and drops a `resource.tier` no code derived.
+      - **Not done / not verified:** no deny rule is exercised for tickets over HTTP (the request policy only masks), the list is
+      filtered after the page is cut (CRM-T326 asks for before), and counts, boards, reports, reply, resume, activity
+      creation, exports and the clients were not touched. The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

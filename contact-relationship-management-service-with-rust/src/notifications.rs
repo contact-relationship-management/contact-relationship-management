@@ -30,7 +30,7 @@ pub struct Outcome {
 }
 
 /// The attributes the policy matches on for the record a notification is about, or `None` when
-/// the record is gone. Only contacts and deals carry record-level attributes; the others are
+/// the record is gone. Only contacts, deals and tickets carry record-level attributes; the others are
 /// decided on the entity alone.
 ///
 /// # Errors
@@ -68,15 +68,9 @@ pub async fn subject_attrs<'e>(
             .fetch_one(db)
             .await?,
         ),
-        "ticket" => live(
-            sqlx::query_scalar!(
-                "SELECT EXISTS (SELECT 1 FROM tickets WHERE pid = $1 AND deleted_at IS NULL) \
-                 AS \"found!\"",
-                pid,
-            )
-            .fetch_one(db)
-            .await?,
-        ),
+        "ticket" => rows::ticket(db, pid)
+            .await?
+            .map(|t| crate::auth::ticket_resource_attrs(&t)),
         _ => None,
     })
 }

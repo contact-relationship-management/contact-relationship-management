@@ -71,7 +71,7 @@
 //! as configured policy rules over the same `attrs` claim, no code
 //! change required.
 
-use crate::models::_entities::{contacts, deals};
+use crate::models::_entities::{contacts, deals, tickets};
 use authentication_verifier::{Action, Claims, Policy, ReloadablePolicy};
 #[cfg(feature = "paseto")]
 use authentication_verifier::{ReloadableVerifier, Verifier};

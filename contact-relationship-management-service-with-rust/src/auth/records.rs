@@ -2,8 +2,22 @@
 
 use super::{
     Action, BTreeMap, Claims, ENTITY, MaybeAuthUser, StatusCode, contacts, deals, policy,
-    require_auth,
+    require_auth, tickets,
 };
+
+/// The `owner` and `owner_ref` attributes of a record owned by the person `owner_ref` (a `person:`
+/// URN): `owner` is the bare id after the scheme, the form a sign-in subject takes, so a `$sub` rule
+/// matches it; `owner_ref` is the URN as stored. An unowned record has neither key, so an ownership
+/// rule never matches it.
+fn owner_attrs(owner_ref: Option<&str>) -> BTreeMap<String, Vec<String>> {
+    let mut attrs = BTreeMap::new();
+    if let Some(owner_ref) = owner_ref {
+        let owner = owner_ref.split_once(':').map_or(owner_ref, |(_, id)| id);
+        attrs.insert("owner".to_string(), vec![owner.to_string()]);
+        attrs.insert("owner_ref".to_string(), vec![owner_ref.to_string()]);
+    }
+    attrs
+}
 
 /// Derive the **record-level resource attributes** of a stored deal
 /// for the ABAC decision (`authorization-attributes.md` §9). Keys a
@@ -21,14 +35,7 @@ use super::{
 /// obligation) — entirely as policy, no code change.
 #[must_use]
 pub fn deal_resource_attrs(deal: &deals::Model) -> BTreeMap<String, Vec<String>> {
-    let mut attrs = BTreeMap::new();
-    if let Some(owner_ref) = &deal.owner_ref {
-        let owner = owner_ref
-            .split_once(':')
-            .map_or(owner_ref.as_str(), |(_, id)| id);
-        attrs.insert("owner".to_string(), vec![owner.to_string()]);
-        attrs.insert("owner_ref".to_string(), vec![owner_ref.clone()]);
-    }
+    let mut attrs = owner_attrs(deal.owner_ref.as_deref());
     let status = if deal.closed_at.is_none() {
         "open"
     } else if deal.won {
@@ -44,15 +51,20 @@ pub fn deal_resource_attrs(deal: &deals::Model) -> BTreeMap<String, Vec<String>>
 /// (bare person uuid + full URN, when owned) and `resource.status`.
 #[must_use]
 pub fn contact_resource_attrs(contact: &contacts::Model) -> BTreeMap<String, Vec<String>> {
-    let mut attrs = BTreeMap::new();
-    if let Some(owner_ref) = &contact.owner_ref {
-        let owner = owner_ref
-            .split_once(':')
-            .map_or(owner_ref.as_str(), |(_, id)| id);
-        attrs.insert("owner".to_string(), vec![owner.to_string()]);
-        attrs.insert("owner_ref".to_string(), vec![owner_ref.clone()]);
-    }
+    let mut attrs = owner_attrs(contact.owner_ref.as_deref());
     attrs.insert("status".to_string(), vec![contact.status.clone()]);
+    attrs
+}
+
+/// Record-level resource attributes of a **ticket** (CRM-T321): `resource.owner` and `resource.owner_ref`
+/// (the assignee, when there is one), `resource.status`, `resource.priority` and `resource.channel`. A
+/// deployment can then confine a ticket to its assignee, or hide a channel, as policy.
+#[must_use]
+pub fn ticket_resource_attrs(ticket: &tickets::Model) -> BTreeMap<String, Vec<String>> {
+    let mut attrs = owner_attrs(ticket.assignee_ref.as_deref());
+    attrs.insert("status".to_string(), vec![ticket.status.clone()]);
+    attrs.insert("priority".to_string(), vec![ticket.priority.clone()]);
+    attrs.insert("channel".to_string(), vec![ticket.channel.clone()]);
     attrs
 }
 

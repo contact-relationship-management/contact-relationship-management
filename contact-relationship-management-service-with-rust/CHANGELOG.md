@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Tickets have record-level access (CRM-T321): the policy can match `resource.owner`, `status`, `priority` and `channel` of a ticket on its detail, list, search, status change and priority change. A denied read is omitted from lists and search; `mask` hides the title and activity summaries. Not done: boards, counts, reports, replies, activity creation and exports.
 - Erasing a contact sets the free-text title of its tickets to `[erased]`, and the erasure audit row counts them as `ticket_titles_scrubbed` (CRM-T325). Not verified: ticket text beyond the title, and a backup restore.
 
 ## [0.3.0] — 2026-11-24

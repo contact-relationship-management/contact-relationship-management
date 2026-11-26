@@ -29,11 +29,19 @@ One API; four typical policy personas expressed over `attrs`:
 
 ## Record-level attributes
 
-Handlers derive `resource.owner` (the bare id of the owner's `person:`
-URN, the sign-in subject, enabling `$sub` self-scope, CRM-D18), `resource.status`, and `resource.tier` for the
-second ABAC pass. The `mask` obligation redacts **deal amounts,
-forecast values, campaign costs/ROI, and contact channel details**
-while leaving structure (stages, counts, statuses) visible.
+Handlers derive these for the second ABAC pass (`src/auth/records.rs`). `resource.owner` is the bare id of the
+owner's `person:` URN, the form a sign-in subject takes, so a `$sub` rule scopes a record to its owner (CRM-D18);
+`resource.owner_ref` is the URN as stored. An unowned record has neither.
+
+| Record | Attributes | What `mask` hides |
+|---|---|---|
+| contact | `owner`, `owner_ref`, `status` | channel details |
+| deal | `owner`, `owner_ref`, `status` (`open`, `won`, `lost`) | amounts |
+| ticket (CRM-T321) | `owner` and `owner_ref` from the assignee, `status`, `priority`, `channel` | title, activity summaries |
+
+Other records (accounts, leads, campaigns, articles) are decided on the entity alone; no record-level attribute,
+`resource.tier` included, is derived for them. The `mask` obligation also redacts forecast values and campaign
+costs/ROI, while leaving structure (stages, counts, statuses) visible.
 
 ## Sensitivity map
 

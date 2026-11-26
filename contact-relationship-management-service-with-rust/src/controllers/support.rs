@@ -30,6 +30,7 @@ use crate::rules::calendar::Calendar;
 use crate::rules::{lifecycle, sla, tokens};
 use crate::streaming;
 use crate::validation::Problems;
+use authentication_verifier::Action;
 
 /// `POST /api/sla-policies` body.
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -129,6 +130,22 @@ async fn targets_for(
         },
         calendar,
     )))
+}
+
+/// The record-level decision on `ticket` for `caller` (CRM-T321): its obligations on an allow, a
+/// `403` problem on a deny. A no-op returning no obligations while enforcement is off.
+fn authorize_ticket(
+    caller: &MaybeAuthUser,
+    action: Action,
+    ticket: &tickets::Model,
+) -> Result<Vec<String>> {
+    crate::auth::authorize_record(caller, action, &crate::auth::ticket_resource_attrs(ticket))
+        .map_err(super::record_rejection)
+}
+
+/// Whether a decision's obligations ask for the masked view.
+fn masked(obligations: &[String]) -> bool {
+    obligations.iter().any(|o| o == "mask")
 }
 
 /// The live ticket `pid`, or `404`.
@@ -353,6 +370,14 @@ async fn list_tickets(
     let now: DateTimeWithTimeZone = crate::clock::now();
     let rows: Vec<serde_json::Value> = rows
         .into_iter()
+        .filter_map(|mut ticket| {
+            // A ticket the caller may not read is left out, as a single read would refuse it.
+            let obligations = authorize_ticket(&caller, Action::Read, &ticket).ok()?;
+            if masked(&obligations) {
+                ticket.title = crate::auth::MASKED.to_string();
+            }
+            Some(ticket)
+        })
         .map(|ticket| {
             // A ticket waiting for the customer has a stopped clock (CRM-R55).
             let clock = sla::clock_now(now, ticket.paused_at);
@@ -546,7 +571,9 @@ async fn get_ticket(
     PidPath(pid): PidPath,
 ) -> Result<Response> {
     let pool = db::pool(&ctx);
-    let ticket = find_ticket(pool, pid).await?;
+    let mut ticket = find_ticket(pool, pid).await?;
+    // The record-level decision comes before anything is read or audited as read (CRM-T321).
+    let obligations = authorize_ticket(&caller, Action::Read, &ticket)?;
     Audit::record_read_on(
         pool,
         "ticket",
@@ -556,7 +583,13 @@ async fn get_ticket(
         None,
     )
     .await?;
-    let activity_rows = rows::activities_of(pool, "ticket", ticket.pid).await?;
+    let mut activity_rows = rows::activities_of(pool, "ticket", ticket.pid).await?;
+    if masked(&obligations) {
+        ticket.title = crate::auth::MASKED.to_string();
+        for activity in &mut activity_rows {
+            activity.summary = crate::auth::MASKED.to_string().into();
+        }
+    }
     format::json(TicketDetail {
         reference: reference(ticket.pid),
         ticket,
@@ -777,6 +810,7 @@ async fn transition(
     let ticket = rows::ticket_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
+    authorize_ticket(caller, Action::Write, &ticket)?;
     lifecycle::check("ticket", lifecycle::TICKET, &ticket.status, to)
         .map_err(|e| unprocessable(&e.to_string()))?;
     // The SLA clock stops while the ticket waits for the customer and starts again when it leaves
@@ -881,6 +915,7 @@ async fn ticket_priority(
     let ticket = rows::ticket_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
+    authorize_ticket(&caller, Action::Write, &ticket)?;
     // Waiting for the customer already counted stays counted (CRM-R55).
     let paused = sla::Paused {
         first_response_seconds: ticket.first_response_paused_seconds,
