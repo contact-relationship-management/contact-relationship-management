@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Erasing a contact sets the free-text title of its tickets to `[erased]`, and the erasure audit row counts them as `ticket_titles_scrubbed` (CRM-T325). Not verified: ticket text beyond the title, and a backup restore.
+
 ## [0.3.0] — 2026-11-24
 
 ### Changed

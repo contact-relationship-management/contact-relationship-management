@@ -200,7 +200,7 @@ async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uu
 }
 
 /// The places [`scrub_linked`] scrubs, one statement each.
-const SCRUBBED_PLACES: usize = 13;
+const SCRUBBED_PLACES: usize = 14;
 
 /// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
 /// statement each, in the order of the audit row's counts. Returns the rows each one changed.
@@ -360,6 +360,18 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
             .await?
             .rows_affected(),
     );
+    // The contact's tickets keep their status, dates and numbers but not the free-text title, which
+    // can name the person or their circumstances (CRM-T325).
+    affected.push(
+        sqlx::query!(
+            "UPDATE tickets SET title = $2 WHERE contact_pid = $1 AND title <> $2",
+            cpid,
+            ERASED,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
     // One count for each statement above; a different number is a mistake in this function, and no
     // count is invented for a place that is missing.
     <[u64; SCRUBBED_PLACES]>::try_from(affected)
@@ -370,7 +382,8 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
 /// contact's identity fields to a tombstone and soft-delete the row,
 /// scrub the personal free text linked to it (activity summaries
 /// logged directly about the contact, the lead record's name/email),
-/// and remove working-group roster entries naming it. Deals, tickets
+/// and remove working-group roster entries naming it. Ticket titles are
+/// scrubbed (CRM-T325). Deals, tickets
 /// and consent history remain — keyed to a pid that no longer
 /// identifies anyone — under the same "financial/operational rows
 /// remain" posture the family uses elsewhere (WPM keeps payroll rows;
@@ -380,6 +393,10 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
 /// continuity). Refused while a live engagement exists (CRM-R20).
 /// Destructive-classified; audited with counts.
 #[debug_handler]
+#[expect(
+    clippy::too_many_lines,
+    reason = "the audit row names the count of every place the erasure touched"
+)]
 async fn erase(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
@@ -449,6 +466,7 @@ async fn erase(
         tokens,
         employments,
         custom_field_values,
+        ticket_titles,
     ] = affected;
     // The rows go in the transaction; the files go once it has committed.
     let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
@@ -472,6 +490,7 @@ async fn erase(
             "employments_deleted": employments,
             "employment_last_events_deleted": employment_events_deleted,
             "custom_field_values_deleted": custom_field_values,
+            "ticket_titles_scrubbed": ticket_titles,
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,
         })),

@@ -3180,11 +3180,15 @@ complete the ordinary production privacy, access and operational checks.
       webhooks never receive it. The privacy round-trip test checks `ticket_opened`; the outbox, webhook, streaming and
       ticket suites passed locally. Other events still carry a label (knowledge-base articles carry the article title); they
       were not reviewed here.
+      - **Done 2026-11-26 (ticket titles):** erasure sets the free-text title of every ticket of the contact to `[erased]`
+      and the audit row counts them (`ticket_titles_scrubbed`); the privacy round-trip request test checks the title and the
+      count and passed locally against PostgreSQL 18, with the ticket and support suites. `.sqlx/` has one new query.
+      Ticket descriptions, if any column holds one, were not reviewed; a backup restore was not exercised.
       - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
       volume returns; review the labels on the remaining events; keep legally required records under a documented hold with restricted
       access. Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through
       subject access, search, events, erasure and a backup restore, and record which copies are removed, retained under
-      an approved schedule or awaiting action. The ticket title itself still survives erasure. CRM-T279 and CRM-T285
+      an approved schedule or awaiting action. CRM-T279 and CRM-T285
       cover parts.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by

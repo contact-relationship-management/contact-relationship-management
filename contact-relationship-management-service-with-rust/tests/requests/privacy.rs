@@ -191,6 +191,11 @@ async fn subject_rights_round_trip() {
             .get(&format!("/api/tickets/{ticket_pid}"))
             .await
             .json();
+        assert_eq!(
+            ticket_after["ticket"]["title"], "[erased]",
+            "the closed ticket's free-text title is scrubbed: {ticket_after}"
+        );
+        assert_eq!(erased_entry["snapshot"]["ticket_titles_scrubbed"], 1);
         assert!(
             !ticket_after.to_string().contains("cannot sign in"),
             "the ticket activity's free text is gone: {ticket_after}"
