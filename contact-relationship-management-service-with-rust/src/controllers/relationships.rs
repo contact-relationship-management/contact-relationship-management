@@ -1208,19 +1208,14 @@ async fn create_activity(
         problems.push("only a task has an assignee or a reminder");
     }
     problems.finish()?;
-    // Logging an activity changes its subject's record: the subject's own write decision applies
-    // (CRM-T321). A subject that is not there cannot be decided on, so enforcement refuses it.
-    if auth::require_auth() {
-        let attrs = crate::notifications::subject_attrs(
-            db::pool(&ctx),
-            &payload.subject_kind,
-            payload.subject_pid,
-        )
-        .await?
-        .ok_or(Error::NotFound)?;
-        auth::authorize_record(&caller, authentication_verifier::Action::Write, &attrs)
-            .map_err(record_rejection)?;
-    }
+    // Logging an activity changes its subject's record: the subject's own write decision applies.
+    authorize_subject_write(
+        db::pool(&ctx),
+        &caller,
+        &payload.subject_kind,
+        payload.subject_pid,
+    )
+    .await?;
     let occurred_at: DateTimeWithTimeZone = payload.occurred_at.unwrap_or_else(crate::clock::now);
     let pid = Uuid::new_v4();
     let mut txn = db::pool(&ctx).begin().await?;
@@ -1321,6 +1316,30 @@ async fn list_activities(
     page.respond(rows, more)
 }
 
+/// The write decision on the subject `kind`/`pid` of an activity (CRM-T321): logging, editing or
+/// ticking an activity changes what is recorded about its subject. With enforcement off this is a
+/// no-op. A subject that is not there cannot be decided on, so enforcement answers `404`.
+///
+/// # Errors
+///
+/// `404` for a missing subject, `403` when the policy denies the write, or a database error.
+pub(super) async fn authorize_subject_write<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    caller: &MaybeAuthUser,
+    kind: &str,
+    pid: Uuid,
+) -> Result<()> {
+    if !auth::require_auth() {
+        return Ok(());
+    }
+    let attrs = crate::notifications::subject_attrs(db, kind, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    auth::authorize_record(caller, authentication_verifier::Action::Write, &attrs)
+        .map_err(record_rejection)?;
+    Ok(())
+}
+
 /// Leave out the activities whose subject `caller` may not read, and mask the summary of those
 /// whose subject it reads masked (CRM-T321): the feed must not show what the subject's own read
 /// would hide. One decision per subject. An activity whose subject is gone is left out, as no
@@ -1377,6 +1396,7 @@ async fn activity_done(
     let row = rows::activity_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
+    authorize_subject_write(&mut *txn, &caller, &row.subject_kind, row.subject_pid).await?;
     if row.kind != "task" {
         return Err(unprocessable("only task activities can be marked done"));
     }

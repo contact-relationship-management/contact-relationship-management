@@ -3144,7 +3144,8 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Done 2026-11-26 (activities):** `GET /api/activities` returned every summary with no record-level decision, so a
       restricted ticket's notes, or a masked contact's, could be read in full there; it now asks the subject's read
       decision once per subject, leaves out denied or gone subjects and masks the rest as the subject's own read does.
-      `POST /api/activities` asks the subject's write decision (with enforcement on, an unknown subject is a `404`).
+      `POST /api/activities`, the activity edit (`PUT /api/activities/{pid}`) and ticking a task
+      (`PUT /api/activities/{pid}/done`) ask the subject's write decision (with enforcement on, an unknown subject is a `404`).
       A masked contact read masked a ticket `description` that tickets do not have; it now masks the ticket titles. The
       enforcement test checks the feed for two readers, the masked contact's ticket titles and a refused activity.
       - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts,

@@ -455,6 +455,13 @@ async fn edit_activity(
     let row = rows::activity_for_update(&mut *txn, pid)
         .await?
         .ok_or(Error::NotFound)?;
+    super::relationships::authorize_subject_write(
+        &mut *txn,
+        &caller,
+        &row.subject_kind,
+        row.subject_pid,
+    )
+    .await?;
     if payload.due_on.is_some() && row.due_on.is_none() {
         return Err(unprocessable("this activity has no due day to move"));
     }

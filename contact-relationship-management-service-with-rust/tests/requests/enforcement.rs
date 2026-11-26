@@ -436,6 +436,26 @@ async fn enforcement_gates_the_real_stack() {
                            "kind": "note", "summary": "Not allowed" }))
             .await;
         assert_eq!(refused.status_code(), 403, "an activity on the ticket");
+        // The service may log one (its rule comes first); the writer may not change or tick it.
+        let task = request
+            .post("/api/activities")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "subject_kind": "ticket", "subject_pid": urgent_pid, "kind": "task",
+                           "summary": "Call back", "due_on": "2026-12-01" }))
+            .await;
+        assert_eq!(task.status_code(), 200);
+        let task_pid = task.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let refused = request
+            .put(&format!("/api/activities/{task_pid}"))
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "summary": "Changed" }))
+            .await;
+        assert_eq!(refused.status_code(), 403, "editing the ticket's activity");
+        let refused = request
+            .put(&format!("/api/activities/{task_pid}/done"))
+            .add_header("authorization", bearer(&writer))
+            .await;
+        assert_eq!(refused.status_code(), 403, "ticking the ticket's task");
         // Read back as the service, which sees it unmasked.
         let unchanged = request
             .get(&format!("/api/tickets/{urgent_pid}"))
