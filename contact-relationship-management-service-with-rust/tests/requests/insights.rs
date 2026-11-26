@@ -288,10 +288,13 @@ async fn the_sla_register_lists_late_tickets_worst_first_and_counts_what_is_at_r
             .unwrap();
         };
         let both_late = ticket("Both late", Some(agent.clone())).await;
+        // A minute over the whole hours: the stamps are the database's `now()` and the register
+        // reads the service's clock, which can trail it by milliseconds, and overdue hours are whole
+        // (10 h less a millisecond is 9; seen 2026-11-26).
         set(
             both_late.clone(),
-            "first_response_due_at = now() - interval '3 hours', \
-             resolution_due_at = now() - interval '10 hours'",
+            "first_response_due_at = now() - interval '3 hours 1 minute', \
+             resolution_due_at = now() - interval '10 hours 1 minute'",
         )
         .await;
         let at_risk = ticket("Due soon", Some(agent.clone())).await;

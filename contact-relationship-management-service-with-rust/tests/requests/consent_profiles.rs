@@ -142,6 +142,16 @@ async fn stored_profiles_drive_one_auditable_decision_per_channel() {
         let evidence = consent_profiles::evidence(&mut *tx, pid).await.unwrap();
         assert!(evidence.iter().any(|item| item.pid == evidence_pid.to_string()));
 
+        // The database's own clock, which stamped the evidence (`now()`, this transaction's start):
+        // the service's follows it only to within half a round trip, so a few milliseconds behind
+        // would put the evidence in the future (seen once, 2026-11-26, as `NoEvidence`).
+        // `clock_timestamp()` is the time now, read on this transaction's connection, the pool's
+        // only one.
+        let decided_at: contact_relationship_management::time::Timestamp =
+            sqlx::query_scalar("SELECT clock_timestamp()")
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
         let decision = consent_profiles::decide(
             &mut tx,
             &loaded,
@@ -149,9 +159,7 @@ async fn stored_profiles_drive_one_auditable_decision_per_channel() {
             "marketing",
             "sms",
             None,
-            // The service's clock, which follows the database that stamped the evidence: the host's
-            // can be a few milliseconds behind it, which would put the evidence in the future.
-            contact_relationship_management::clock::now(),
+            decided_at,
             day,
         )
         .await

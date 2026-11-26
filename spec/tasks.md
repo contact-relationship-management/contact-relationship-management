@@ -3228,8 +3228,16 @@ complete the ordinary production privacy, access and operational checks.
       each is now a `422` naming the field. (S)
       - **Tests:** `a_window_or_page_size_out_of_range_is_refused` checks the three refusals and an accepted window; the full
       `test-db` run (295) passed once after the change.
-      - **Not done / not verified:** the clock skew was not reproduced on demand, so the failure's cause rests on reasoning;
-      the other insights' windows were not reviewed for the same mix of clocks.
+      - **Reviewed:** the other insight and dashboard windows bound only their start with the service's clock, where a
+      millisecond's skew 30 days back changes nothing, except engagement, whose `occurred_at` the service stamps itself.
+      - **Two more of the same, in tests:** `consent_profiles::stored_profiles_drive_one_auditable_decision_per_channel`
+      decided with the service's clock on evidence the database had just stamped (`NoEvidence`), and
+      `the_sla_register_lists_late_tickets...` set deadlines with the database's `now() - 10 hours` and got 9 whole hours
+      on the service's clock. The first now reads `clock_timestamp()` on its transaction; the second sets its deadlines a
+      minute past the hour. In production the first can only refuse an implied consent made a moment ago, the safe way.
+      - **Not done / not verified:** the clock skew was not reproduced on demand, so the causes rest on reasoning and on
+      the failure messages. `insights::insight_views_round_trip` failed once in the same run and was not explained; its
+      message was not kept.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
       deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search
