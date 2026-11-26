@@ -47,20 +47,33 @@ pub fn check_process(production: bool) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Whether `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` demands keys that are missing
-/// (CRM-T41): with it on, the service refuses to start without a keyring, so a
-/// misconfigured deployment cannot quietly store plaintext.
+/// Why a start was refused when keys were supplied but none could be loaded.
+pub const UNUSABLE_FIELD_KEYS: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS or CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE is set \
+    but no keyring could be loaded from it (an invalid key list or an unreadable file); refusing to start rather than \
+    store plaintext";
+
+/// Why a start was refused when encryption is required and no keys were supplied.
+pub const MISSING_FIELD_KEYS: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION is on but no valid \
+    CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS / CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE is configured";
+
+/// Whether the field-encryption keys are as the operator asked (CRM-T41). Keys that were
+/// `supplied` but did not give a keyring always stop the start: the operator meant to encrypt,
+/// and a typo must not turn into plaintext at rest. With
+/// `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` on (`required`), no keys at all also
+/// stop it.
 ///
 /// # Errors
 ///
-/// A message when encryption is required but no keyring is configured.
-pub fn field_encryption_check(required: bool, configured: bool) -> Result<(), &'static str> {
-    if required && !configured {
-        Err(
-            "CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION is on but no valid CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS / CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE is configured",
-        )
-    } else {
-        Ok(())
+/// [`UNUSABLE_FIELD_KEYS`] or [`MISSING_FIELD_KEYS`].
+pub fn field_encryption_check(
+    required: bool,
+    supplied: bool,
+    configured: bool,
+) -> Result<(), &'static str> {
+    match (configured, supplied, required) {
+        (true, _, _) | (false, false, false) => Ok(()),
+        (false, true, _) => Err(UNUSABLE_FIELD_KEYS),
+        (false, false, true) => Err(MISSING_FIELD_KEYS),
     }
 }
 
@@ -70,8 +83,14 @@ pub fn field_encryption_check(required: bool, configured: bool) -> Result<(), &'
 ///
 /// As [`field_encryption_check`].
 pub fn check_field_encryption() -> Result<(), &'static str> {
+    let settings = crate::settings::current();
     field_encryption_check(
-        crate::settings::current().require_field_encryption,
+        settings.require_field_encryption,
+        settings.field_keys.is_some()
+            || settings
+                .field_keys_file
+                .as_deref()
+                .is_some_and(|path| !path.trim().is_empty()),
         crate::crypto::current().is_some(),
     )
 }
@@ -81,10 +100,23 @@ mod tests {
     #[test]
     fn field_encryption_is_required_only_when_asked() {
         use super::field_encryption_check as check;
-        assert!(check(false, false).is_ok());
-        assert!(check(true, true).is_ok());
-        assert!(check(false, true).is_ok());
-        assert!(check(true, false).is_err());
+        // (required, supplied, configured)
+        assert!(
+            check(false, false, false).is_ok(),
+            "no keys, none asked for"
+        );
+        assert!(check(true, true, true).is_ok());
+        assert!(check(false, true, true).is_ok());
+        assert_eq!(check(true, false, false), Err(MISSING_FIELD_KEYS));
+    }
+
+    /// Keys that were given but could not be loaded stop the start whether or not encryption is
+    /// required: before, the service logged an error and stored plaintext.
+    #[test]
+    fn supplied_keys_that_do_not_load_are_refused() {
+        use super::field_encryption_check as check;
+        assert_eq!(check(false, true, false), Err(UNUSABLE_FIELD_KEYS));
+        assert_eq!(check(true, true, false), Err(UNUSABLE_FIELD_KEYS));
     }
 
     use super::*;

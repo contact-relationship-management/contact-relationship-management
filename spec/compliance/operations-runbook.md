@@ -98,7 +98,8 @@ Commands assume the container images from the repository's `Containerfile`s.
   contact channel and activity text (CRM-T41): set `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`
   (`id:base64,...`, 32-byte keys, first is active) or `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE`
   from your secret manager, and `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION=1` so a missing
-  key stops the service instead of storing plaintext. Back up the keys
+  key stops the service instead of storing plaintext. Keys that are set but cannot be loaded (an invalid list
+  or an unreadable file) stop the service whether or not encryption is required. Back up the keys
   separately from the database: losing them makes the data unreadable.
   Audit snapshots and the event outbox may hold copies and are not encrypted.
 - **Backups:** continuous WAL archiving or daily full plus frequent

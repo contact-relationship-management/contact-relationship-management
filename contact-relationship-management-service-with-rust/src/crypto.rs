@@ -211,7 +211,8 @@ fn load_from_env() -> Option<Arc<Keyring>> {
     match Keyring::from_spec(&spec) {
         Ok(ring) => Some(Arc::new(ring)),
         Err(error) => {
-            tracing::error!(%error, "invalid field-encryption keys; fields will NOT be encrypted");
+            // The start check (`hardening::check_field_encryption`) refuses to go on without them.
+            tracing::error!(%error, "invalid field-encryption keys");
             None
         }
     }
