@@ -3236,8 +3236,9 @@ complete the ordinary production privacy, access and operational checks.
       on the service's clock. The first now reads `clock_timestamp()` on its transaction; the second sets its deadlines a
       minute past the hour. In production the first can only refuse an implied consent made a moment ago, the safe way.
       - **Not done / not verified:** the clock skew was not reproduced on demand, so the causes rest on reasoning and on
-      the failure messages. `insights::insight_views_round_trip` failed once in the same run and was not explained; its
-      message was not kept.
+      the failure messages. `insights::insight_views_round_trip` failed once in the same run; its message was not kept. It
+      counts, in the executive pack with no `to`, a deal won, a ticket opened and a consent withdrawn a moment before, so
+      the likely cause is the window end this task moved to the database's clock; that is inferred, not shown.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
       deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search
