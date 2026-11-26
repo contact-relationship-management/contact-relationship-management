@@ -3148,8 +3148,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       (`PUT /api/activities/{pid}/done`) ask the subject's write decision (with enforcement on, an unknown subject is a `404`).
       A masked contact read masked a ticket `description` that tickets do not have; it now masks the ticket titles. The
       enforcement test checks the feed for two readers, the masked contact's ticket titles and a refused activity.
-      - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts,
-      board columns as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.
+      - **Done 2026-11-26 (SLA register):** `GET /api/insights/sla` listed every late ticket's title with no record-level
+      decision; it now leaves out denied tickets and masks the title of masked ones, as the deal insights already did
+      (CRM-T32). Its workload counts still include every ticket. The enforcement test checks the register for two readers.
+      - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts
+      (the SLA workload, dashboards, the outreach insight), board columns as read, reports, reply, exports and the
+      clients were not touched. The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

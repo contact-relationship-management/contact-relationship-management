@@ -121,7 +121,7 @@ async fn enforcement_gates_the_real_stack() {
             .expect("clear leftover grants");
     }
 
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let bearer = |token: &str| format!("Bearer {token}");
         let mut doc: Value = request.get("/api-docs/openapi.json").await.json();
         schema_check::to_json_schema(&mut doc);
@@ -387,6 +387,39 @@ async fn enforcement_gates_the_real_stack() {
             feed_as_other[0]["summary"],
             contact_relationship_management::auth::MASKED,
             "the feed masks what the ticket's own read masks"
+        );
+        // The SLA register follows the ticket's decision too: a late restricted ticket is listed
+        // masked for another reader and in full for its assignee.
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+            "UPDATE tickets SET resolution_due_at = now() - interval '2 hours' \
+             WHERE pid = '{ticket_pid}'"
+        )))
+        .execute(contact_relationship_management::db::pool(&ctx))
+        .await
+        .unwrap();
+        let register_title = |register: &Value| -> Value {
+            register["breaches"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|b| b["pid"] == ticket_pid)
+                .expect("the late ticket is in the register")["title"]
+                .clone()
+        };
+        let register_as_assignee = request
+            .get("/api/insights/sla")
+            .add_header("authorization", bearer(&owner))
+            .await
+            .json::<Value>();
+        assert_eq!(register_title(&register_as_assignee), "Private concern");
+        let register_as_other = request
+            .get("/api/insights/sla")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json::<Value>();
+        assert_eq!(
+            register_title(&register_as_other),
+            contact_relationship_management::auth::MASKED
         );
         // A contact read masked masks the titles of its tickets too.
         let contact_as_stranger = request

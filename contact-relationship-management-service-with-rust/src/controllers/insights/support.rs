@@ -49,6 +49,7 @@ pub(crate) struct SlaRegister {
 #[debug_handler]
 pub(super) async fn sla_register(
     State(ctx): State<AppContext>,
+    caller: crate::auth::MaybeAuthUser,
     headers: HeaderMap,
 ) -> Result<Response> {
     let now = crate::clock::now();
@@ -87,11 +88,26 @@ pub(super) async fn sla_register(
         }
         if let Some((which, hours)) = worst_overdue {
             entry.1 = entry.1.tally(1);
+            // Record-level read decision per ticket (CRM-T321), as the ticket list makes it: a
+            // denied ticket is left out of the register, a masked one keeps its row without the
+            // title. The workload counts still include it.
+            let Ok(obligations) = crate::auth::authorize_record(
+                &caller,
+                authentication_verifier::Action::Read,
+                &crate::auth::ticket_resource_attrs(ticket),
+            ) else {
+                continue;
+            };
+            let title = if obligations.iter().any(|o| o == "mask") {
+                crate::auth::MASKED.to_string()
+            } else {
+                ticket.title.clone()
+            };
             breaches.push((
                 hours,
                 Breach {
                     pid: ticket.pid,
-                    title: ticket.title.clone(),
+                    title,
                     priority: ticket.priority.clone(),
                     status: ticket.status.clone(),
                     assignee_ref: ticket.assignee_ref.clone(),
