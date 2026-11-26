@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The deals and tickets bundled in `GET /api/contacts/{pid}` each take their own record-level decision as well as the contact's (CRM-T321): one the caller may not read is left out, one read masked is masked.
 - `GET /api/insights/sla` asks each late ticket's record-level read decision (CRM-T321): a denied ticket is left out of the breach list and a masked one shows no title. The workload counts are unchanged.
 - `GET /api/activities` follows each activity's subject (CRM-T321): with enforcement on, activities whose subject the caller may not read are left out, and summaries are masked where the subject is read masked. Before, the feed returned every summary in full. `POST /api/activities`, `PUT /api/activities/{pid}` and `PUT /api/activities/{pid}/done` ask the subject's write decision. A masked contact read now masks its tickets' titles; it masked a `description` field that tickets do not have.
 - Field-encryption keys that are set but cannot be loaded (an invalid `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS`, or a `CONTACT_RELATIONSHIP_MANAGEMENT_FIELD_KEYS_FILE` that cannot be read) now stop the start. Before, the service logged an error and stored the sealed columns as plaintext unless `CONTACT_RELATIONSHIP_MANAGEMENT_REQUIRE_FIELD_ENCRYPTION` was on. Unit-tested in `hardening`; no boot test runs with bad keys.

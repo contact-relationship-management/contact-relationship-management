@@ -3151,6 +3151,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Done 2026-11-26 (SLA register):** `GET /api/insights/sla` listed every late ticket's title with no record-level
       decision; it now leaves out denied tickets and masks the title of masked ones, as the deal insights already did
       (CRM-T32). Its workload counts still include every ticket. The enforcement test checks the register for two readers.
+      - **Done 2026-11-26 (contact detail):** the deals and tickets bundled in `GET /api/contacts/{pid}` followed only
+      the contact's decision (a limit the code named, from CRM-T24); each now also takes its own, so a ticket or deal the
+      caller may not read is left out and one read masked is masked. The enforcement test checks an unassigned ticket
+      on a contact its owner reads in full.
       - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and counts
       (the SLA workload, dashboards, the outreach insight), board columns as read, reports, reply, exports and the
       clients were not touched. The web-form wording was not written.

@@ -596,10 +596,10 @@ pub(crate) struct ContactDuplicates {
 /// Record-level ABAC (CRM-T24): a `mask` obligation on the decision
 /// redacts the contact's `preferred_channel`
 /// (`auth::mask_json`/`auth::MASKED` names it as the channel-detail
-/// field CRM-R15 masks). The bundled activities/deals/tickets rows are
-/// **not** re-authorized or masked here — each carries its own
-/// resource attributes a caller might read differently under, and
-/// folding that in is a separate, larger change (spec CRM-T24 note).
+/// field CRM-R15 masks). The bundled rows follow the contact's decision
+/// (CRM-T32), and each bundled deal and ticket also its own (CRM-T321):
+/// one the caller may not read is left out, and one read masked is masked
+/// as its own read would be. Activities have no attributes of their own.
 ///
 /// # Errors
 ///
@@ -649,29 +649,44 @@ async fn get_contact(
     // The bundled rows follow the contact's own decision: a masked contact
     // read must not leak, through its timeline, what a masked deal or
     // activity list would hide (CRM-T32).
-    let (activities_json, deals_json, tickets_json) = if masked {
-        let each = |rows: &[serde_json::Value],
-                    f: &dyn Fn(serde_json::Value) -> serde_json::Value| {
-            rows.iter().cloned().map(f).collect::<Vec<_>>()
-        };
-        (
-            each(&to_values(&activity_rows), &|v| {
-                auth::mask_text_json(v, &["summary"])
-            }),
-            each(&to_values(&deal_rows), &|v| {
-                auth::mask_json(v, &["amount_minor"])
-            }),
-            each(&to_values(&ticket_rows), &|v| {
-                auth::mask_text_json(v, &["title"])
-            }),
-        )
+    let activities_json = if masked {
+        to_values(&activity_rows)
+            .into_iter()
+            .map(|v| auth::mask_text_json(v, &["summary"]))
+            .collect()
     } else {
-        (
-            to_values(&activity_rows),
-            to_values(&deal_rows),
-            to_values(&ticket_rows),
-        )
+        to_values(&activity_rows)
     };
+    // A row's own decision: `None` when it may not be read, else whether to mask it.
+    let own = |attrs: &std::collections::BTreeMap<String, Vec<String>>| {
+        auth::authorize_record(&caller, authentication_verifier::Action::Read, attrs)
+            .ok()
+            .map(|obligations| masked || obligations.iter().any(|o| o == "mask"))
+    };
+    let deals_json: Vec<serde_json::Value> = deal_rows
+        .iter()
+        .filter_map(|deal| {
+            let mask = own(&auth::deal_resource_attrs(deal))?;
+            let value = serde_json::json!(deal);
+            Some(if mask {
+                auth::mask_json(value, &["amount_minor"])
+            } else {
+                value
+            })
+        })
+        .collect();
+    let tickets_json: Vec<serde_json::Value> = ticket_rows
+        .iter()
+        .filter_map(|ticket| {
+            let mask = own(&auth::ticket_resource_attrs(ticket))?;
+            let value = serde_json::json!(ticket);
+            Some(if mask {
+                auth::mask_text_json(value, &["title"])
+            } else {
+                value
+            })
+        })
+        .collect();
     format::json(ContactDetail {
         contact: contact_json,
         activities: activities_json,

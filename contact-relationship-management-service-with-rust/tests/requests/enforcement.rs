@@ -421,6 +421,34 @@ async fn enforcement_gates_the_real_stack() {
             register_title(&register_as_other),
             contact_relationship_management::auth::MASKED
         );
+        // Each bundled ticket keeps its own decision: the contact's owner reads the contact in
+        // full, but a ticket on it that is not theirs is masked.
+        let unassigned = request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "title": "Someone else's concern", "contact_pid": owned_contact_pid }))
+            .await;
+        assert_eq!(unassigned.status_code(), 200);
+        let unassigned_pid = unassigned.json::<Value>()["pid"].as_str().unwrap().to_string();
+        let contact_as_owner = request
+            .get(&format!("/api/contacts/{owned_contact_pid}"))
+            .add_header("authorization", bearer(&owner))
+            .await
+            .json::<Value>();
+        let bundled_title = |pid: &str| -> Value {
+            contact_as_owner["tickets"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|t| t["pid"] == pid)
+                .expect("the ticket is bundled")["title"]
+                .clone()
+        };
+        assert_eq!(bundled_title(&ticket_pid), "Private concern");
+        assert_eq!(
+            bundled_title(&unassigned_pid),
+            contact_relationship_management::auth::MASKED
+        );
         // A contact read masked masks the titles of its tickets too.
         let contact_as_stranger = request
             .get(&format!("/api/contacts/{owned_contact_pid}"))
