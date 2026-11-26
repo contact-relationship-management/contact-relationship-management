@@ -3219,6 +3219,17 @@ complete the ordinary production privacy, access and operational checks.
       subject access, search, events, erasure and a backup restore, and record which copies are removed, retained under
       an approved schedule or awaiting action. CRM-T279 and CRM-T285
       cover parts.
+- [x] CRM-T341 **The executive pack's window: one clock, and no silent default.** `GET /api/insights/executive` ended its
+      default window on the service's clock while the closes, leads, tickets and audit rows it counts are stamped by the
+      database, so a deal closed a moment before could fall after the end (the CRM-T248 class);
+      `insights::hygiene_flags_a_deal_past_its_close...` failed twice locally on 2026-11-26 counting 0 of 3 lost deals, and
+      passed in the runs between. The default end is now the database's `now()` (`clock::database_now`). A `from` or `to`
+      that could not be read fell back to the default window, and a window ending before it started was answered as empty;
+      each is now a `422` naming the field. (S)
+      - **Tests:** `a_window_or_page_size_out_of_range_is_refused` checks the three refusals and an accepted window; the full
+      `test-db` run (295) passed once after the change.
+      - **Not done / not verified:** the clock skew was not reproduced on demand, so the failure's cause rests on reasoning;
+      the other insights' windows were not reviewed for the same mix of clocks.
 - [ ] CRM-T326 **Record-level access on tickets, acceptance test (audit finding 1).** Extends CRM-T321 and pairs with the
       route and field matrix of CRM-T278. The audit found: ticket reads are audited, but the list query filters only by
       deletion and status; the detail handler loads the ticket and its activities with no record-level decision; search

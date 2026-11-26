@@ -70,6 +70,25 @@ struct WindowQuery {
     to: Option<String>,
 }
 
+/// One window boundary as asked: `None` when none was given. A bound that is not a date or an
+/// RFC 3339 instant is refused with a `422` naming it, never read as the default.
+///
+/// # Errors
+///
+/// `422` "{name} must be a date or an RFC 3339 instant".
+fn window_bound(
+    raw: Option<&str>,
+    name: &str,
+    end_of_day: bool,
+) -> Result<Option<crate::time::Timestamp>> {
+    raw.map(|raw| {
+        parse_instant(raw, end_of_day).ok_or_else(|| {
+            super::unprocessable(&format!("{name} must be a date or an RFC 3339 instant"))
+        })
+    })
+    .transpose()
+}
+
 /// Parse one window boundary.
 fn parse_instant(raw: &str, end_of_day: bool) -> Option<crate::time::Timestamp> {
     if let Ok(instant) = raw.parse::<crate::time::Timestamp>() {

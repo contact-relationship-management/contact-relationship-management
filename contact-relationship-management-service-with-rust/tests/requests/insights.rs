@@ -523,6 +523,27 @@ async fn a_window_or_page_size_out_of_range_is_refused() {
                 "{path}: {body}"
             );
         }
+        // A window bound that cannot be read, or a window that ends before it starts, is refused
+        // and named; it is not read as the default window.
+        for (path, said) in [
+            ("/api/insights/executive?to=yesterday", "to must be a date"),
+            (
+                "/api/insights/executive?from=2026-13-01",
+                "from must be a date",
+            ),
+            (
+                "/api/insights/executive?from=2026-02-01&to=2026-01-01",
+                "from must not be after to",
+            ),
+        ] {
+            let refused = request.get(path).await;
+            refused.assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+            assert!(refused.text().contains(said), "{path}: {}", refused.text());
+        }
+        request
+            .get("/api/insights/executive?from=2026-01-01&to=2026-01-31")
+            .await
+            .assert_status_ok();
         for path in [
             "/api/insights/stale-deals?days=1".to_string(),
             "/api/insights/stale-deals?days=365".to_string(),

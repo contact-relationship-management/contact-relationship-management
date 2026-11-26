@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `GET /api/insights/executive` refuses a `from` or `to` it cannot read, and a window that ends before it starts, with a `422` naming the field (CRM-T341); before, it answered with the default window or an empty one. With no `to` the window ends at the database's `now()`, the clock that stamped what it counts.
 - The deals and tickets bundled in `GET /api/contacts/{pid}` each take their own record-level decision as well as the contact's (CRM-T321): one the caller may not read is left out, one read masked is masked.
 - `GET /api/insights/sla` asks each late ticket's record-level read decision (CRM-T321): a denied ticket is left out of the breach list and a masked one shows no title. The workload counts are unchanged.
 - `GET /api/activities` follows each activity's subject (CRM-T321): with enforcement on, activities whose subject the caller may not read are left out, and summaries are masked where the subject is read masked. Before, the feed returned every summary in full. `POST /api/activities`, `PUT /api/activities/{pid}` and `PUT /api/activities/{pid}/done` ask the subject's write decision. A masked contact read now masks its tickets' titles; it masked a `description` field that tickets do not have.

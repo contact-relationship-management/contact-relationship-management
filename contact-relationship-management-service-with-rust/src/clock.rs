@@ -86,7 +86,7 @@ pub fn gap(sent: Timestamp, database: Timestamp, received: Timestamp) -> SignedD
 /// When the database cannot be asked; the last gap stays.
 pub async fn sync(pool: &PgPool) -> Result<SignedDuration, sqlx::Error> {
     let sent = Timestamp::now();
-    let database: Timestamp = sqlx::query_scalar("SELECT now()").fetch_one(pool).await?;
+    let database = database_now(pool).await?;
     let received = Timestamp::now();
     let measured = gap(sent, database, received);
     set_offset(measured);
@@ -100,6 +100,17 @@ fn report(measured: SignedDuration) {
             "this host's clock is off from the database's; record times follow the database's"
         );
     }
+}
+
+/// The database's own `now()`. Use it where a time is compared with rows the database stamped
+/// itself and the comparison must not miss one made a moment ago: [`now`] can be off from it by up
+/// to half a round trip plus a minute's drift.
+///
+/// # Errors
+///
+/// When the database cannot be asked.
+pub async fn database_now(pool: &PgPool) -> Result<Timestamp, sqlx::Error> {
+    sqlx::query_scalar("SELECT now()").fetch_one(pool).await
 }
 
 /// Measure the gap before serving, waiting at most a few seconds, then again every

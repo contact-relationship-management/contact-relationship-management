@@ -3,7 +3,7 @@
 use super::{
     AppContext, DaysQuery, Deserialize, HeaderMap, MaybeAuthUser, Response, Result, State, Uuid,
     WindowQuery, activities, auth, conditional, days_or, deals, debug_handler, forecast_snapshots,
-    leads, parse_instant, record_rejection,
+    leads, record_rejection, window_bound,
 };
 use crate::arith::OrOverflow;
 use crate::arith::Tally;
@@ -423,21 +423,21 @@ pub(super) async fn executive(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    let now = crate::clock::now();
-    let to = query
-        .to
-        .as_deref()
-        .and_then(|raw| parse_instant(raw, true))
-        .unwrap_or(now);
-    let from = query
-        .from
-        .as_deref()
-        .and_then(|raw| parse_instant(raw, false))
-        .unwrap_or(
-            // SALES-WINDOW-1: with no start given the window is 30 days; a start that cannot be
-            // computed is the end, an empty window, not a made-up date.
-            to.checked_sub_days(30).unwrap_or(to),
-        );
+    // With no end given the window runs to now on the database's clock, which stamped the closes,
+    // leads, tickets and audit rows counted here: on this host's clock a deal closed a moment ago
+    // could fall just after the end.
+    let to = match window_bound(query.to.as_deref(), "to", true)? {
+        Some(to) => to,
+        None => crate::clock::database_now(db::pool(&ctx)).await?,
+    };
+    let from = window_bound(query.from.as_deref(), "from", false)?.unwrap_or(
+        // SALES-WINDOW-1: with no start given the window is 30 days; a start that cannot be
+        // computed is the end, an empty window, not a made-up date.
+        to.checked_sub_days(30).unwrap_or(to),
+    );
+    if from > to {
+        return Err(super::super::unprocessable("from must not be after to"));
+    }
     let in_window = |at: crate::time::Timestamp| at >= from && at <= to;
 
     // Only the deals closed in the window.
