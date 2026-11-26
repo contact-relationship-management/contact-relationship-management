@@ -2382,3 +2382,85 @@ async fn a_sweep_closes_a_ticket_its_caller_could_not_change_by_hand() {
     })
     .await;
 }
+
+/// A count of tickets leaves out the tickets the caller may not read (CRM-T321; the owner's
+/// decision, 2026-11-26): the SLA dashboard, the SLA register's workload and the executive pack
+/// count one fewer for a reader the policy keeps from an urgent ticket than for the service.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test --test enforcement -- --ignored`"]
+async fn ticket_counts_leave_out_what_the_caller_may_not_read() {
+    let (keys, kid) = keys_and_kid();
+    let _scope = scoped(|s| {
+        s.require_auth = true;
+        s.paseto_keys = Some(keys.to_string());
+        s.abac_policy = Some(
+            json!({ "rules": [
+                { "effect": "allow", "actions": ["read", "write", "delete", "destructive"],
+                  "when": { "svc": ["true"] } },
+                { "effect": "deny", "actions": ["read"], "when": { "resource.priority": ["urgent"] } },
+                { "effect": "allow", "actions": ["read"], "when": {} }
+            ] })
+            .to_string(),
+        );
+    });
+    let reader = sign_as(&kid, "count-reader", &[]);
+    let service = sign_as(&kid, "count-svc", &[("svc", &["true"])]);
+    request::<App, _, _>(|request, _ctx| async move {
+        let bearer = |token: &str| format!("Bearer {token}");
+        let get = |path: &'static str, token: String| {
+            let request = &request;
+            async move {
+                request
+                    .get(path)
+                    .add_header("authorization", format!("Bearer {token}"))
+                    .await
+                    .json::<Value>()
+            }
+        };
+        let urgent_open = |dashboard: &Value| -> i64 {
+            dashboard["by_priority"]
+                .as_array()
+                .map(|rows| {
+                    rows.iter()
+                        .filter(|r| r["priority"] == "urgent")
+                        .map(|r| r["open"].as_i64().unwrap())
+                        .sum()
+                })
+                .unwrap_or(0)
+        };
+        let workload_open = |register: &Value| -> i64 {
+            register["workload"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|w| w["open"].as_i64().unwrap())
+                .sum()
+        };
+        request
+            .post("/api/tickets")
+            .add_header("authorization", bearer(&service))
+            .json(&json!({ "title": "Hidden", "priority": "urgent" }))
+            .await
+            .assert_status_ok();
+        let as_service = get("/api/dashboards/sla", service.clone()).await;
+        let as_reader = get("/api/dashboards/sla", reader.clone()).await;
+        assert!(urgent_open(&as_service) >= 1, "{as_service}");
+        assert_eq!(urgent_open(&as_reader), 0, "{as_reader}");
+        let register_service = get("/api/insights/sla", service.clone()).await;
+        let register_reader = get("/api/insights/sla", reader.clone()).await;
+        assert_eq!(
+            workload_open(&register_reader),
+            workload_open(&register_service) - urgent_open(&as_service),
+            "{register_reader}"
+        );
+        let pack_service = get("/api/insights/executive", service.clone()).await;
+        let pack_reader = get("/api/insights/executive", reader.clone()).await;
+        assert!(
+            pack_reader["tickets_opened"].as_u64().unwrap()
+                < pack_service["tickets_opened"].as_u64().unwrap(),
+            "{pack_reader} {pack_service}"
+        );
+    })
+    .await;
+}

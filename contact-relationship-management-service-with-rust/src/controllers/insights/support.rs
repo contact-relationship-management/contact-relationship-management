@@ -62,6 +62,16 @@ pub(super) async fn sla_register(
     let mut workload: std::collections::BTreeMap<String, (usize, usize, usize)> =
         std::collections::BTreeMap::new();
     for ticket in &open {
+        // Record-level read decision per ticket (CRM-T321), as the ticket list makes it: a denied
+        // ticket is in neither the register nor the workload counts, so a count does not reveal it
+        // (owner's decision, 2026-11-26); a masked one keeps its row without the title.
+        let Ok(obligations) = crate::auth::authorize_record(
+            &caller,
+            authentication_verifier::Action::Read,
+            &crate::auth::ticket_resource_attrs(ticket),
+        ) else {
+            continue;
+        };
         let key = ticket
             .assignee_ref
             .clone()
@@ -88,16 +98,6 @@ pub(super) async fn sla_register(
         }
         if let Some((which, hours)) = worst_overdue {
             entry.1 = entry.1.tally(1);
-            // Record-level read decision per ticket (CRM-T321), as the ticket list makes it: a
-            // denied ticket is left out of the register, a masked one keeps its row without the
-            // title. The workload counts still include it.
-            let Ok(obligations) = crate::auth::authorize_record(
-                &caller,
-                authentication_verifier::Action::Read,
-                &crate::auth::ticket_resource_attrs(ticket),
-            ) else {
-                continue;
-            };
             let title = if obligations.iter().any(|o| o == "mask") {
                 crate::auth::MASKED.to_string()
             } else {

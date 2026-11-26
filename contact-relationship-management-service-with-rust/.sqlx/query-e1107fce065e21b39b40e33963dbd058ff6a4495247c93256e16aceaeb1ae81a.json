@@ -1,0 +1,66 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT assignee_ref, status, priority, channel FROM tickets WHERE deleted_at IS NULL AND (opened_at AT TIME ZONE $3)::date BETWEEN $1 AND $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "assignee_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "assignee_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "status",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "priority",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "priority"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "channel",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "channel"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e1107fce065e21b39b40e33963dbd058ff6a4495247c93256e16aceaeb1ae81a"
+}

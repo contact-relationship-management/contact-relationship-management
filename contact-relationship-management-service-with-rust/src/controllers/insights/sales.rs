@@ -481,16 +481,29 @@ pub(super) async fn executive(
         .fetch_one(pool)
         .await?,
     )?;
-    let tickets_opened = count(
-        sqlx::query_scalar!(
-            "SELECT count(*) AS \"n!\" FROM tickets \
-             WHERE deleted_at IS NULL AND opened_at >= $1 AND opened_at <= $2",
-            from,
-            to,
-        )
-        .fetch_one(pool)
-        .await?,
-    )?;
+    // Counted here, not in the database, so a ticket the caller may not read is left out
+    // (CRM-T321); only the columns the decision reads are loaded.
+    let opened = sqlx::query!(
+        "SELECT assignee_ref, status, priority, channel FROM tickets \
+         WHERE deleted_at IS NULL AND opened_at >= $1 AND opened_at <= $2",
+        from,
+        to,
+    )
+    .fetch_all(pool)
+    .await?;
+    let tickets_opened = u64::try_from(auth::readable_tickets(
+        &caller,
+        opened.iter().map(|t| {
+            (
+                t.assignee_ref.as_deref(),
+                &*t.status,
+                &*t.priority,
+                &*t.channel,
+            )
+        }),
+    ))
+    .ok()
+    .or_overflow("tickets_opened")?;
     // Counted in the database, not by loading every audit row of the window.
     let audited = |entity: &'static str, action: &'static str| {
         sqlx::query_scalar!(

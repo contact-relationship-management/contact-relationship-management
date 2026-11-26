@@ -40,7 +40,8 @@ owner's `person:` URN, the form a sign-in subject takes, so a `$sub` rule scopes
 | ticket (CRM-T321) | `owner` and `owner_ref` from the assignee, `status`, `priority`, `channel` | title, activity summaries |
 
 A record bundled in another's detail (a contact's deals and tickets) takes its own decision as well as the
-containing record's. An activity follows its subject: the activity feed leaves out activities whose subject the caller may not read and
+containing record's. A count of tickets (dashboards, insights, reports) leaves out the tickets the caller may not read; the service's
+own `tickets_open` metric does not. An activity follows its subject: the activity feed leaves out activities whose subject the caller may not read and
 masks the summary when the subject is read masked, and logging, editing or ticking an activity asks the subject's write decision.
 
 Other records (accounts, leads, campaigns, articles) are decided on the entity alone; no record-level attribute,

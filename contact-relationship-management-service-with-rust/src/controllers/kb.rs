@@ -391,15 +391,28 @@ async fn deflection(
     .await?;
     // A ticket counts on the day it was opened in the organization's zone, which is bound by name
     // as `rules::periods::local` writes it.
-    let tickets_opened = sqlx::query_scalar!(
-        "SELECT count(*)::bigint AS \"n!\" FROM tickets \
+    // Counted here, not in the database, so a ticket the caller may not read is left out
+    // (CRM-T321); only the columns the decision reads are loaded.
+    let opened = sqlx::query!(
+        "SELECT assignee_ref, status, priority, channel FROM tickets \
          WHERE deleted_at IS NULL AND (opened_at AT TIME ZONE $3)::date BETWEEN $1 AND $2",
         from,
         to,
         crate::rules::periods::zone_name(&calendar.zone),
     )
-    .fetch_one(pool)
+    .fetch_all(pool)
     .await?;
+    let tickets_opened = crate::rules::bounds::len_i64(crate::auth::readable_tickets(
+        &caller,
+        opened.iter().map(|t| {
+            (
+                t.assignee_ref.as_deref(),
+                &*t.status,
+                &*t.priority,
+                &*t.channel,
+            )
+        }),
+    ));
     let top = sqlx::query!(
         "SELECT k.article_pid AS pid, COALESCE(a.title, '(deleted article)') AS \"title!\", \
                 SUM(k.views)::bigint AS \"views!\", SUM(k.helpful_yes)::bigint AS \"yes!\", \

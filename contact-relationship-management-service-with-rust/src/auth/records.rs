@@ -61,11 +61,64 @@ pub fn contact_resource_attrs(contact: &contacts::Model) -> BTreeMap<String, Vec
 /// deployment can then confine a ticket to its assignee, or hide a channel, as policy.
 #[must_use]
 pub fn ticket_resource_attrs(ticket: &tickets::Model) -> BTreeMap<String, Vec<String>> {
-    let mut attrs = owner_attrs(ticket.assignee_ref.as_deref());
-    attrs.insert("status".to_string(), vec![ticket.status.clone()]);
-    attrs.insert("priority".to_string(), vec![ticket.priority.clone()]);
-    attrs.insert("channel".to_string(), vec![ticket.channel.clone()]);
+    ticket_attrs_of(
+        ticket.assignee_ref.as_deref(),
+        &ticket.status,
+        &ticket.priority,
+        &ticket.channel,
+    )
+}
+
+/// [`ticket_resource_attrs`] from the four columns it reads, for a query that loads only those.
+#[must_use]
+pub fn ticket_attrs_of(
+    assignee_ref: Option<&str>,
+    status: &str,
+    priority: &str,
+    channel: &str,
+) -> BTreeMap<String, Vec<String>> {
+    let mut attrs = owner_attrs(assignee_ref);
+    attrs.insert("status".to_string(), vec![status.to_string()]);
+    attrs.insert("priority".to_string(), vec![priority.to_string()]);
+    attrs.insert("channel".to_string(), vec![channel.to_string()]);
     attrs
+}
+
+/// The tickets of `rows` that `caller` may read (CRM-T321).
+#[must_use]
+pub fn readable_ticket_rows(
+    caller: &MaybeAuthUser,
+    rows: Vec<tickets::Model>,
+) -> Vec<tickets::Model> {
+    rows.into_iter()
+        .filter(|ticket| may_read_ticket(caller, &ticket_resource_attrs(ticket)))
+        .collect()
+}
+
+/// How many of these tickets `caller` may read, each given by the four columns its decision reads
+/// (assignee, status, priority, channel): a count that leaves the others out (CRM-T321).
+#[must_use]
+pub fn readable_tickets<'a>(
+    caller: &MaybeAuthUser,
+    tickets: impl IntoIterator<Item = (Option<&'a str>, &'a str, &'a str, &'a str)>,
+) -> usize {
+    tickets
+        .into_iter()
+        .filter(|(assignee, status, priority, channel)| {
+            may_read_ticket(
+                caller,
+                &ticket_attrs_of(*assignee, status, priority, channel),
+            )
+        })
+        .count()
+}
+
+/// Whether `caller` may read a ticket with these attributes: what a count of tickets asks, so
+/// that a count does not reveal a ticket the caller could not list (owner's decision,
+/// 2026-11-26). Always true with enforcement off.
+#[must_use]
+pub fn may_read_ticket(caller: &MaybeAuthUser, attrs: &BTreeMap<String, Vec<String>>) -> bool {
+    authorize_record(caller, Action::Read, attrs).is_ok()
 }
 
 /// The placeholder shown for a redacted text field under the `mask`

@@ -265,9 +265,19 @@ async fn sales_dashboard(
 /// `GET /api/dashboards/sla` — open tickets by priority × breach
 /// state; live breach truth (CRM-R13).
 #[debug_handler]
-async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Result<Response> {
+async fn sla_dashboard(
+    State(ctx): State<AppContext>,
+    caller: crate::auth::MaybeAuthUser,
+    headers: HeaderMap,
+) -> Result<Response> {
     let now: crate::time::Timestamp = crate::clock::now();
     let open = crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
+    // The gauge is the service's own measure, every open ticket.
+    Metrics::global()
+        .tickets_open
+        .set(crate::rules::bounds::len_i64(open.len()));
+    // The counts leave out a ticket the caller may not read (CRM-T321).
+    let open = crate::auth::readable_ticket_rows(&caller, open);
     let mut by_priority: std::collections::BTreeMap<String, (i64, i64)> =
         std::collections::BTreeMap::new();
     for ticket in &open {
@@ -284,9 +294,6 @@ async fn sla_dashboard(State(ctx): State<AppContext>, headers: HeaderMap) -> Res
             slot.1 = slot.1.tally(1);
         }
     }
-    Metrics::global()
-        .tickets_open
-        .set(crate::rules::bounds::len_i64(open.len()));
     let rows: Vec<PriorityRow> = by_priority
         .into_iter()
         .map(|(priority, (open, breached))| PriorityRow {

@@ -408,9 +408,14 @@ pub(super) struct FunnelQuery {
 /// membership state per account, with the silent list (no touch in
 /// the window).
 #[debug_handler]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one pass over each account's contacts, touches, tickets and membership"
+)]
 pub(super) async fn members(
     axa::extract::Query(query): axa::extract::Query<DaysQuery>,
     State(ctx): State<AppContext>,
+    caller: crate::auth::MaybeAuthUser,
     headers: HeaderMap,
 ) -> Result<Response> {
     let threshold = days_or(query.days, 30)?;
@@ -418,8 +423,11 @@ pub(super) async fn members(
     let account_rows: Vec<accounts::Model> = live!(accounts, &ctx);
     let contact_rows: Vec<contacts::Model> = live!(contacts, &ctx);
     let touches = super::rollup::touches(crate::db::pool(&ctx)).await?;
-    let ticket_rows: Vec<tickets::Model> =
-        crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?;
+    // A ticket the caller may not read is not counted (CRM-T321).
+    let ticket_rows: Vec<tickets::Model> = crate::auth::readable_ticket_rows(
+        &caller,
+        crate::models::rows::open_tickets(crate::db::pool(&ctx)).await?,
+    );
     let membership_rows: Vec<memberships::Model> = live!(memberships, &ctx);
     let membership_of: std::collections::BTreeMap<Uuid, &memberships::Model> =
         membership_rows.iter().map(|m| (m.account_pid, m)).collect();
