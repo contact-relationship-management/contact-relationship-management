@@ -22498,6 +22498,13 @@ export interface components {
              *     this ticket (CRM-R88).
              */
             reference: string;
+            /**
+             * Format: uint
+             * @description How many times the ticket was reopened: the length of `reopenings`.
+             */
+            reopen_count: number;
+            /** @description Each resolution a reopen undid, oldest first (CRM-T317). */
+            reopenings: components["schemas"]["TicketReopening"][];
             ticket: components["schemas"]["Ticket"];
         };
         /** @description `PUT /api/tickets/{pid}` body. */
@@ -22537,6 +22544,21 @@ export interface components {
             /** @default normal */
             priority: string;
             title: string;
+        };
+        /** @description A resolution that a reopen undid, as the ticket's page shows it. */
+        TicketReopening: {
+            /** @description Who reopened it. */
+            actor_ref: string | null;
+            /**
+             * Format: date-time
+             * @description When it was reopened.
+             */
+            reopened_at: string;
+            /**
+             * Format: date-time
+             * @description When the ticket had been resolved.
+             */
+            resolved_at: string;
         };
         /** @description The unmerge request. */
         UnmergePayload: {

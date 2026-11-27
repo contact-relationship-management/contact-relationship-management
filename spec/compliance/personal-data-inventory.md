@@ -121,6 +121,7 @@ A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql
 | `territories` | Name, owner reference | Reps | `manual` | Not applicable |
 | `territory_accounts` | Organization reference | Organizations | `manual` | Not applicable |
 | `tickets` | Title (free text), contact pid, assignee reference, times | Contacts, reps | `swept` | Kept: keyed to a pid that no longer identifies anyone |
+| `ticket_reopenings` | Each resolution a reopen undid: when it was resolved, when reopened, who reopened it (CRM-T317); append-only | Reps | `manual` | No free text; the rows go with their ticket, which the sweep hard-deletes |
 | `ticket_movements` | Each handover of a ticket: the assignee before and after, the reason (free text), who moved it, when (CRM-T317); append-only | Reps; the contact, through a reason | `manual` | Reasons scrubbed; the rows go with their ticket, which the sweep hard-deletes |
 | `webhook_deliveries` | Event id and record pid, send state and the receiver's error text | Contacts, through the record | `aged` | Pending ones cancelled; rows kept |
 | `webhook_subscriptions` | Receiver URL, signing secrets, who created it | Reps | `manual` | Not applicable |

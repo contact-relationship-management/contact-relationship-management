@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT resolved_at, reopened_at, actor_ref FROM ticket_reopenings WHERE ticket_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "resolved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "reopened_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "reopened_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "actor_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "ea46fd0d75d7a9a857b0ef4c5a39952e2c4731087000997d9957e46c8672ac79"
+}

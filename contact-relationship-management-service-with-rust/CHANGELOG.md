@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A reopened ticket keeps each resolution it had (CRM-T317): a new append-only `ticket_reopenings` table, listed as `reopenings` with `reopen_count` on the ticket detail.
 - `POST /api/tickets/{pid}/assign` hands a ticket to another person, or to no one, with a reason (CRM-T317). Each move, the wait-limit escalation's too, is kept in a new append-only `ticket_movements` table and listed as `movements` on the ticket detail (reasons masked with the title); the audit names the two assignees and the event is `ticket_reassigned`. Erasure scrubs the reasons of the contact's tickets (`ticket_movement_reasons_scrubbed`). Not done: a UI action, the subject-access export.
 - Start-up refuses a `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` that is not an `organization:` URN, naming it among the unusable settings (RCA-IN-4); before, it counted as unset and the employment check answered `502`.
 - Start-up refuses a `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` or `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` shorter than 32 bytes, and a `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` that is not JSON or holds a form that is not valid, naming each among the unusable settings (RCA-IN-4, the owner's decision of 2026-11-27). Before, the secret was ignored (its endpoint answered `404`), the list gave no forms, and a bad form was left out. A blank value is still unset.

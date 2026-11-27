@@ -1,6 +1,7 @@
-//! Who a ticket was handed to, and why (CRM-T317): an append-only history, one row a move, in
-//! migration `20261127000000_ticket_movements`. A row is never changed, except that erasure scrubs
-//! its free-text reason; it goes only with its ticket.
+//! A ticket's history (CRM-T317), append-only: who it was handed to and why, one row a move
+//! (migration `20261127000000_ticket_movements`; a row is never changed, except that erasure scrubs
+//! its free-text reason), and each resolution a reopen undid (`20261127000001_ticket_reopenings`).
+//! A row of either goes only with its ticket.
 
 use axa::prelude::*;
 use serde::Serialize;
@@ -93,6 +94,61 @@ pub async fn of_ticket<'e>(db: impl PgExecutor<'e>, ticket_pid: Uuid) -> Result<
     Ok(sqlx::query_as!(
         Movement,
         "SELECT from_ref, to_ref, via, reason, actor_ref, created_at FROM ticket_movements \
+         WHERE ticket_pid = $1 ORDER BY id",
+        ticket_pid,
+    )
+    .fetch_all(db)
+    .await?)
+}
+
+/// A resolution that a reopen undid, as the ticket's page shows it.
+#[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "TicketReopening")]
+pub struct Reopening {
+    /// When the ticket had been resolved.
+    #[schemars(with = "crate::time::Timestamp")]
+    pub resolved_at: crate::time::Timestamp,
+    /// When it was reopened.
+    #[schemars(with = "crate::time::Timestamp")]
+    pub reopened_at: crate::time::Timestamp,
+    /// Who reopened it.
+    pub actor_ref: Option<String>,
+}
+
+/// Record that the ticket, resolved at `resolved_at`, was reopened.
+///
+/// # Errors
+///
+/// When the statement fails.
+pub async fn record_reopening<'e>(
+    db: impl PgExecutor<'e>,
+    ticket_pid: Uuid,
+    resolved_at: crate::time::Timestamp,
+    actor_ref: Option<&str>,
+) -> Result<()> {
+    sqlx::query!(
+        "INSERT INTO ticket_reopenings (ticket_pid, resolved_at, actor_ref) VALUES ($1, $2, $3)",
+        ticket_pid,
+        resolved_at,
+        actor_ref,
+    )
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// The ticket's reopenings, oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn reopenings_of<'e>(
+    db: impl PgExecutor<'e>,
+    ticket_pid: Uuid,
+) -> Result<Vec<Reopening>> {
+    Ok(sqlx::query_as!(
+        Reopening,
+        "SELECT resolved_at, reopened_at, actor_ref FROM ticket_reopenings \
          WHERE ticket_pid = $1 ORDER BY id",
         ticket_pid,
     )

@@ -439,6 +439,10 @@ pub(crate) struct TicketDetail {
     activities: Vec<activities::Model>,
     /// Who the ticket was handed to, from whom, by whom and why, oldest first (CRM-T317).
     movements: Vec<crate::models::ticket_movements::Movement>,
+    /// Each resolution a reopen undid, oldest first (CRM-T317).
+    reopenings: Vec<crate::models::ticket_movements::Reopening>,
+    /// How many times the ticket was reopened: the length of `reopenings`.
+    reopen_count: usize,
 }
 
 /// What the sweep did with the tickets past their policy's wait limit.
@@ -636,6 +640,7 @@ async fn get_ticket(
     .await?;
     let mut activity_rows = rows::activities_of(pool, "ticket", ticket.pid).await?;
     let mut movements = crate::models::ticket_movements::of_ticket(pool, ticket.pid).await?;
+    let reopenings = crate::models::ticket_movements::reopenings_of(pool, ticket.pid).await?;
     if masked(&obligations) {
         ticket.title = crate::auth::MASKED.to_string();
         for activity in &mut activity_rows {
@@ -650,6 +655,8 @@ async fn get_ticket(
         ticket,
         activities: activity_rows,
         movements,
+        reopen_count: reopenings.len(),
+        reopenings,
     })
 }
 
@@ -877,6 +884,24 @@ enum Mover {
     Service,
 }
 
+/// Set `ticket.resolved_at` for a move from `from` to `to`: `resolved` stamps it, a reopen
+/// (`resolved` to `open`) clears it. Returns the resolution a reopen undid, which the ticket's
+/// history keeps (CRM-T317).
+fn stamp_resolution(
+    ticket: &mut tickets::Model,
+    from: &str,
+    to: &str,
+) -> Option<DateTimeWithTimeZone> {
+    if to == "resolved" {
+        ticket.resolved_at = Some(crate::clock::now());
+        None
+    } else if to == "open" && from == "resolved" {
+        ticket.resolved_at.take()
+    } else {
+        None
+    }
+}
+
 async fn transition(
     ctx: &AppContext,
     caller: &MaybeAuthUser,
@@ -918,11 +943,7 @@ async fn transition(
             next.resolution_due_at = Some(deadlines.resolution_due_at);
         }
     }
-    if to == "resolved" {
-        next.resolved_at = Some(crate::clock::now());
-    } else if to == "open" && from == "resolved" {
-        next.resolved_at = None; // reopen clears it
-    }
+    let undone = stamp_resolution(&mut next, &from, to);
     let row = sqlx::query_as!(
         tickets::Model,
         "UPDATE tickets SET status = $2, paused_at = $3, wait_limit_exceeded_at = $4, \
@@ -948,6 +969,15 @@ async fn transition(
     )
     .fetch_one(&mut *txn)
     .await?;
+    if let Some(resolved_at) = undone {
+        crate::models::ticket_movements::record_reopening(
+            &mut *txn,
+            row.pid,
+            resolved_at,
+            caller.actor(),
+        )
+        .await?;
+    }
     let kind = match to {
         "resolved" => "ticket_resolved",
         "closed" => "ticket_closed",

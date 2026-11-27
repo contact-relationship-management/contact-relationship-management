@@ -124,6 +124,10 @@ or none), `via` (`person` through `POST /api/tickets/{pid}/assign`, or `escalati
 `reason` (free text; the sweep's is fixed), `actor_ref`, `created_at`. Append-only by trigger: never changed but
 for erasure scrubbing a reason, and deleted only with its ticket. A closed ticket is not reassigned.
 
+**TicketReopening** (CRM-T317) — each resolution a reopen (`resolved → open`) undid: `resolved_at`,
+`reopened_at`, `actor_ref`. Append-only, no free text, deleted only with its ticket; the ticket detail lists them
+as `reopenings` with `reopen_count`.
+
 **SlaPolicy** — per priority: `first_response_minutes`,
 `resolution_minutes`, business-hours flag (v1: 24×7 clocks).
 

@@ -351,3 +351,64 @@ async fn a_ticket_is_handed_over_with_a_reason_kept_in_its_history() {
     })
     .await;
 }
+
+/// A reopened ticket keeps each resolution it had (CRM-T317): resolved twice and reopened twice,
+/// it lists both resolutions in order and counts two reopens, and the history cannot be rewritten.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_reopened_ticket_keeps_each_resolution_it_had() {
+    request::<App, _, _>(|request, ctx| async move {
+        let made: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Comes back" }))
+            .await
+            .json();
+        let pid = made["pid"].as_str().unwrap().to_string();
+        let mut resolutions = Vec::new();
+        for _ in 0..2 {
+            let resolved: Value = request
+                .post(&format!("/api/tickets/{pid}/status"))
+                .json(&json!({ "to": "resolved" }))
+                .await
+                .json();
+            resolutions.push(resolved["resolved_at"].clone());
+            request
+                .post(&format!("/api/tickets/{pid}/status"))
+                .json(&json!({ "to": "open" }))
+                .await
+                .assert_status_ok();
+        }
+        let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+        assert!(detail["ticket"]["resolved_at"].is_null(), "{detail}");
+        assert_eq!(detail["reopen_count"], 2, "{detail}");
+        let kept: Vec<Value> = detail["reopenings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["resolved_at"].clone())
+            .collect();
+        assert_eq!(kept, resolutions, "{detail}");
+        let pool = contact_relationship_management::db::pool(&ctx);
+        for statement in [
+            "UPDATE ticket_reopenings SET actor_ref = 'someone' WHERE ticket_pid = $1::uuid",
+            "DELETE FROM ticket_reopenings WHERE ticket_pid = $1::uuid",
+        ] {
+            let tried = sqlx::query(statement).bind(&pid).execute(pool).await;
+            assert!(tried.is_err(), "{statement}");
+        }
+        // A ticket never reopened has none.
+        let fresh: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Stays put" }))
+            .await
+            .json();
+        let fresh_detail: Value = request
+            .get(&format!("/api/tickets/{}", fresh["pid"].as_str().unwrap()))
+            .await
+            .json();
+        assert_eq!(fresh_detail["reopen_count"], 0);
+        assert!(fresh_detail["reopenings"].as_array().unwrap().is_empty());
+    })
+    .await;
+}

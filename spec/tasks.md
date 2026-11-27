@@ -3125,7 +3125,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       the title; the audit names the two assignees, not the reason; the event is `ticket_reassigned`. Erasure scrubs the
       reasons of the contact's tickets. Request tests: the handover journey and its refusals, the trigger, the
       escalation's row, the erasure count, and under enforcement the former assignee losing the unmasked read.
-      - **Not done:** "waiting with whom", the stuck list, the resolution kept on reopen and the reopen count; a UI
+      - **Done 2026-11-27 (reopen history):** a reopen keeps the resolution it undid in `ticket_reopenings` (migration
+      `20261127000001`, append-only, no free text); the detail lists `reopenings` and `reopen_count`. Request test:
+      two resolutions and two reopens kept in order, the trigger refusing an edit and a delete.
+      - **Not done:** "waiting with whom", the stuck list; a UI
       action for the handover; the movements in the subject-access export; the reason is not sealed (CRM-T279).
 - [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
       contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,
