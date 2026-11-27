@@ -200,7 +200,7 @@ after that is not ordered.
 
 | Status | When |
 |---|---|
-| `404` | `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is unset or shorter than 32 characters |
+| `404` | `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` is unset. A secret shorter than 32 characters stops the service from starting |
 | `401` | `x-wpm-signature` is missing, wrong, malformed, or more than 300 seconds old or ahead |
 | `400` | The body is not an event (not JSON, no `kind`, or an `id` that is empty or longer than 100 characters) |
 | `413` | The body is over 16 KiB |

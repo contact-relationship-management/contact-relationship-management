@@ -68,10 +68,11 @@ pub struct Settings {
     pub retention_days: Option<String>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_BATCH`: contacts handled per send call, 1 to 5000 (default 200).
     pub mail_batch: i64,
-    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`, only when long enough ([`MIN_WEBHOOK_SECRET`]).
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET`, at least [`MIN_WEBHOOK_SECRET`] bytes; a shorter one is named in
+    /// [`Settings::unusable`], and start-up refuses.
     pub webhook_secret: Option<String>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET`: the secret the worker service signs its events with (CRM-R92),
-    /// only when long enough ([`MIN_WEBHOOK_SECRET`]). Unset, `POST /api/bridges/wpm/events` is `404`.
+    /// at least [`MIN_WEBHOOK_SECRET`] bytes, as above. Unset, `POST /api/bridges/wpm/events` is `404`.
     pub wpm_webhook_secret: Option<String>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY`, when not blank.
     pub mailgun_signing_key: Option<String>,
@@ -104,8 +105,8 @@ pub struct Settings {
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_MCP_ALLOWED_ORIGINS`: browser origins the MCP endpoint answers (comma-separated;
     /// none by default, so only clients that send no `Origin` header, such as agents, connect).
     pub mcp_allowed_origins: Vec<String>,
-    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`: the web forms (CRM-R31), a JSON list; entries that do not parse or fail
-    /// [`WebForm::valid`] are left out.
+    /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS`: the web forms (CRM-R31), a JSON list. A list that does not parse, or
+    /// holds a form that fails [`WebForm::valid`], is named in [`Settings::unusable`], and start-up refuses.
     pub web_forms: Vec<WebForm>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT`: submissions per client per form in 10 minutes (default 5).
     pub web_form_client_limit: u32,
@@ -243,6 +244,43 @@ fn optional_number<T: std::str::FromStr>(
     parsed
 }
 
+/// A shared secret: `None` when it is not set or blank, the secret when it is at least
+/// [`MIN_WEBHOOK_SECRET`] bytes, and otherwise `None` with `name` recorded in `unusable`, so that
+/// start-up refuses (RCA-IN-4) rather than leave the endpoint it guards answering `404`.
+fn secret(
+    get: &dyn Fn(&str) -> Option<String>,
+    name: &'static str,
+    unusable: &mut Vec<&'static str>,
+) -> Option<String> {
+    let raw = get(name).filter(|v| !v.trim().is_empty())?;
+    if raw.len() < MIN_WEBHOOK_SECRET {
+        unusable.push(name);
+        return None;
+    }
+    Some(raw)
+}
+
+/// The web forms (CRM-R31): none when the setting is not set or blank, the forms when it is a JSON
+/// list of forms that each pass [`WebForm::valid`], and otherwise none with the setting recorded in
+/// `unusable`, so that start-up refuses (RCA-IN-4) rather than run without a form, or without some
+/// of them, that the operator configured.
+fn web_forms(
+    get: &dyn Fn(&str) -> Option<String>,
+    unusable: &mut Vec<&'static str>,
+) -> Vec<WebForm> {
+    const NAME: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS";
+    let Some(raw) = get(NAME).filter(|v| !v.trim().is_empty()) else {
+        return Vec::new();
+    };
+    match serde_json::from_str::<Vec<WebForm>>(&raw) {
+        Ok(forms) if forms.iter().all(WebForm::valid) => forms,
+        _ => {
+            unusable.push(NAME);
+            Vec::new()
+        }
+    }
+}
+
 /// A retention setting, kept as written: not set at all is `None`; a value that is not a whole number
 /// of days at or above `floor` is recorded in `unusable` (RCA-IN-4) and not raised to the floor.
 fn horizon_setting(
@@ -325,10 +363,16 @@ impl Settings {
                 200,
                 &mut unusable,
             ),
-            webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET")
-                .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
-            wpm_webhook_secret: get("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET")
-                .filter(|s| s.len() >= MIN_WEBHOOK_SECRET),
+            webhook_secret: secret(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",
+                &mut unusable,
+            ),
+            wpm_webhook_secret: secret(
+                get,
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET",
+                &mut unusable,
+            ),
             mailgun_signing_key: text("CONTACT_RELATIONSHIP_MANAGEMENT_MAILGUN_SIGNING_KEY"),
             mail_dev_domain: text("CONTACT_RELATIONSHIP_MANAGEMENT_MAIL_DEV_DOMAIN")
                 .map(|v| v.trim().to_string()),
@@ -357,9 +401,7 @@ impl Settings {
                         .filter(|o| !o.is_empty())
                         .collect()
                 }),
-            web_forms: text("CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS")
-                .and_then(|v| serde_json::from_str::<Vec<WebForm>>(&v).ok())
-                .map_or_default(|forms| forms.into_iter().filter(WebForm::valid).collect()),
+            web_forms: web_forms(get, &mut unusable),
             web_form_client_limit: number(
                 get,
                 "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORM_CLIENT_LIMIT",
@@ -537,13 +579,10 @@ mod tests {
     }
 
     #[test]
-    fn web_forms_are_read_from_json_and_bad_entries_are_left_out() {
+    fn web_forms_are_read_from_json_and_a_bad_list_is_refused() {
         let json = r#"[
             {"slug": "news", "origins": ["https://a.example/"], "purpose": "newsletter"},
-            {"slug": "plain", "origins": ["https://a.example"]},
-            {"slug": "Bad Slug", "origins": ["https://a.example"]},
-            {"slug": "no-origin", "origins": []},
-            {"slug": "odd-purpose", "origins": ["https://a.example"], "purpose": "spam"}
+            {"slug": "plain", "origins": ["https://a.example"]}
         ]"#;
         let s = Settings::from_lookup(&lookup(&[(
             "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS",
@@ -567,12 +606,26 @@ mod tests {
         ]));
         assert!(on.public_kb);
         assert_eq!(on.public_kb_client_limit, 7);
-        // Not JSON: no forms, rather than a failed start.
-        let broken = Settings::from_lookup(&lookup(&[(
-            "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS",
+        assert!(s.unusable.is_empty());
+        // Not JSON, or one form that is not valid among good ones: no forms, and the setting is
+        // named so that start-up refuses (RCA-IN-4). Before, the bad ones were quietly left out.
+        for bad in [
             "news=https://a",
-        )]));
-        assert!(broken.web_forms.is_empty());
+            r#"[{"slug": "news", "origins": ["https://a.example"]}, {"slug": "Bad Slug", "origins": ["https://a.example"]}]"#,
+            r#"[{"slug": "no-origin", "origins": []}]"#,
+            r#"[{"slug": "odd-purpose", "origins": ["https://a.example"], "purpose": "spam"}]"#,
+        ] {
+            let broken = Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS",
+                bad,
+            )]));
+            assert!(broken.web_forms.is_empty(), "{bad}");
+            assert_eq!(
+                broken.unusable,
+                ["CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS"],
+                "{bad}"
+            );
+        }
     }
 
     #[test]
@@ -695,7 +748,7 @@ mod tests {
     }
 
     #[test]
-    fn a_short_webhook_secret_is_ignored() {
+    fn a_short_webhook_secret_is_refused() {
         let short = "x".repeat(MIN_WEBHOOK_SECRET - 1);
         let long = "x".repeat(MIN_WEBHOOK_SECRET);
         assert_eq!(
@@ -724,6 +777,26 @@ mod tests {
         };
         assert_eq!(wpm(&short), None);
         assert_eq!(wpm(&long), Some(long.clone()));
+        // A short secret is named so that start-up refuses (RCA-IN-4); a blank one is unset.
+        for name in [
+            "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",
+            "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET",
+        ] {
+            assert_eq!(
+                Settings::from_lookup(&lookup(&[(name, &short)])).unusable,
+                [name]
+            );
+            assert!(
+                Settings::from_lookup(&lookup(&[(name, "  ")]))
+                    .unusable
+                    .is_empty()
+            );
+            assert!(
+                Settings::from_lookup(&lookup(&[(name, &long)]))
+                    .unusable
+                    .is_empty()
+            );
+        }
         assert_eq!(
             Settings::from_lookup(&lookup(&[(
                 "CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET",

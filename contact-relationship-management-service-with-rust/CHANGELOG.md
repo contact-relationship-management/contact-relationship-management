@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Start-up refuses a `CONTACT_RELATIONSHIP_MANAGEMENT_WEBHOOK_SECRET` or `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` shorter than 32 bytes, and a `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` that is not JSON or holds a form that is not valid, naming each among the unusable settings (RCA-IN-4, the owner's decision of 2026-11-27). Before, the secret was ignored (its endpoint answered `404`), the list gave no forms, and a bad form was left out. A blank value is still unset.
 - A ticket title or activity summary edit refuses the masked placeholder (`•••`) with a `422` (CRM-T321), so saving back what a masked read showed cannot overwrite the real text.
 - `axa` 0.23.0 → 0.24.1 and `axa-test` 0.14.0 → 0.15.1, inside the publish cooldown at the owner's word. axa's changelog lists nothing a service calls as changed; no code change was needed.
 - The executive pack's default window ends at the later of the database's and the service's clocks (CRM-T341): ending it on the database's alone could miss a ticket opened a moment before, whose `opened_at` is the service's.

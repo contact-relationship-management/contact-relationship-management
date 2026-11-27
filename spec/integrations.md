@@ -126,7 +126,8 @@ nothing to keep per client, and for the older versions no `Mcp-Session-Id` is is
 
 `POST /forms/{slug}` is public by design and sits outside `/api`, like the unsubscribe and confirmation pages (`auth::is_public_path`).
 The forms are configuration, not data: `CONTACT_RELATIONSHIP_MANAGEMENT_WEB_FORMS` is a JSON list of `{slug, origins, purpose?, sequence?}`, read into
-`Settings` (an entry that is not valid is left out, a list that is not JSON gives no forms). Nothing the caller sends chooses the
+`Settings`. A list that is not JSON, or holds a form that is not valid, is named among the unusable settings and start-up
+refuses (RCA-IN-4; before 2026-11-27 such a form was left out and such a list gave no forms). Nothing the caller sends chooses the
 purpose or the sequence.
 
 What stands between the internet and the CRM, in order: the form must exist (`404`; from a page on another site, `axa`'s
