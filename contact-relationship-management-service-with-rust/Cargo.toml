@@ -24,7 +24,7 @@ include = ["src/**/*", "migrations/**/*", ".sqlx/**/*", ".cargo/config.toml", "s
 
 [workspace.dependencies]
 # The shared plumbing. `sqlx`: `AppContext::db` is the `PgPool` (CRM-D24); `queue` is the Postgres job queue.
-axa = { version = "0.23.0", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
+axa = { version = "0.24.1", features = ["postgres-sqlx", "queue", "redis", "problem", "ratelimit", "cursor-pagination"] }
 
 [dependencies]
 axa = { workspace = true }
@@ -130,7 +130,7 @@ contact-relationship-management-domain = { path = "contact-relationship-manageme
 # A local OIDC provider so tests/keycloak_guard.rs can push a Keycloak access
 # token through the real guard without a Keycloak container. Tests only.
 authentication-verifier = { version = "0.9.3", default-features = false, features = ["test-idp"] }
-axa-test = { version = "0.14.0" }
+axa-test = { version = "0.15.1" }
 # `TestServer` for the unit tests that serve a bare router (src/controllers).
 axum-test = { version = "21.1.0" }
 # Drive a single middleware with `oneshot` in its unit tests.
