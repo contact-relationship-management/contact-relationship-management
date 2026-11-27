@@ -144,7 +144,7 @@ The outbound bridges are stub-first: nothing leaves the process unless
 | `CONTACT_RELATIONSHIP_MANAGEMENT_UPSTREAM_MODE` | `http` sends the outbound calls; unset (or anything else) is stub mode |
 | `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN` | PPM's base URL and an optional bearer token |
 | `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL`, `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` | WPM's base URL and a bearer token. A token is sent only over `https` or to this machine |
-| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` | The `organization:` URN the employment check asks about (CRM-R94). `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` must belong to an HR identity of that organization in WPM. A value that is not an `organization:` URN counts as unset; unset, the check answers `502` in `http` mode |
+| `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` | The `organization:` URN the employment check asks about (CRM-R94). `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` must belong to an HR identity of that organization in WPM. A value that is not an `organization:` URN stops the service from starting; unset, the check answers `502` in `http` mode |
 | `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_WEBHOOK_SECRET` | 32+ characters; enables `POST /api/bridges/wpm/events` (CRM-R92). Set the same value as WPM's `WPM_WEBHOOK_SECRET_<NAME>` for the subscription. Requests carry `x-wpm-signature: t=<unix>,v1=<hex>` (HMAC-SHA256 of `t.body`), with a five-minute window. Unset, the route is `404` |
 
 The [family bridges tutorial](docs/tutorial-family-bridges.md) walks through a

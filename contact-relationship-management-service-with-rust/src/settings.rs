@@ -59,7 +59,8 @@ pub struct Settings {
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN`: the same for the worker service (CRM-R87).
     pub worker_service_token: Option<String>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF`: the organization the employment check asks the worker service
-    /// about (CRM-R94), an `organization:` URN; anything else is taken as unset. It is the
+    /// about (CRM-R94), an `organization:` URN; anything else is named in [`Settings::unusable`], and start-up
+    /// refuses. It is the
     /// organization whose HR identity holds `CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN` (CRM-D16).
     pub wpm_organization_ref: Option<String>,
     /// `CONTACT_RELATIONSHIP_MANAGEMENT_EVENT_TRANSPORT`: `memory` (default) or `outbox`.
@@ -244,6 +245,26 @@ fn optional_number<T: std::str::FromStr>(
     parsed
 }
 
+/// The organization the employment check asks about (CRM-R94): `None` when it is not set or blank,
+/// the reference when it is an `organization:` URN, and otherwise `None` with the setting recorded
+/// in `unusable`, so that start-up refuses (RCA-IN-4) rather than run as though it were unset.
+fn organization_ref(
+    get: &dyn Fn(&str) -> Option<String>,
+    unusable: &mut Vec<&'static str>,
+) -> Option<String> {
+    const NAME: &str = "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF";
+    let raw = get(NAME).filter(|v| !v.trim().is_empty())?;
+    let raw = raw.trim().to_string();
+    let organization = <entity_ref::EntityRef as std::str::FromStr>::from_str(&raw)
+        .is_ok_and(|r| r.entity_type == entity_ref::EntityType::Organization);
+    if organization {
+        Some(raw)
+    } else {
+        unusable.push(NAME);
+        None
+    }
+}
+
 /// A shared secret: `None` when it is not set or blank, the secret when it is at least
 /// [`MIN_WEBHOOK_SECRET`] bytes, and otherwise `None` with `name` recorded in `unusable`, so that
 /// start-up refuses (RCA-IN-4) rather than leave the endpoint it guards answering `404`.
@@ -343,12 +364,7 @@ impl Settings {
             worker_service_url: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_URL"),
             ppm_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_PPM_SERVICE_TOKEN"),
             worker_service_token: text("CONTACT_RELATIONSHIP_MANAGEMENT_WORKER_SERVICE_TOKEN"),
-            wpm_organization_ref: text("CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF")
-                .map(|v| v.trim().to_string())
-                .filter(|v| {
-                    <entity_ref::EntityRef as std::str::FromStr>::from_str(v)
-                        .is_ok_and(|r| r.entity_type == entity_ref::EntityType::Organization)
-                }),
+            wpm_organization_ref: organization_ref(get, &mut unusable),
             event_transport: event_transport(get, &mut unusable),
             retention_days: horizon_setting(
                 get,
@@ -871,5 +887,23 @@ mod tests {
         assert_eq!(org("person:0c4f1e2a-0000-4000-8000-0000000000aa"), None);
         assert_eq!(org("Acme Ltd"), None);
         assert_eq!(org("  "), None);
+        // Not an organization reference: named so that start-up refuses (RCA-IN-4); blank is unset.
+        let unusable = |v: &str| {
+            Settings::from_lookup(&lookup(&[(
+                "CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF",
+                v,
+            )]))
+            .unusable
+        };
+        assert_eq!(
+            unusable("Acme Ltd"),
+            ["CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF"]
+        );
+        assert_eq!(
+            unusable("person:0c4f1e2a-0000-4000-8000-0000000000aa"),
+            ["CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF"]
+        );
+        assert!(unusable("  ").is_empty());
+        assert!(unusable(good).is_empty());
     }
 }
