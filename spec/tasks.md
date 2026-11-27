@@ -3128,7 +3128,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       decided. The deadlines behind the figures are listed, each ticket under its record-level read decision. The rule is
       `rules::sla::outcome`, unit-tested to agree with the breach rules. Request test: met, missed and undecided counted
       and listed in order, a deleted ticket left out, an empty window with no share, bad windows refused.
-      - **Not done:** no UI; no split by priority or channel; a reopened ticket is judged on its latest resolution only.
+      - **Done 2026-11-27 (UI):** the executive page shows both shares, the counts behind them and the deadlines, for the
+      default window; Playwright smoke test with a share and a "none decided", and the page's accessibility scan.
+      - **Not done:** the page has no window picker; no split by priority or channel; a reopened ticket is judged on its
+      latest resolution only.
 - [ ] CRM-T316 **Decide F4: owner change and escalation in the audit.** Owner changes record the field name only and
       escalations record `to`, not `from`. This is a question for the owner (privacy rule or fault); CRM-T322 gives an answer
       that keeps the rule. Decide, then record it in `audit.md`. (S)
@@ -3222,7 +3225,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       title; it was not changed.
       - **Not done / not verified:** a page that spends its budget is still short; time is not hidden (a page that skipped
       many rows answers later); the read cost under a restrictive policy on a large table was not measured. Board columns
-      as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.
+      as read, reports, reply, exports and the clients were not touched. **Reports need a decision:** the report builder
+      counts tickets in SQL and the record-level decision is made in Rust per row, so a ticket report cannot leave out
+      what the caller may not read without either loading every row (cost) or refusing ticket reports to a caller whose
+      policy is not unconditional (less use); not chosen (2026-11-27). The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

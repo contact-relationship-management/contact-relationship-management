@@ -98,6 +98,27 @@ async function stub(page: Page) {
   await page.route("**/api/proxy/insights/forecast-trends*", (route: Route) =>
     route.fulfill({ json: { series: [] } }),
   );
+  await page.route("**/api/proxy/insights/sla-attainment*", (route: Route) =>
+    route.fulfill({
+      json: {
+        derivation: "",
+        window: { from: "2026-09-01T12:00:00Z", to: "2026-10-30T12:00:00Z" },
+        first_response: {
+          met: 0,
+          missed: 0,
+          undecided: 0,
+          attained: { numerator: 0, denominator: 0, value: null },
+        },
+        resolution: {
+          met: 0,
+          missed: 0,
+          undecided: 0,
+          attained: { numerator: 0, denominator: 0, value: null },
+        },
+        deadlines: [],
+      },
+    }),
+  );
 }
 
 /** Where the first header cell's text sits in its table: "start-right" or "start-left". */

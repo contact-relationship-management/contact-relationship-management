@@ -12,22 +12,25 @@
     executivePack,
     forecastTrends,
     pipelineHygiene,
+    slaAttainment,
     staleDeals,
     type Finding,
     type StaleDeal,
   } from "#lib/api/crm.js";
   import { money } from "#lib/money.js";
   import { i18n, t, tf } from "#lib/i18n.svelte.js";
-  import { formatDateRange } from "#lib/locale-format.js";
+  import { formatDateRange, formatDateTime, formatPercent } from "#lib/locale-format.js";
 
   type Pack = Awaited<ReturnType<typeof executivePack>>;
   type Trends = Awaited<ReturnType<typeof forecastTrends>>;
+  type Attainment = Awaited<ReturnType<typeof slaAttainment>>;
 
   let pack = $state<Pack | null>(null);
   let stale = $state<StaleDeal[]>([]);
   let staleDerivation = $state("");
   let findings = $state<Finding[]>([]);
   let trends = $state<Trends | null>(null);
+  let attainment = $state<Attainment | null>(null);
   let error = $state<string | null>(null);
 
   $effect(() => {
@@ -39,6 +42,7 @@
         staleDerivation = aging.derivation;
         findings = (await pipelineHygiene()).findings;
         trends = await forecastTrends();
+        attainment = await slaAttainment();
       } catch (cause) {
         error = errorMessage(cause);
       }
@@ -67,6 +71,27 @@
   ]);
   const hygieneRows = $derived(
     findings.map((f, index) => ({ id: String(index), rule: f.rule, detail: f.detail })),
+  );
+  const attainmentColumns = $derived([
+    { id: "ticket", header: t("col.ticket") },
+    { id: "measure", header: t("col.measure") },
+    { id: "due", header: t("col.dueAt") },
+    { id: "outcome", kind: "chip", header: t("col.outcome") },
+  ]);
+  const attainmentRows = $derived(
+    (attainment?.deadlines ?? []).map((d) => ({
+      id: `${d.pid}-${d.measure}`,
+      ticket: d.title,
+      measure: t(d.measure === "first_response" ? "exec.measure.firstResponse" : "exec.measure.resolution"),
+      due: formatDateTime(d.due_at),
+      outcome: t(
+        d.outcome === "met"
+          ? "exec.outcome.met"
+          : d.outcome === "missed"
+            ? "exec.outcome.missed"
+            : "exec.outcome.undecided",
+      ),
+    })),
   );
   const trendColumns = $derived([
     { id: "taken", kind: "date", header: t("col.taken") },
@@ -116,6 +141,29 @@
       {/each}
     </p>
   {/if}
+{/if}
+
+{#if attainment}
+  <h2>{t("exec.attainment")}</h2>
+  <p class="muted">{attainment.derivation}</p>
+  <section class="tiles" data-testid="exec-attainment">
+    {#each [["exec.firstResponseMet", attainment.first_response], ["exec.resolutionMet", attainment.resolution]] as const as [label, m] (label)}
+      <div class="tile">
+        <strong>{m.attained.value === null ? t("exec.noneDecided") : formatPercent(m.attained.value)}</strong>
+        <span>{t(label)}</span>
+        <span class="muted small">
+          {tf("exec.attainedOf", { met: m.met, decided: m.attained.denominator, undecided: m.undecided })}
+        </span>
+      </div>
+    {/each}
+  </section>
+  <DataTable
+    label={t("exec.attainment")}
+    columns={attainmentColumns}
+    rows={attainmentRows}
+    testid="exec-deadlines"
+    empty={t("exec.noDeadlines")}
+  />
 {/if}
 
 {#if stale.length > 0}

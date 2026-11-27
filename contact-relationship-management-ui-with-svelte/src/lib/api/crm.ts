@@ -1085,6 +1085,39 @@ export function forecastTrends(init?: FetchLike): Promise<{
   return api("/insights/forecast-trends", init);
 }
 
+/** One service level measure over a window (CRM-T315). */
+export interface AttainmentMeasure {
+  met: number;
+  missed: number;
+  /** Due in the window, but neither done nor past due on the SLA clock yet. */
+  undecided: number;
+  /** `met / (met + missed)`; no value when nothing was decided. */
+  attained: Ratio;
+}
+
+/** A deadline counted in the attainment. */
+export interface AttainmentDeadline {
+  pid: string;
+  title: string;
+  priority: string;
+  status: string;
+  measure: "first_response" | "resolution";
+  due_at: string;
+  outcome: "met" | "missed" | "undecided";
+}
+
+/** First-response and resolution attainment over a window, the trailing 30 days by default (CRM-T315). */
+export function slaAttainment(init?: FetchLike): Promise<{
+  as_of: string;
+  derivation: string;
+  window: { from: string; to: string };
+  first_response: AttainmentMeasure;
+  resolution: AttainmentMeasure;
+  deadlines: AttainmentDeadline[];
+}> {
+  return api("/insights/sla-attainment", init);
+}
+
 /** The SLA breach register + per-assignee workload. */
 export function slaRegister(init?: FetchLike): Promise<{
   as_of: string;

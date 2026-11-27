@@ -741,6 +741,10 @@ describe("the typed API can drive the complete demo", () => {
     await crm.executivePack();
     await crm.forecastTrends();
     await crm.slaRegister();
+    const attained = await crm.slaAttainment();
+    expect(attained.first_response.attained.denominator).toBe(
+      attained.first_response.met + attained.first_response.missed,
+    );
     await crm.dpo();
     await crm.cadence(30);
     await crm.engagementWorkload();

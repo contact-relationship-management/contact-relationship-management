@@ -1365,6 +1365,51 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         ],
       });
     }
+    case "sla-attainment": {
+      // The tour's tickets, each with a first-response deadline in the window (CRM-T315).
+      const outcomes = [
+        "met",
+        "met",
+        "missed",
+        "met",
+        "undecided",
+        "met",
+      ] as const;
+      const deadlines = state.tickets.slice(0, outcomes.length).map((t, i) => ({
+        pid: t.pid,
+        title: t.title,
+        priority: t.priority,
+        status: t.status,
+        measure: "first_response" as const,
+        due_at: `${day(-25 + i * 4)}T12:00:00Z`,
+        outcome: outcomes[i]!,
+      }));
+      const count = (o: string) =>
+        deadlines.filter((d) => d.outcome === o).length;
+      const measure = (met: number, missed: number, undecided: number) => ({
+        met,
+        missed,
+        undecided,
+        attained: {
+          numerator: met,
+          denominator: met + missed,
+          value: met + missed === 0 ? null : met / (met + missed),
+        },
+      });
+      return ok({
+        as_of,
+        derivation:
+          "A deadline counts when it falls in the window; met is done on or before it, missed is done after it or past it undone.",
+        window: { from: day(-30), to: day(0) },
+        first_response: measure(
+          count("met"),
+          count("missed"),
+          count("undecided"),
+        ),
+        resolution: measure(0, 0, 0),
+        deadlines,
+      });
+    }
     case "dpo": {
       const coverage: Record<string, number> = {};
       for (const c of state.contacts)

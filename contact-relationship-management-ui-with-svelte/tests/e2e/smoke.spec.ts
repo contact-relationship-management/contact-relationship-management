@@ -553,10 +553,51 @@ test.describe("signed-in smoke coverage", () => {
         },
       }),
     );
+    await page.route("**/api/proxy/insights/sla-attainment", (route) =>
+      route.fulfill({
+        json: {
+          as_of: "2026-07-20T00:00:00Z",
+          derivation: "a deadline counts when it falls in the window",
+          window: { from: "2026-06-20T00:00:00Z", to: "2026-07-20T00:00:00Z" },
+          first_response: {
+            met: 3,
+            missed: 1,
+            undecided: 1,
+            attained: { numerator: 3, denominator: 4, value: 0.75 },
+          },
+          resolution: {
+            met: 0,
+            missed: 0,
+            undecided: 0,
+            attained: { numerator: 0, denominator: 0, value: null },
+          },
+          deadlines: [
+            {
+              pid: "t1",
+              title: "Printer offline",
+              priority: "high",
+              status: "open",
+              measure: "first_response",
+              due_at: "2026-07-10T12:00:00Z",
+              outcome: "missed",
+            },
+          ],
+        },
+      }),
+    );
     await page.goto("/executive");
     await expect(
       page.getByTestId("exec-won-value").getByText("£7,500.00"),
     ).toBeVisible();
+    // Attainment: a share where something was decided, none where nothing was (CRM-T315).
+    const attainment = page.getByTestId("exec-attainment");
+    await expect(attainment).toContainText("75%");
+    await expect(attainment).toContainText("None decided");
+    await expect(attainment).toContainText("3 of 4 decided; 1 not yet decided");
+    await expect(
+      page.getByTestId("exec-deadlines").getByText("Printer offline"),
+    ).toBeVisible();
+    await expect(page.getByTestId("exec-deadlines")).toContainText("Missed");
     await expect(
       page.getByTestId("exec-stale").getByText("Sleepy deal"),
     ).toBeVisible();
