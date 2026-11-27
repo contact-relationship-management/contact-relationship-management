@@ -3128,7 +3128,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Done 2026-11-27 (reopen history):** a reopen keeps the resolution it undid in `ticket_reopenings` (migration
       `20261127000001`, append-only, no free text); the detail lists `reopenings` and `reopen_count`. Request test:
       two resolutions and two reopens kept in order, the trigger refusing an edit and a delete.
-      - **Not done:** "waiting with whom", the stuck list; a UI
+      - **Done 2026-11-27 (stuck list):** `GET /api/insights/stuck-tickets?days=` (7 by default, 1 to 365) lists the
+      open and pending tickets whose latest change, activity or handover is that many whole days old, longest idle
+      first, each under its record-level read decision; it names tickets and ranks no one. Request test: idle order, the
+      threshold, an activity taking a ticket off, a resolved ticket never shown, out-of-range days refused.
+      - **Not done:** "waiting with whom" (needs the owner's vocabulary: customer, another organization, a colleague?); a UI
       action for the handover; the movements in the subject-access export; the reason is not sealed (CRM-T279).
 - [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
       contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,

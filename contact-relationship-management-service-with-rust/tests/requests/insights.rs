@@ -558,3 +558,77 @@ async fn a_window_or_page_size_out_of_range_is_refused() {
     })
     .await;
 }
+
+/// The stuck list (CRM-T317): an open ticket untouched for the days asked shows, longest idle
+/// first; touching it (an activity) takes it off; a resolved one never shows; and the days are
+/// refused outside 1 to 365.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn the_stuck_list_shows_tickets_nothing_has_touched_for_the_days_asked() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let made = |title: &'static str| {
+            let request = &request;
+            async move {
+                let made: Value = request.post("/api/tickets").json(&json!({ "title": title })).await.json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let (older, old, fresh, done) =
+            (made("Older").await, made("Old").await, made("Fresh").await, made("Done").await);
+        request
+            .post(&format!("/api/tickets/{done}/status"))
+            .json(&json!({ "to": "resolved" }))
+            .await
+            .assert_status_ok();
+        for (pid, ago) in [(&older, 20), (&old, 10), (&done, 30)] {
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+                "ALTER TABLE tickets DISABLE TRIGGER USER; \
+                 UPDATE tickets SET updated_at = now() - interval '{ago} days' WHERE pid = '{pid}'; \
+                 ALTER TABLE tickets ENABLE TRIGGER USER;"
+            )))
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+        let stuck = |days: u32| {
+            let request = &request;
+            async move {
+                let list: Value = request
+                    .get(&format!("/api/insights/stuck-tickets?days={days}"))
+                    .await
+                    .json();
+                list["tickets"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter_map(|t| t["pid"].as_str().map(str::to_string))
+                    .collect::<Vec<String>>()
+            }
+        };
+        let seven = stuck(7).await;
+        let ours: Vec<&String> = seven.iter().filter(|p| [&older, &old, &fresh, &done].contains(p)).collect();
+        assert_eq!(ours, [&older, &old], "longest idle first, no fresh or resolved ticket");
+        assert_eq!(
+            stuck(15).await.iter().filter(|p| [&older, &old].contains(p)).count(),
+            1,
+            "only the older at fifteen days"
+        );
+        // An activity is a touch: the old ticket leaves the list.
+        request
+            .post("/api/activities")
+            .json(&json!({ "subject_kind": "ticket", "subject_pid": old, "kind": "note",
+                           "summary": "Looked at it" }))
+            .await
+            .assert_status_ok();
+        assert!(!stuck(7).await.contains(&old));
+        for bad in [0, 366] {
+            request
+                .get(&format!("/api/insights/stuck-tickets?days={bad}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}

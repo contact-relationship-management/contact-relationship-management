@@ -1477,6 +1477,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/insights/stuck-tickets",
+        "insights",
+        "Open and pending tickets nothing has touched (a change, an activity or a handover) for days (7 by default, 1 to 365), the longest idle first (CRM-T317); each ticket takes its record-level read decision. It names tickets and never ranks the people who hold them",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/insights/stakeholders",
         "insights",
         "Stakeholder register",

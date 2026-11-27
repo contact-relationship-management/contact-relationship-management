@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT t.pid AS \"pid!\", GREATEST(t.updated_at, (SELECT max(a.occurred_at) FROM activities a WHERE a.subject_kind = 'ticket' AND a.subject_pid = t.pid AND a.deleted_at IS NULL), (SELECT max(m.created_at) FROM ticket_movements m WHERE m.ticket_pid = t.pid)) AS \"last!: crate::models::DateTimeWithTimeZone\" FROM tickets t WHERE t.deleted_at IS NULL AND t.status IN ('open', 'pending')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pid!",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "tickets",
+            "name": "pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "last!: crate::models::DateTimeWithTimeZone",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "ebd7dacd79ef7d25e845726e15b2e94527c7eb1bdb8b1a32f42661a9442eae3f"
+}

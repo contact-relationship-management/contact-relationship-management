@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `GET /api/insights/stuck-tickets?days=` lists the open and pending tickets nothing has touched (a change, an activity or a handover) for that many days, longest idle first, under each ticket's record-level read decision (CRM-T317).
 - A reopened ticket keeps each resolution it had (CRM-T317): a new append-only `ticket_reopenings` table, listed as `reopenings` with `reopen_count` on the ticket detail.
 - `POST /api/tickets/{pid}/assign` hands a ticket to another person, or to no one, with a reason (CRM-T317). Each move, the wait-limit escalation's too, is kept in a new append-only `ticket_movements` table and listed as `movements` on the ticket detail (reasons masked with the title); the audit names the two assignees and the event is `ticket_reassigned`. Erasure scrubs the reasons of the contact's tickets (`ticket_movement_reasons_scrubbed`). Not done: a UI action, the subject-access export.
 - Start-up refuses a `CONTACT_RELATIONSHIP_MANAGEMENT_WPM_ORGANIZATION_REF` that is not an `organization:` URN, naming it among the unusable settings (RCA-IN-4); before, it counted as unset and the employment check answered `502`.

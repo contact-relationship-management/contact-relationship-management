@@ -10798,6 +10798,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/stuck-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open and pending tickets nothing has touched (a change, an activity or a handover) for days (7 by default, 1 to 365), the longest idle first (CRM-T317); each ticket takes its record-level read decision. It names tickets and never ranks the people who hold them */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StuckTickets"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/lead-imports": {
         parameters: {
             query?: never;
@@ -22223,6 +22295,34 @@ export interface components {
              * @default
              */
             template_ref: string;
+        };
+        /** @description An open or pending ticket nothing has touched for a while (CRM-T317). */
+        StuckTicket: {
+            assignee_ref: string | null;
+            /**
+             * Format: int64
+             * @description Whole days since then.
+             */
+            idle_days: number;
+            /**
+             * Format: date-time
+             * @description The latest of the ticket's own last change, its last activity and its last handover.
+             */
+            last_touched_at: string;
+            /** Format: uuid */
+            pid: string;
+            priority: string;
+            status: string;
+            title: string;
+        };
+        /** @description `GET /api/insights/stuck-tickets`. */
+        StuckTickets: {
+            /** Format: date-time */
+            as_of?: string;
+            /** Format: int64 */
+            days: number;
+            derivation: string;
+            tickets: components["schemas"]["StuckTicket"][];
         };
         /** @description `GET /api/contacts/{pid}/subject-access`: everything CRM holds keyed to the contact. */
         SubjectAccessExport: {

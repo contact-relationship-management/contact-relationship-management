@@ -1,4 +1,5 @@
-//! Support insights: the SLA register and per-assignee workload.
+//! Support insights: the SLA register and per-assignee workload, and the tickets nothing has touched
+//! for a while.
 
 use super::{AppContext, HeaderMap, Response, Result, State, conditional, debug_handler, tickets};
 use crate::arith::OrOverflow;
@@ -134,6 +135,106 @@ pub(super) async fn sla_register(
                          reported); at_risk = a deadline within the disclosed 4h window",
             breaches: breaches.into_iter().map(|(_, v)| v).collect(),
             workload: workload_view,
+            as_of: None,
+        }),
+    ))
+}
+
+/// An open or pending ticket nothing has touched for a while (CRM-T317).
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+#[schemars(rename = "StuckTicket")]
+pub(crate) struct Stuck {
+    pid: uuid::Uuid,
+    title: String,
+    priority: String,
+    status: String,
+    assignee_ref: Option<String>,
+    /// The latest of the ticket's own last change, its last activity and its last handover.
+    #[schemars(with = "crate::time::Timestamp")]
+    last_touched_at: crate::time::Timestamp,
+    /// Whole days since then.
+    idle_days: i64,
+}
+
+/// `GET /api/insights/stuck-tickets`.
+#[derive(Debug, serde::Serialize, schemars::JsonSchema)]
+pub(crate) struct StuckTickets {
+    derivation: &'static str,
+    days: i64,
+    tickets: Vec<Stuck>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(with = "crate::time::Timestamp")]
+    as_of: Option<crate::time::Timestamp>,
+}
+
+/// `GET /api/insights/stuck-tickets?days=` — the open and pending tickets nothing has touched for
+/// `days` (7 by default, 1 to 365) or more, the longest idle first (CRM-T317). A touch is a change
+/// to the ticket, an activity on it, or a handover; the list names tickets, never ranks the people
+/// who hold them. Each ticket takes its record-level read decision (CRM-T321): one the caller may not
+/// read is left out, one read masked shows no title.
+#[debug_handler]
+pub(super) async fn stuck_tickets(
+    axa::extract::Query(query): axa::extract::Query<super::DaysQuery>,
+    State(ctx): State<AppContext>,
+    caller: crate::auth::MaybeAuthUser,
+    headers: HeaderMap,
+) -> Result<Response> {
+    let days = super::days_or(query.days, 7)?;
+    let pool = crate::db::pool(&ctx);
+    let now = crate::clock::now();
+    let open = crate::models::rows::open_tickets(pool).await?;
+    let touched: std::collections::HashMap<uuid::Uuid, crate::time::Timestamp> = sqlx::query!(
+        "SELECT t.pid AS \"pid!\", GREATEST(t.updated_at, \
+           (SELECT max(a.occurred_at) FROM activities a WHERE a.subject_kind = 'ticket' \
+              AND a.subject_pid = t.pid AND a.deleted_at IS NULL), \
+           (SELECT max(m.created_at) FROM ticket_movements m WHERE m.ticket_pid = t.pid)) \
+           AS \"last!: crate::models::DateTimeWithTimeZone\" \
+         FROM tickets t WHERE t.deleted_at IS NULL AND t.status IN ('open', 'pending')",
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .map(|row| (row.pid, row.last))
+    .collect();
+    let mut stuck: Vec<Stuck> = Vec::new();
+    for ticket in &open {
+        let Some(&last) = touched.get(&ticket.pid) else {
+            continue; // changed status since the first read
+        };
+        let idle_days = crate::time::whole_days(now.duration_since(last));
+        if idle_days < days {
+            continue;
+        }
+        let Ok(obligations) = crate::auth::authorize_record(
+            &caller,
+            authentication_verifier::Action::Read,
+            &crate::auth::ticket_resource_attrs(ticket),
+        ) else {
+            continue;
+        };
+        let title = if obligations.iter().any(|o| o == "mask") {
+            crate::auth::MASKED.to_string()
+        } else {
+            ticket.title.clone()
+        };
+        stuck.push(Stuck {
+            pid: ticket.pid,
+            title,
+            priority: ticket.priority.clone(),
+            status: ticket.status.clone(),
+            assignee_ref: ticket.assignee_ref.clone(),
+            last_touched_at: last,
+            idle_days,
+        });
+    }
+    stuck.sort_by_key(|s| (s.last_touched_at, s.pid));
+    Ok(conditional(
+        &headers,
+        serde_json::json!(StuckTickets {
+            derivation: "stuck = an open or pending ticket whose latest change, activity or \
+                         handover is at least `days` whole days old; longest idle first",
+            days,
+            tickets: stuck,
             as_of: None,
         }),
     ))
