@@ -104,7 +104,8 @@ fn report(measured: SignedDuration) {
 
 /// The database's own `now()`. Use it where a time is compared with rows the database stamped
 /// itself and the comparison must not miss one made a moment ago: [`now`] can be off from it by up
-/// to half a round trip plus a minute's drift.
+/// to half a round trip plus a minute's drift. Where some of the rows are stamped by [`now`],
+/// take the later of the two.
 ///
 /// # Errors
 ///

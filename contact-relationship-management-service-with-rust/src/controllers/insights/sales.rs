@@ -423,12 +423,15 @@ pub(super) async fn executive(
     headers: HeaderMap,
 ) -> Result<Response> {
     let masked = auth::aggregate_masked(&caller).map_err(record_rejection)?;
-    // With no end given the window runs to now on the database's clock, which stamped the closes,
-    // leads, tickets and audit rows counted here: on this host's clock a deal closed a moment ago
-    // could fall just after the end.
+    // With no end given the window runs to now on both clocks, the later of them: the database
+    // stamps the closes, leads and audit rows counted here, the service stamps `opened_at` and
+    // `occurred_at`, and either can be a moment ahead of the other, so a row made a moment ago on
+    // the one ahead would fall just after an end read on the other.
     let to = match window_bound(query.to.as_deref(), "to", true)? {
         Some(to) => to,
-        None => crate::clock::database_now(db::pool(&ctx)).await?,
+        None => crate::clock::database_now(db::pool(&ctx))
+            .await?
+            .max(crate::clock::now()),
     };
     let from = window_bound(query.from.as_deref(), "from", false)?.unwrap_or(
         // SALES-WINDOW-1: with no start given the window is 30 days; a start that cannot be
