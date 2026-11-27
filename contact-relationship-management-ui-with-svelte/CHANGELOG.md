@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- The ticket board no longer sends a rename of a title it shows masked (`•••`): it says the title is hidden instead
+  (CRM-T321). The service refused such a rename already. One new string; the 20 other languages are machine drafts.
+
 ### Added
 
 - The executive page shows service level attainment over the window (CRM-T315): the share of first responses and of

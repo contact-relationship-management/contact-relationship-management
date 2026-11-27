@@ -782,6 +782,8 @@ export default {
   "ticket.replied": "Klant heeft gereageerd",
   "ticket.reference": "Verwijzing voor het onderwerp van een antwoord",
   "ticket.waitExceeded": "Wacht te lang",
+  "ticket.maskedTitle":
+    "Deze titel is voor u verborgen en kan dus niet worden hernoemd.",
   "quota.split": "Een gewonnen deal splitsen",
   "ticket.assignee": "Toegewezen aan",
   "ticket.handOver": "Overdragen",

@@ -775,6 +775,8 @@ export default {
   "ticket.replied": "Mteja amejibu",
   "ticket.reference": "Rejeo la mada ya jibu",
   "ticket.waitExceeded": "Inasubiri kwa muda mrefu mno",
+  "ticket.maskedTitle":
+    "Kichwa hiki kimefichwa kwako, kwa hivyo hakiwezi kubadilishwa jina.",
   "quota.split": "Gawanya mkataba ulioshinda",
   "ticket.assignee": "Amekabidhiwa",
   "ticket.handOver": "Kabidhi",

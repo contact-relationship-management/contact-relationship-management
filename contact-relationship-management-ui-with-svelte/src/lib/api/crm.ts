@@ -920,6 +920,12 @@ export function ticketCustomerReply(pid: string): Promise<Ticket> {
   return api(`/tickets/${pid}/customer-reply`, { method: "POST" });
 }
 
+/**
+ * What the service shows in place of a field the caller may only read masked (CRM-T321). It is
+ * not text: saving it back is refused with a `422`, so a client never offers to edit it.
+ */
+export const MASKED = "•••";
+
 /** One handover of a ticket (CRM-T317): the assignee before and after, and why. */
 export interface TicketMovement {
   from_ref: string | null;

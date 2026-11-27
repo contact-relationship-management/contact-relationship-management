@@ -797,6 +797,8 @@ export default {
   "ticket.replied": "Клиент ответил",
   "ticket.reference": "Ссылка для темы ответа",
   "ticket.waitExceeded": "Ждёт слишком долго",
+  "ticket.maskedTitle":
+    "Этот заголовок скрыт от вас, поэтому его нельзя переименовать.",
   "quota.split": "Разделить выигранную сделку",
   "ticket.assignee": "Назначено",
   "ticket.handOver": "Передать",

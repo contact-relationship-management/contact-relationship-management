@@ -772,6 +772,8 @@ export default {
   "ticket.replied": "গ্রাহক উত্তর দিয়েছেন",
   "ticket.reference": "উত্তরের বিষয়ের জন্য রেফারেন্স",
   "ticket.waitExceeded": "অনেকক্ষণ অপেক্ষায়",
+  "ticket.maskedTitle":
+    "এই শিরোনামটি আপনার কাছ থেকে লুকানো, তাই এর নাম বদলানো যাবে না।",
   "quota.split": "একটি জেতা ডিল ভাগ করুন",
   "ticket.assignee": "দায়িত্বপ্রাপ্ত",
   "ticket.handOver": "হস্তান্তর করুন",

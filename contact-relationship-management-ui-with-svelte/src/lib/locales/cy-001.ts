@@ -815,6 +815,8 @@ export default {
   "ticket.replied": "Atebodd y cwsmer",
   "ticket.reference": "Cyfeirnod ar gyfer pwnc ateb",
   "ticket.waitExceeded": "Aros yn rhy hir",
+  "ticket.maskedTitle":
+    "Mae'r teitl hwn wedi'i guddio rhagoch, felly ni ellir ei ailenwi.",
   "quota.split": "Hollti bargen a enillwyd",
   "ticket.assignee": "Wedi'i neilltuo i",
   "ticket.handOver": "Trosglwyddo",

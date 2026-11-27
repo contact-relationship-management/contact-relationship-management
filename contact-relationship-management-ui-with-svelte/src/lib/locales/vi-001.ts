@@ -764,6 +764,7 @@ export default {
   "ticket.replied": "Khách hàng đã trả lời",
   "ticket.reference": "Mã tham chiếu cho tiêu đề của thư trả lời",
   "ticket.waitExceeded": "Chờ quá lâu",
+  "ticket.maskedTitle": "Tiêu đề này bị ẩn với bạn nên không thể đổi tên.",
   "quota.split": "Chia một giao dịch thắng",
   "ticket.assignee": "Giao cho",
   "ticket.handOver": "Bàn giao",

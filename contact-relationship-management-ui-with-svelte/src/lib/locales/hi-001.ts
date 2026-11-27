@@ -765,6 +765,7 @@ export default {
   "ticket.replied": "ग्राहक ने उत्तर दिया",
   "ticket.reference": "उत्तर के विषय के लिए संदर्भ",
   "ticket.waitExceeded": "बहुत देर से प्रतीक्षा में",
+  "ticket.maskedTitle": "यह शीर्षक आपसे छिपा है, इसलिए इसका नाम नहीं बदला जा सकता।",
   "quota.split": "जीती हुई डील बाँटें",
   "ticket.assignee": "सौंपा गया",
   "ticket.handOver": "सौंपें",

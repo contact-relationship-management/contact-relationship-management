@@ -773,6 +773,8 @@ export default {
   "ticket.replied": "Pelanggan membalas",
   "ticket.reference": "Referensi untuk subjek balasan",
   "ticket.waitExceeded": "Menunggu terlalu lama",
+  "ticket.maskedTitle":
+    "Judul ini disembunyikan dari Anda, jadi tidak dapat diganti namanya.",
   "quota.split": "Bagi kesepakatan yang dimenangkan",
   "ticket.assignee": "Ditugaskan ke",
   "ticket.handOver": "Serahkan",

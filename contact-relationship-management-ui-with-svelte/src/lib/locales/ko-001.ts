@@ -766,6 +766,7 @@ export default {
   "ticket.replied": "고객이 답장했습니다",
   "ticket.reference": "답장 제목에 넣을 참조 번호",
   "ticket.waitExceeded": "너무 오래 대기 중",
+  "ticket.maskedTitle": "이 제목은 숨겨져 있어 이름을 바꿀 수 없습니다.",
   "quota.split": "수주한 거래 분할",
   "ticket.assignee": "담당자",
   "ticket.handOver": "인계",

@@ -774,6 +774,8 @@ export default {
   "ticket.replied": "Kunden svarade",
   "ticket.reference": "Referens för ämnet i ett svar",
   "ticket.waitExceeded": "Väntar för länge",
+  "ticket.maskedTitle":
+    "Den här titeln är dold för dig, så den kan inte byta namn.",
   "quota.split": "Dela en vunnen affär",
   "ticket.assignee": "Tilldelad",
   "ticket.handOver": "Lämna över",

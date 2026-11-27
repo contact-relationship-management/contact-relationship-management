@@ -11,7 +11,8 @@
     KanbanCard,
     KanbanLane,
   } from "@lilydesignsystem/svelte-kanban-board";
-  import { editTicket, listTickets, placeCard, ticketStatus } from "#lib/api/crm.js";
+  import { MASKED, editTicket, listTickets, placeCard, ticketStatus } from "#lib/api/crm.js";
+  import { PageError } from "#lib/errors.js";
   import { slaBreached } from "#lib/format.js";
   import { t } from "#lib/i18n.svelte.js";
 
@@ -54,6 +55,10 @@
       .map((id) => ({ id, title: id })),
   );
   async function onRename(id: string, title: string) {
+    // A title read masked is not the ticket's text: renaming it would start from the placeholder
+    // (CRM-T321). The service refuses the placeholder too; this says why before anything is sent.
+    const shown = (tickets ?? []).find((x) => x.pid === id)?.title;
+    if (shown === MASKED) throw new PageError(t("ticket.maskedTitle"));
     await editTicket(id, { title });
     await list.reload();
   }

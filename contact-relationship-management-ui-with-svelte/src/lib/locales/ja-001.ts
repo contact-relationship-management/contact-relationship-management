@@ -765,6 +765,7 @@ export default {
   "ticket.replied": "顧客が返信しました",
   "ticket.reference": "返信の件名に付ける参照番号",
   "ticket.waitExceeded": "待機時間が長すぎます",
+  "ticket.maskedTitle": "このタイトルは非表示のため、名前を変更できません。",
   "quota.split": "受注した案件を分割",
   "ticket.assignee": "担当者",
   "ticket.handOver": "引き継ぐ",

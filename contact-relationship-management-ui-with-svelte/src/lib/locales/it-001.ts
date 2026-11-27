@@ -792,6 +792,8 @@ export default {
   "ticket.replied": "Il cliente ha risposto",
   "ticket.reference": "Riferimento per l'oggetto di una risposta",
   "ticket.waitExceeded": "In attesa da troppo tempo",
+  "ticket.maskedTitle":
+    "Questo titolo ti è nascosto, quindi non può essere rinominato.",
   "quota.split": "Dividi una trattativa vinta",
   "ticket.assignee": "Assegnato a",
   "ticket.handOver": "Passa a un altro",

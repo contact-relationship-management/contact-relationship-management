@@ -774,6 +774,8 @@ export default {
   "ticket.replied": "گاہک نے جواب دیا",
   "ticket.reference": "جواب کے موضوع کا حوالہ",
   "ticket.waitExceeded": "بہت دیر سے انتظار میں",
+  "ticket.maskedTitle":
+    "یہ عنوان آپ سے پوشیدہ ہے، اس لیے اس کا نام نہیں بدلا جا سکتا۔",
   "quota.split": "جیتا ہوا سودا تقسیم کریں",
   "ticket.assignee": "تفویض شدہ",
   "ticket.handOver": "حوالے کریں",

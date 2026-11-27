@@ -426,6 +426,39 @@ test.describe("signed-in smoke coverage", () => {
     ).toBeVisible();
   });
 
+  test("a ticket title read masked is not renamed on the board (CRM-T321)", async ({
+    page,
+  }) => {
+    await page.route("**/api/proxy/tickets", (route) =>
+      route.fulfill({
+        json: [
+          {
+            pid: "t1",
+            title: "•••",
+            priority: "high",
+            status: "open",
+            first_response_due_at: null,
+          },
+        ],
+      }),
+    );
+    let edits = 0;
+    await page.route("**/api/proxy/tickets/t1", (route) => {
+      edits += 1;
+      return route.fulfill({ json: {} });
+    });
+    await page.goto("/tickets/board");
+    const board = page.getByTestId("ticket-board");
+    await board.locator(".kanban-board-card-title").first().dblclick();
+    const box = board.getByRole("textbox").first();
+    await box.fill("Overwritten");
+    await box.press("Enter");
+    await expect(page.getByTestId("action-error")).toContainText(
+      "This title is hidden from you",
+    );
+    expect(edits, "nothing was sent").toBe(0);
+  });
+
   test("follow-ups page renders overdue aging and the calendar", async ({
     page,
   }) => {

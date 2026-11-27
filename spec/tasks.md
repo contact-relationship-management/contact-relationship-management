@@ -3221,8 +3221,9 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       - **Done 2026-11-27 (the placeholder is not text):** a ticket title edit and an activity summary edit refuse the
       masked placeholder (`•••`) with a `422`, so a client that saves what a masked read showed (the board's inline
       rename starts from the shown title) cannot put the placeholder over the real text. Unit test on the rule; the
-      enforcement test sends it as a writer who reads the ticket masked. The UI still offers the rename on a masked
-      title; it was not changed.
+      enforcement test sends it as a writer who reads the ticket masked. The board's rename of a masked title now
+      stops before sending and says why (2026-11-27, a Playwright smoke test); the board component has no per-card
+      switch, so the editor still opens first.
       - **Not done / not verified:** a page that spends its budget is still short; time is not hidden (a page that skipped
       many rows answers later); the read cost under a restrictive policy on a large table was not measured. Board columns
       as read, reports, reply, exports and the clients were not touched. **Reports need a decision:** the report builder

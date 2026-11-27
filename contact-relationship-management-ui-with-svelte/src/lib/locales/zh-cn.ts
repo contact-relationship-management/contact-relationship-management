@@ -733,6 +733,7 @@ export default {
   "ticket.replied": "客户已回复",
   "ticket.reference": "回复主题所用的参考号",
   "ticket.waitExceeded": "等待过久",
+  "ticket.maskedTitle": "此标题对您隐藏,因此无法重命名。",
   "quota.split": "拆分已赢得的交易",
   "ticket.assignee": "分配给",
   "ticket.handOver": "移交",

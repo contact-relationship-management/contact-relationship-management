@@ -804,6 +804,7 @@ export default {
   "ticket.replied": "ردّ العميل",
   "ticket.reference": "المرجع لموضوع الرد",
   "ticket.waitExceeded": "انتظار طويل جدًا",
+  "ticket.maskedTitle": "هذا العنوان مخفي عنك، لذا لا يمكن إعادة تسميته.",
   "quota.split": "تقسيم صفقة مكسوبة",
   "ticket.assignee": "مُسنَد إلى",
   "ticket.handOver": "تسليم",

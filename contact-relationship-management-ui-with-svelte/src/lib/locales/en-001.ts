@@ -768,6 +768,8 @@ export default {
   "ticket.replied": "Customer replied",
   "ticket.reference": "Reference for a reply's subject",
   "ticket.waitExceeded": "Waiting too long",
+  "ticket.maskedTitle":
+    "This title is hidden from you, so it cannot be renamed.",
   "quota.split": "Split a won deal",
   "ticket.assignee": "Assigned to",
   "ticket.handOver": "Hand over",

@@ -776,6 +776,8 @@ export default {
   "ticket.replied": "Kunden svarede",
   "ticket.reference": "Reference til et svars emnelinje",
   "ticket.waitExceeded": "Venter for længe",
+  "ticket.maskedTitle":
+    "Denne titel er skjult for dig, så den kan ikke omdøbes.",
   "quota.split": "Del en vundet aftale",
   "ticket.assignee": "Tildelt",
   "ticket.handOver": "Overdrag",
