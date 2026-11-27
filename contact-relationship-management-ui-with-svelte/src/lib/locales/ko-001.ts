@@ -767,6 +767,11 @@ export default {
   "ticket.reference": "답장 제목에 넣을 참조 번호",
   "ticket.waitExceeded": "너무 오래 대기 중",
   "quota.split": "수주한 거래 분할",
+  "ticket.assignee": "담당자",
+  "ticket.handOver": "인계",
+  "ticket.handOverTo": "인계 대상(person: 참조, 비우면 담당자 없음)",
+  "ticket.handOverReason": "인계 사유",
+  "ticket.history": "인계 기록",
   "quota.splitDeal": "거래",
   "quota.splitShares": "담당자와 지분",
   "quota.splitHint":

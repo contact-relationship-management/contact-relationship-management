@@ -559,6 +559,10 @@ describe("the demo supports complete editing workflows", () => {
       "campaigns/camp-1/funnel?convert=true&rate_basis=close_day&rate_date=2026-01-01",
     );
     fails("POST", "tickets/missing/customer-reply", null, 404);
+    fails("GET", "tickets/missing", null, 404);
+    fails("POST", "tickets/missing/assign", { reason: "x" }, 404);
+    fails("POST", "tickets/tkt-1/assign", { assignee_ref: "person:ada" });
+    fails("POST", "tickets/tkt-1/assign", { assignee_ref: "ada", reason: "x" });
     fails("GET", "tickets/missing/suggested-articles", null, 404);
 
     fails("POST", "lead-imports/preview", { csv: "" });
@@ -723,6 +727,10 @@ describe("the typed API can drive the complete demo", () => {
     await crm.ticketStatus("tkt-1", "pending");
     await crm.ticketCustomerReply("tkt-1");
     await crm.ticketSuggestions("tkt-1");
+    await crm.assignTicket("tkt-1", "person:ada", "API coverage");
+    expect(await crm.ticketMovements("tkt-1")).toMatchObject([
+      { to_ref: "person:ada", via: "person", reason: "API coverage" },
+    ]);
     await crm.listArticles("forecast");
     await crm.articleStatus("kb-1", "published");
     await crm.salesDashboard();

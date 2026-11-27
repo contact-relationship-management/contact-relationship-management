@@ -3134,8 +3134,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       threshold, an activity taking a ticket off, a resolved ticket never shown, out-of-range days refused.
       - **Done 2026-11-27 (subject access):** the export lists `ticket_movements` and `ticket_reopenings` of the
       contact's tickets, deleted or not, each with its `ticket_pid`. Request test: a handover and a reopening appear.
-      - **Not done:** "waiting with whom" (needs the owner's vocabulary: customer, another organization, a colleague?); a UI
-      action for the handover; the reason is not sealed (CRM-T279).
+      - **Done 2026-11-27 (UI handover):** the ticket queue's panel shows the assignee, a handover form (a `person:`
+      reference or blank, and a required reason) and the handover list. Tests: the tour's back end in
+      `demo-workflows.test.ts`, and an end-to-end tour test. The new strings in other languages are unreviewed drafts.
+      - **Not done:** "waiting with whom" (needs the owner's vocabulary: customer, another organization, a colleague?); the
+      reason is not sealed (CRM-T279); the UI has no picker of people, so the reference is typed.
 - [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
       contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,
       and a "resolved and not told" measure. Tickets from before show `outcome unknown`; an auto-close (CRM-R82) is not

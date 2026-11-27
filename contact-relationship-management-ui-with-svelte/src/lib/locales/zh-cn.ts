@@ -734,6 +734,11 @@ export default {
   "ticket.reference": "回复主题所用的参考号",
   "ticket.waitExceeded": "等待过久",
   "quota.split": "拆分已赢得的交易",
+  "ticket.assignee": "分配给",
+  "ticket.handOver": "移交",
+  "ticket.handOverTo": "移交给(person: 引用;留空表示无人)",
+  "ticket.handOverReason": "移交原因",
+  "ticket.history": "移交记录",
   "quota.splitDeal": "交易",
   "quota.splitShares": "人员与份额",
   "quota.splitHint":

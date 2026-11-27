@@ -769,6 +769,11 @@ export default {
   "ticket.reference": "Reference for a reply's subject",
   "ticket.waitExceeded": "Waiting too long",
   "quota.split": "Split a won deal",
+  "ticket.assignee": "Assigned to",
+  "ticket.handOver": "Hand over",
+  "ticket.handOverTo": "Hand to (a person: reference; blank for no one)",
+  "ticket.handOverReason": "Reason for the handover",
+  "ticket.history": "Handovers",
   "quota.splitDeal": "Deal",
   "quota.splitShares": "Workers and shares",
   "quota.splitHint":

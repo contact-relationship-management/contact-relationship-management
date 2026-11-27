@@ -816,6 +816,11 @@ export default {
   "ticket.reference": "Cyfeirnod ar gyfer pwnc ateb",
   "ticket.waitExceeded": "Aros yn rhy hir",
   "quota.split": "Hollti bargen a enillwyd",
+  "ticket.assignee": "Wedi'i neilltuo i",
+  "ticket.handOver": "Trosglwyddo",
+  "ticket.handOverTo": "Trosglwyddo i (cyfeirnod person:; gwag i neb)",
+  "ticket.handOverReason": "Rheswm dros drosglwyddo",
+  "ticket.history": "Trosglwyddiadau",
   "quota.splitDeal": "Bargen",
   "quota.splitShares": "Gweithwyr a chyfrannau",
   "quota.splitHint":

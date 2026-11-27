@@ -783,6 +783,12 @@ export default {
   "ticket.reference": "Verwijzing voor het onderwerp van een antwoord",
   "ticket.waitExceeded": "Wacht te lang",
   "quota.split": "Een gewonnen deal splitsen",
+  "ticket.assignee": "Toegewezen aan",
+  "ticket.handOver": "Overdragen",
+  "ticket.handOverTo":
+    "Overdragen aan (een person:-verwijzing; leeg voor niemand)",
+  "ticket.handOverReason": "Reden van de overdracht",
+  "ticket.history": "Overdrachten",
   "quota.splitDeal": "Deal",
   "quota.splitShares": "Medewerkers en aandelen",
   "quota.splitHint":

@@ -766,6 +766,11 @@ export default {
   "ticket.reference": "उत्तर के विषय के लिए संदर्भ",
   "ticket.waitExceeded": "बहुत देर से प्रतीक्षा में",
   "quota.split": "जीती हुई डील बाँटें",
+  "ticket.assignee": "सौंपा गया",
+  "ticket.handOver": "सौंपें",
+  "ticket.handOverTo": "इन्हें सौंपें (person: संदर्भ; किसी को नहीं के लिए खाली)",
+  "ticket.handOverReason": "सौंपने का कारण",
+  "ticket.history": "सौंपे गए",
   "quota.splitDeal": "डील",
   "quota.splitShares": "कर्मचारी और हिस्से",
   "quota.splitHint":

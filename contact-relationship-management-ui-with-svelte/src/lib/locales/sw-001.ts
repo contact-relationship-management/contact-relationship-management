@@ -776,6 +776,11 @@ export default {
   "ticket.reference": "Rejeo la mada ya jibu",
   "ticket.waitExceeded": "Inasubiri kwa muda mrefu mno",
   "quota.split": "Gawanya mkataba ulioshinda",
+  "ticket.assignee": "Amekabidhiwa",
+  "ticket.handOver": "Kabidhi",
+  "ticket.handOverTo": "Kabidhi kwa (rejeleo la person:; acha tupu kwa hakuna)",
+  "ticket.handOverReason": "Sababu ya kukabidhi",
+  "ticket.history": "Makabidhiano",
   "quota.splitDeal": "Mkataba",
   "quota.splitShares": "Wafanyakazi na migao",
   "quota.splitHint":

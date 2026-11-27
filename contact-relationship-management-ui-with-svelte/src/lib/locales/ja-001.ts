@@ -766,6 +766,11 @@ export default {
   "ticket.reference": "返信の件名に付ける参照番号",
   "ticket.waitExceeded": "待機時間が長すぎます",
   "quota.split": "受注した案件を分割",
+  "ticket.assignee": "担当者",
+  "ticket.handOver": "引き継ぐ",
+  "ticket.handOverTo": "引き継ぎ先(person: 参照。空欄で担当なし)",
+  "ticket.handOverReason": "引き継ぎの理由",
+  "ticket.history": "引き継ぎ履歴",
   "quota.splitDeal": "案件",
   "quota.splitShares": "担当者と配分",
   "quota.splitHint":

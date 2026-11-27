@@ -294,6 +294,31 @@ test.describe("data tables", () => {
     await expect(row).not.toContainText("Waiting too long");
   });
 
+  test("a ticket is handed over with a reason, and the handover is listed", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const row = page
+      .getByTestId("ticket-queue")
+      .locator("tbody tr", { hasText: "Licence seats" });
+    await row.click();
+    await page.getByTestId("ticket-handover").click();
+    // No reason, no handover.
+    await expect(page.getByTestId("ticket-handover-confirm")).toBeDisabled();
+    await page.getByTestId("ticket-handover-to").fill("person:ada");
+    await page
+      .getByTestId("ticket-handover-reason")
+      .fill("Ada knows the licence system");
+    await page.getByTestId("ticket-handover-confirm").click();
+    await expect(page.getByTestId("ticket-assignee")).toContainText(
+      "person:ada",
+    );
+    await expect(page.getByTestId("ticket-movements")).toContainText(
+      "Ada knows the licence system",
+    );
+  });
+
   test("the inbox lists notifications, marks one read, then all", async ({
     page,
   }) => {

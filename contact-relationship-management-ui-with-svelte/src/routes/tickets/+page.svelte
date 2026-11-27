@@ -5,10 +5,12 @@
   import { errorMessage } from "#lib/errors.js";
   import { resource } from "#lib/resource.svelte.js";
   import {
+    assignTicket,
     listTickets,
     ticketCustomerReply,
     ticketReference,
     ticketStatus,
+    ticketMovements,
     ticketSuggestions,
   } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
@@ -32,6 +34,13 @@
 
   const suggestions = resource(() => (selectedPid ? ticketSuggestions(selectedPid) : Promise.resolve([])));
   const suggested = $derived(suggestions.value ?? []);
+
+  const history = resource(() => (selectedPid ? ticketMovements(selectedPid) : Promise.resolve([])));
+  const movements = $derived(history.value ?? []);
+  let handingOver = $state(false);
+  let handTo = $state("");
+  let handReason = $state("");
+  let handBusy = $state(false);
 
   const breachedTotal = $derived(breachedCount(tickets ?? []));
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
@@ -73,6 +82,23 @@
       await list.reload();
     } catch (cause) {
       actionError = errorMessage(cause);
+    }
+  }
+
+  /** Hand the ticket over: blank `handTo` leaves it with no one (CRM-T317). */
+  async function handOver(pid: string) {
+    actionError = null;
+    handBusy = true;
+    try {
+      await assignTicket(pid, handTo.trim() || null, handReason.trim());
+      handingOver = false;
+      handTo = "";
+      handReason = "";
+      await Promise.all([list.reload(), history.reload()]);
+    } catch (cause) {
+      actionError = errorMessage(cause);
+    } finally {
+      handBusy = false;
     }
   }
 
@@ -118,8 +144,47 @@
       <p class="muted small" data-testid="ticket-reference">
         {t("ticket.reference")}: <code>[{ticketReference(selected.pid)}]</code>
       </p>
+      <p class="small" data-testid="ticket-assignee">
+        {t("ticket.assignee")}: {selected.assignee_ref ?? t("kanban.unassigned")}
+      </p>
+      {#if handingOver}
+        <form
+          onsubmit={(event) => {
+            event.preventDefault();
+            if (selected) void handOver(selected.pid);
+          }}
+          data-testid="ticket-handover-form"
+        >
+          <label>
+            {t("ticket.handOverTo")}
+            <input bind:value={handTo} data-testid="ticket-handover-to" />
+          </label>
+          <label>
+            {t("ticket.handOverReason")}
+            <input bind:value={handReason} required data-testid="ticket-handover-reason" />
+          </label>
+          <button type="submit" disabled={handBusy || !handReason.trim()} data-testid="ticket-handover-confirm">
+            {t("ticket.handOver")}
+          </button>
+          <button type="button" onclick={() => (handingOver = false)}>{t("deal.cancel")}</button>
+        </form>
+      {:else if selected.status !== "closed"}
+        <button onclick={() => (handingOver = true)} data-testid="ticket-handover">{t("ticket.handOver")}</button>
+      {/if}
       {#if actionError}
         <p class="error" data-testid="action-error">{actionError}</p>
+      {/if}
+      {#if movements.length > 0}
+        <h2>{t("ticket.history")}</h2>
+        <ol data-testid="ticket-movements">
+          {#each movements as m (m.created_at + (m.to_ref ?? ""))}
+            <li>
+              {m.from_ref ?? t("kanban.unassigned")} {arrow()} {m.to_ref ?? t("kanban.unassigned")}:
+              {m.reason}
+              <span class="muted small">{formatDateTime(m.created_at)}</span>
+            </li>
+          {/each}
+        </ol>
       {/if}
       {#if suggested.length > 0}
         <h2>{t("ticket.suggested")}</h2>

@@ -805,6 +805,11 @@ export default {
   "ticket.reference": "المرجع لموضوع الرد",
   "ticket.waitExceeded": "انتظار طويل جدًا",
   "quota.split": "تقسيم صفقة مكسوبة",
+  "ticket.assignee": "مُسنَد إلى",
+  "ticket.handOver": "تسليم",
+  "ticket.handOverTo": "التسليم إلى (مرجع person:؛ فارغ لعدم الإسناد)",
+  "ticket.handOverReason": "سبب التسليم",
+  "ticket.history": "عمليات التسليم",
   "quota.splitDeal": "الصفقة",
   "quota.splitShares": "العاملون والحصص",
   "quota.splitHint":

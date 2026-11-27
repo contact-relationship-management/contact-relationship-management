@@ -775,6 +775,11 @@ export default {
   "ticket.reference": "Referens för ämnet i ett svar",
   "ticket.waitExceeded": "Väntar för länge",
   "quota.split": "Dela en vunnen affär",
+  "ticket.assignee": "Tilldelad",
+  "ticket.handOver": "Lämna över",
+  "ticket.handOverTo": "Lämna över till (en person:-referens; tom för ingen)",
+  "ticket.handOverReason": "Skäl till överlämningen",
+  "ticket.history": "Överlämningar",
   "quota.splitDeal": "Affär",
   "quota.splitShares": "Medarbetare och andelar",
   "quota.splitHint":

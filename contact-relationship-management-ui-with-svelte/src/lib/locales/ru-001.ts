@@ -798,6 +798,11 @@ export default {
   "ticket.reference": "Ссылка для темы ответа",
   "ticket.waitExceeded": "Ждёт слишком долго",
   "quota.split": "Разделить выигранную сделку",
+  "ticket.assignee": "Назначено",
+  "ticket.handOver": "Передать",
+  "ticket.handOverTo": "Передать (ссылка person:; пусто, чтобы никому)",
+  "ticket.handOverReason": "Причина передачи",
+  "ticket.history": "Передачи",
   "quota.splitDeal": "Сделка",
   "quota.splitShares": "Сотрудники и доли",
   "quota.splitHint":

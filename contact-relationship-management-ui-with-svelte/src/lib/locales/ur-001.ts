@@ -775,6 +775,11 @@ export default {
   "ticket.reference": "جواب کے موضوع کا حوالہ",
   "ticket.waitExceeded": "بہت دیر سے انتظار میں",
   "quota.split": "جیتا ہوا سودا تقسیم کریں",
+  "ticket.assignee": "تفویض شدہ",
+  "ticket.handOver": "حوالے کریں",
+  "ticket.handOverTo": "حوالے کریں (person: حوالہ؛ کسی کو نہیں کے لیے خالی)",
+  "ticket.handOverReason": "حوالگی کی وجہ",
+  "ticket.history": "حوالگیاں",
   "quota.splitDeal": "سودا",
   "quota.splitShares": "کارکن اور حصے",
   "quota.splitHint":

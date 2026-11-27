@@ -777,6 +777,11 @@ export default {
   "ticket.reference": "Reference til et svars emnelinje",
   "ticket.waitExceeded": "Venter for længe",
   "quota.split": "Del en vundet aftale",
+  "ticket.assignee": "Tildelt",
+  "ticket.handOver": "Overdrag",
+  "ticket.handOverTo": "Overdrag til (en person:-reference; tom for ingen)",
+  "ticket.handOverReason": "Årsag til overdragelsen",
+  "ticket.history": "Overdragelser",
   "quota.splitDeal": "Aftale",
   "quota.splitShares": "Medarbejdere og andele",
   "quota.splitHint":

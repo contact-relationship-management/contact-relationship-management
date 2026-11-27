@@ -765,6 +765,12 @@ export default {
   "ticket.reference": "Mã tham chiếu cho tiêu đề của thư trả lời",
   "ticket.waitExceeded": "Chờ quá lâu",
   "quota.split": "Chia một giao dịch thắng",
+  "ticket.assignee": "Giao cho",
+  "ticket.handOver": "Bàn giao",
+  "ticket.handOverTo":
+    "Bàn giao cho (tham chiếu person:; để trống nếu không giao ai)",
+  "ticket.handOverReason": "Lý do bàn giao",
+  "ticket.history": "Các lần bàn giao",
   "quota.splitDeal": "Giao dịch",
   "quota.splitShares": "Nhân viên và tỷ lệ",
   "quota.splitHint":

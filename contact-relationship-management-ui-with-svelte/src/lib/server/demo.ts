@@ -52,6 +52,7 @@ import type {
   TemplatePreview,
   Stage,
   Ticket,
+  TicketMovement,
 } from "#lib/api/crm.js";
 
 /** The only address the tour accepts. */
@@ -173,6 +174,8 @@ interface State {
   deals: Deal[];
   campaigns: Campaign[];
   tickets: Ticket[];
+  /** Each ticket's handovers, oldest first (CRM-T317). */
+  ticketMovements: Record<string, TicketMovement[]>;
   articles: Article[];
   /** The tour's commission plans and quotas (CRM-R59). */
   plans: CommissionPlan[];
@@ -984,6 +987,7 @@ function build(): State {
     splits: {},
     teams: [],
     clawbacks: {},
+    ticketMovements: {},
     territories: [],
     quotas: [
       {
@@ -2023,6 +2027,34 @@ function transition<T extends { status: string }>(
   return ok(row);
 }
 
+/** Hand a ticket over with a reason, as the service does (CRM-T317). */
+function assignTicket(pid: string, body: unknown): DemoReply {
+  const t = state.tickets.find((x) => x.pid === pid);
+  if (!t) return problem(404, "ticket not found");
+  const input = bodyOf(body) as { assignee_ref?: unknown; reason?: unknown };
+  const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+  if (!reason) return problem(422, "reason is required");
+  const raw =
+    typeof input.assignee_ref === "string" ? input.assignee_ref.trim() : "";
+  if (raw && !/^person:\S+$/.test(raw))
+    return problem(422, "assignee_ref must be a person: reference");
+  const to = raw || null;
+  if (t.status === "closed")
+    return problem(422, "a closed ticket is not handed over");
+  const from = t.assignee_ref ?? null;
+  if (from === to) return problem(422, "the ticket is already there");
+  t.assignee_ref = to;
+  (state.ticketMovements[pid] ??= []).push({
+    from_ref: from,
+    to_ref: to,
+    via: "person",
+    reason,
+    actor_ref: null,
+    created_at: new Date().toISOString(),
+  });
+  return ok({ pid });
+}
+
 function moveDeal(pid: string, body: unknown): DemoReply {
   const deal = state.deals.find((d) => d.pid === pid);
   if (!deal) return problem(404, "deal not found");
@@ -2882,6 +2914,12 @@ export function demoHandle(
         );
       return ok(t);
     }
+    if (seg.length === 2 && get) {
+      const t = state.tickets.find((x) => x.pid === id);
+      if (!t) return problem(404, "ticket not found");
+      return ok({ ticket: t, movements: state.ticketMovements[t.pid] ?? [] });
+    }
+    if (tail === "assign" && post) return assignTicket(id!, body);
     if (tail === "suggested-articles" && get) {
       const t = state.tickets.find((x) => x.pid === id);
       if (!t) return problem(404, "ticket not found");

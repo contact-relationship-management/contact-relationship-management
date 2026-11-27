@@ -132,6 +132,8 @@ export interface Ticket {
   wait_limit_exceeded_at?: string | null;
   live_first_response_breached?: boolean;
   live_resolution_breached?: boolean;
+  /** Who holds the ticket, a `person:` URN, or none. */
+  assignee_ref?: string | null;
 }
 
 /** One KB article. */
@@ -916,6 +918,41 @@ export function ticketSuggestions(
 /** The customer answered: a waiting ticket goes back to open and its SLA clock runs again (CRM-R63). */
 export function ticketCustomerReply(pid: string): Promise<Ticket> {
   return api(`/tickets/${pid}/customer-reply`, { method: "POST" });
+}
+
+/** One handover of a ticket (CRM-T317): the assignee before and after, and why. */
+export interface TicketMovement {
+  from_ref: string | null;
+  to_ref: string | null;
+  /** `person`, or `escalation` when the wait-limit sweep moved it. */
+  via: string;
+  reason: string;
+  actor_ref: string | null;
+  created_at: string;
+}
+
+/** The ticket's handovers, oldest first, as its detail lists them. */
+export async function ticketMovements(
+  pid: string,
+  init?: FetchLike,
+): Promise<TicketMovement[]> {
+  const detail = await api<{ movements: TicketMovement[] }>(
+    `/tickets/${pid}`,
+    init,
+  );
+  return detail.movements;
+}
+
+/** Hand the ticket to another person, or to no one (`null`), with a reason (CRM-T317). */
+export function assignTicket(
+  pid: string,
+  assigneeRef: string | null,
+  reason: string,
+): Promise<{ pid: string }> {
+  return api(`/tickets/${pid}/assign`, {
+    method: "POST",
+    body: { assignee_ref: assigneeRef, reason },
+  });
 }
 
 /** Articles (searchable). */

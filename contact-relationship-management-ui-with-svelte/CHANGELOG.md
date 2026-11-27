@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The ticket queue's panel shows who holds the selected ticket, hands it to another person (or to no one) with a reason,
+  and lists its handovers (CRM-T317). The five new strings in the 20 other languages are drafts written by Claude, not
+  reviewed. The tour's back end answers `GET /tickets/{pid}` and `POST /tickets/{pid}/assign`.
+
 ## [0.3.0] — 2026-11-24
 
 ### Added — the interface in 13 more languages (CRM-T297)

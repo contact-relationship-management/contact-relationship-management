@@ -788,6 +788,11 @@ export default {
   "ticket.reference": "Referencia para el asunto de una respuesta",
   "ticket.waitExceeded": "Espera demasiado",
   "quota.split": "Dividir un acuerdo ganado",
+  "ticket.assignee": "Asignado a",
+  "ticket.handOver": "Traspasar",
+  "ticket.handOverTo": "Traspasar a (una referencia person:; vacío para nadie)",
+  "ticket.handOverReason": "Motivo del traspaso",
+  "ticket.history": "Traspasos",
   "quota.splitDeal": "Acuerdo",
   "quota.splitShares": "Personas y porcentajes",
   "quota.splitHint":

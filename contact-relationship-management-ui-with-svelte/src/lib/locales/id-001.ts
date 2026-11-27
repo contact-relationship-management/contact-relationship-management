@@ -774,6 +774,12 @@ export default {
   "ticket.reference": "Referensi untuk subjek balasan",
   "ticket.waitExceeded": "Menunggu terlalu lama",
   "quota.split": "Bagi kesepakatan yang dimenangkan",
+  "ticket.assignee": "Ditugaskan ke",
+  "ticket.handOver": "Serahkan",
+  "ticket.handOverTo":
+    "Serahkan ke (referensi person:; kosong untuk tidak seorang pun)",
+  "ticket.handOverReason": "Alasan penyerahan",
+  "ticket.history": "Penyerahan",
   "quota.splitDeal": "Kesepakatan",
   "quota.splitShares": "Pekerja dan bagiannya",
   "quota.splitHint":

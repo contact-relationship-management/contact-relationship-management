@@ -787,6 +787,12 @@ export default {
   "ticket.reference": "Referenz für den Betreff einer Antwort",
   "ticket.waitExceeded": "Wartet zu lange",
   "quota.split": "Gewonnenen Deal aufteilen",
+  "ticket.assignee": "Zugewiesen an",
+  "ticket.handOver": "Übergeben",
+  "ticket.handOverTo":
+    "Übergeben an (eine person:-Referenz; leer für niemanden)",
+  "ticket.handOverReason": "Grund für die Übergabe",
+  "ticket.history": "Übergaben",
   "quota.splitDeal": "Deal",
   "quota.splitShares": "Mitarbeitende und Anteile",
   "quota.splitHint":

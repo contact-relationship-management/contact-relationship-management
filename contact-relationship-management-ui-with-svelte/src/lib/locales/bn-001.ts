@@ -773,6 +773,11 @@ export default {
   "ticket.reference": "উত্তরের বিষয়ের জন্য রেফারেন্স",
   "ticket.waitExceeded": "অনেকক্ষণ অপেক্ষায়",
   "quota.split": "একটি জেতা ডিল ভাগ করুন",
+  "ticket.assignee": "দায়িত্বপ্রাপ্ত",
+  "ticket.handOver": "হস্তান্তর করুন",
+  "ticket.handOverTo": "যাকে হস্তান্তর (person: রেফারেন্স; কাউকে না হলে ফাঁকা)",
+  "ticket.handOverReason": "হস্তান্তরের কারণ",
+  "ticket.history": "হস্তান্তর",
   "quota.splitDeal": "ডিল",
   "quota.splitShares": "কর্মী ও ভাগ",
   "quota.splitHint":
