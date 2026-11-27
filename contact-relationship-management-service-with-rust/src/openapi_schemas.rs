@@ -88,6 +88,7 @@ fn generated() -> serde_json::Map<String, Value> {
         support::PriorityPayload,
         support::AssignPayload,
         support::ArticlePayload,
+        support::ArticleStatusPayload,
         engagement::ContactStakeholderPayload,
         engagement::AccountStakeholderPayload,
         engagement::PartnershipPayload,
@@ -343,9 +344,9 @@ pub fn request_schema(method: &str, path: &str) -> Option<&'static str> {
             "post",
             "/api/campaigns/{pid}/status"
             | "/api/tickets/{pid}/status"
-            | "/api/articles/{pid}/status"
             | "/api/partnerships/{pid}/stage",
         ) => "StatusPayload",
+        ("post", "/api/articles/{pid}/status") => "ArticleStatusPayload",
         ("post", "/api/nurture-sequences") => "SequencePayload",
         ("post", "/api/nurture-sequences/{pid}/enrollments") => "EnrollPayload",
         ("post", "/api/sla-policies") => "PolicyPayload",

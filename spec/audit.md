@@ -10,8 +10,8 @@ kind, pid, action, actor, snapshot). CRM-specific emphases:
   audit row — GDPR accountability evidence from two angles.
 - **Stage moves, reasoned actions** (deal reopen, lost reason,
   priority change, nurture exit, article archive) carry their
-  reason in the snapshot. **Not built for the article archive:** the audit row has no
-  snapshot and no reason is taken (CRM-T314). An owner change records the field name only and an
+  reason in the snapshot. An article's status change records the status before and after,
+  and an archive refuses to go without a reason (CRM-T314). An owner change records the field name only and an
   escalation records `to` and not `from`; whether that is a fault or the privacy rule is open (CRM-T316).
 - **Sensitive reads audited**: consent history views and unmasked
   deal-amount/forecast reads.

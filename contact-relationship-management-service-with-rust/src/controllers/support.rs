@@ -1288,16 +1288,35 @@ async fn update_article(
     format::json(row)
 }
 
-/// `POST /api/articles/{pid}/status` — publish / archive.
+/// `POST /api/articles/{pid}/status`: the status to move to, and why (CRM-T314).
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ArticleStatusPayload {
+    to: String,
+    /// Why: required to archive, kept in the audit snapshot; optional for any other move.
+    #[serde(default)]
+    reason: Option<String>,
+}
+
+/// `POST /api/articles/{pid}/status` — publish / archive. An archive takes a reason; the audit
+/// snapshot holds the status before and after and the reason (CRM-T314).
 #[debug_handler]
 async fn article_status(
     State(ctx): State<AppContext>,
     caller: MaybeAuthUser,
     PidPath(pid): PidPath,
-    Json(payload): Json<StatusPayload>,
+    Json(payload): Json<ArticleStatusPayload>,
 ) -> Result<Response> {
+    let reason = payload.reason.as_deref().map(str::trim);
     let mut problems = Problems::new();
     problems.require_token("to", tokens::ARTICLE_STATUSES, &payload.to);
+    if payload.to == "archived" {
+        match reason {
+            Some(text) => problems.require_text("reason", text),
+            None => problems.push_field("reason", "reason is required"),
+        }
+    }
+    problems.cap_opt("reason", reason);
     problems.finish()?;
     let mut txn = db::pool(&ctx).begin().await?;
     let article = rows::article_for_update(&mut *txn, pid)
@@ -1319,7 +1338,15 @@ async fn article_status(
     } else {
         "updated"
     };
-    Audit::record_on(&mut txn, "article", row.pid, kind, caller.actor(), None).await?;
+    Audit::record_on(
+        &mut txn,
+        "article",
+        row.pid,
+        kind,
+        caller.actor(),
+        Some(serde_json::json!({ "from": article.status, "to": row.status, "reason": reason })),
+    )
+    .await?;
     streaming::emit_in(
         &mut txn,
         "article",

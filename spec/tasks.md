@@ -3108,8 +3108,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       `update_article` overwrites title and body. Add an `article_versions` table, write the old text in the update's
       transaction, and a read-only list endpoint. (S)
       - **Not done / not verified:** nothing built; the retention period for old text needs the owner.
-- [ ] CRM-T314 **Take and record a reason when an article is archived (F2).** `audit.md` says the reason is in the snapshot;
+- [x] CRM-T314 **Take and record a reason when an article is archived (F2).** `audit.md` says the reason is in the snapshot;
       `article_status` writes no snapshot and takes no reason. (S)
+      - **Done 2026-11-27:** `POST /api/articles/{pid}/status` takes `reason`, required (and not blank) to archive, optional
+      otherwise; the audit snapshot holds `from`, `to` and `reason`. Request test: an archive without a reason, or with a
+      blank one, is a `422`; the snapshot of the archive names the reason. The UI only publishes, so it is unchanged.
+      **Not done:** the reason is not on the event, which carries the title only.
 - [ ] CRM-T315 **Service level attainment over a period (F3).** `analytics-reporting.md` promises attainment; `sla_dashboard`
       returns open and breached counts for now. Add a period parameter and the attained share, with the list behind it. (S)
 - [ ] CRM-T316 **Decide F4: owner change and escalation in the audit.** Owner changes record the field name only and

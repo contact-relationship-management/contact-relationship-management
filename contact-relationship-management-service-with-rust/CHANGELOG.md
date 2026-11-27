@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `POST /api/articles/{pid}/status` refuses an archive with no `reason` (`422`), and its audit row records the status before and after and the reason (CRM-T314). Before, it took no reason and wrote no snapshot. A client that archives must now send one.
 - `GET /api/contacts/{pid}/subject-access` lists the handovers (`ticket_movements`, with their reasons) and the reopenings (`ticket_reopenings`) of the contact's tickets, each naming its ticket (CRM-T317).
 - `GET /api/insights/stuck-tickets?days=` lists the open and pending tickets nothing has touched (a change, an activity or a handover) for that many days, longest idle first, under each ticket's record-level read decision (CRM-T317).
 - A reopened ticket keeps each resolution it had (CRM-T317): a new append-only `ticket_reopenings` table, listed as `reopenings` with `reopen_count` on the ticket detail.

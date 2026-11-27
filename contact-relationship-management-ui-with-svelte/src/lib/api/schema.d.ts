@@ -2162,7 +2162,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["StatusPayload"];
+                    "application/json": components["schemas"]["ArticleStatusPayload"];
                 };
             };
             responses: {
@@ -19024,6 +19024,15 @@ export interface components {
             /** @default null */
             keywords: string | null;
             title: string;
+        };
+        /** @description `POST /api/articles/{pid}/status`: the status to move to, and why (CRM-T314). */
+        ArticleStatusPayload: {
+            /**
+             * @description Why: required to archive, kept in the audit snapshot; optional for any other move.
+             * @default null
+             */
+            reason: string | null;
+            to: string;
         };
         /** @description `POST /api/tickets/{pid}/assign` body (CRM-T317): who takes the ticket over, and why. */
         AssignPayload: {

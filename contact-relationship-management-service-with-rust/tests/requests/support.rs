@@ -160,12 +160,37 @@ async fn knowledge_base_versions() {
         assert_eq!(hits.as_array().unwrap().len(), 1);
         let misses: Value = request.get("/api/articles?q=kubernetes").await.json();
         assert_eq!(misses.as_array().unwrap().len(), 0);
-        // Archive; archived is read-only.
+        // Archive takes a reason (CRM-T314), kept in the audit snapshot; archived is read-only.
+        for refused in [
+            json!({ "to": "archived" }),
+            json!({ "to": "archived", "reason": " " }),
+        ] {
+            request
+                .post(&format!("/api/articles/{article_pid}/status"))
+                .json(&refused)
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
         request
             .post(&format!("/api/articles/{article_pid}/status"))
-            .json(&json!({ "to": "archived" }))
+            .json(&json!({ "to": "archived", "reason": "replaced by the new sign-in guide" }))
             .await
             .assert_status_ok();
+        let audits: Value = request
+            .get(&format!("/api/audits/{article_pid}"))
+            .await
+            .json();
+        let archive = audits
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|a| a["snapshot"]["to"] == "archived")
+            .unwrap_or_else(|| panic!("no archive audit row: {audits}"));
+        assert_eq!(archive["snapshot"]["from"], "published", "{archive}");
+        assert_eq!(
+            archive["snapshot"]["reason"], "replaced by the new sign-in guide",
+            "{archive}"
+        );
         let frozen = request
             .put(&format!("/api/articles/{article_pid}"))
             .json(&json!({ "title": "X", "body": "Y" }))

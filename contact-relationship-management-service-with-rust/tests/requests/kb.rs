@@ -19,7 +19,7 @@ macro_rules! article {
         for to in $to {
             $request
                 .post(&format!("/api/articles/{pid}/status"))
-                .json(&json!({ "to": to }))
+                .json(&json!({ "to": to, "reason": "out of date" }))
                 .await
                 .assert_status_ok();
         }
