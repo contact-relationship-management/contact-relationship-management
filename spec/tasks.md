@@ -2967,7 +2967,8 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
   - **Flaky e2e test (2026-11-23):** `tour.spec.ts` › "a selected ticket is offered the articles that share its words"
     failed once on `566e791` (after "Route export" was selected it still showed the suggestions panel) and passed on a
     rerun of the same code; `fd7dc38`, with the same UI code, had passed. Cause not found. It is a race in the test or
-    the page, not shown to be either.
+    the page, not shown to be either. On 2026-11-27 it passed 25 of 25 runs (`--repeat-each 25`, four workers); the
+    page's `resource` already drops an answer for an earlier selection, so a late reply is not the cause.
   - **Re-run 2026-11-27:** the full database suite under nextest (`--run-ignored only`, one at a time) passed three
     times in a row, 305 of 305, the residency test included. Its failure on 2026-11-23 was most likely the clock skew
     fixed in `e4cfde1` that day (its event was stamped with the database's clock, which lagged the host), after nextest
