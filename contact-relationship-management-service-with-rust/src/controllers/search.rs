@@ -63,67 +63,78 @@ async fn search(
         return Err(unprocessable("q must contain a letter or a digit"));
     };
     let page = Page::new(&uri, PAGE_CAP)?;
-    let (limit, offset) = page.bounds();
-    let mut txn = db::pool(&ctx).begin().await?;
-    // Fuzzy matches below the default 0.6 are what a typo needs.
-    sqlx::query!("SET LOCAL pg_trgm.word_similarity_threshold = 0.45")
-        .execute(&mut *txn)
-        .await?;
-    // Built from a fixed table in the code, never from what the caller sent, which is bound.
-    let rows: Vec<(String, Uuid, String, Option<String>)> =
-        sqlx::query_as(AssertSqlSafe(crate::search::query()))
-            .bind(tsquery)
-            .bind(rules::phrase(&words))
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&mut *txn)
-            .await?;
-    txn.commit().await?;
-    // The record's `Uuid` travels with its hit, so it is never parsed back out of the text.
-    let found: Vec<(SearchHit, Uuid)> = rows
-        .into_iter()
-        .map(|(kind, pid, title, detail)| {
-            (
-                SearchHit {
-                    kind,
-                    pid: pid.to_string(),
-                    title,
-                    detail,
-                },
-                pid,
-            )
-        })
-        .collect();
-    let (found, more) = page.split(found);
-    let mut shown = Vec::with_capacity(found.len());
-    for (hit, pid) in found {
-        // Only contacts, deals and tickets carry record-level attributes; the rest are decided on the
-        // entity, which the blanket guard has already done.
-        let allowed = if matches!(hit.kind.as_str(), "contact" | "deal" | "ticket")
-            && auth::require_auth()
-        {
-            match crate::notifications::subject_attrs(crate::db::pool(&ctx), &hit.kind, pid).await?
-            {
-                Some(attrs) => caller.claims().is_some_and(|c| auth::may_read(c, &attrs)),
-                None => false,
+    let pool = db::pool(&ctx);
+    let (tsquery, phrase, caller_ref) = (&tsquery, &rules::phrase(&words), &caller);
+    // Filled from hits the caller may read (CRM-T326).
+    let filled = page
+        .fill(|limit, offset| async move {
+            let mut txn = pool.begin().await?;
+            // Fuzzy matches below the default 0.6 are what a typo needs.
+            sqlx::query!("SET LOCAL pg_trgm.word_similarity_threshold = 0.45")
+                .execute(&mut *txn)
+                .await?;
+            // Built from a fixed table in the code, never from what the caller sent, which is bound.
+            let rows: Vec<(String, Uuid, String, Option<String>)> =
+                sqlx::query_as(AssertSqlSafe(crate::search::query()))
+                    .bind(tsquery)
+                    .bind(phrase)
+                    .bind(limit)
+                    .bind(offset)
+                    .fetch_all(&mut *txn)
+                    .await?;
+            txn.commit().await?;
+            let mut shown = Vec::with_capacity(rows.len());
+            for (kind, pid, title, detail) in rows {
+                // The record's `Uuid` travels with its hit, so it is never parsed back out of the text.
+                shown.push(shown_hit(pool, caller_ref, kind, pid, title, detail).await?);
             }
-        } else {
-            true
-        };
-        if allowed {
-            shown.push(hit);
-        }
-    }
+            Ok(shown)
+        })
+        .await?;
     Audit::record_read_on(
-        crate::db::pool(&ctx),
+        pool,
         "search",
         Uuid::nil(),
         "search",
         caller.actor(),
-        Some(serde_json::json!({ "returned": shown.len() })),
+        Some(serde_json::json!({ "returned": filled.rows.len() })),
     )
     .await?;
-    page.respond(shown, more)
+    page.respond_filled(filled)
+}
+
+/// One hit as `caller` may see it, or `None` when it may not read the record. Only contacts,
+/// deals and tickets carry record-level attributes; the rest are decided on the entity, which the
+/// blanket guard has already done. A ticket read masked shows no title, as its own read would not
+/// (CRM-T321); a contact's or deal's mask does not cover its name.
+async fn shown_hit(
+    pool: &sqlx::PgPool,
+    caller: &MaybeAuthUser,
+    kind: String,
+    pid: Uuid,
+    title: String,
+    detail: Option<String>,
+) -> Result<Option<SearchHit>> {
+    let mut title = title;
+    if matches!(kind.as_str(), "contact" | "deal" | "ticket") && auth::require_auth() {
+        let Some(attrs) = crate::notifications::subject_attrs(pool, &kind, pid).await? else {
+            return Ok(None);
+        };
+        let Ok(obligations) =
+            auth::authorize_record(caller, authentication_verifier::Action::Read, &attrs)
+        else {
+            return Ok(None);
+        };
+        if kind == "ticket" && obligations.iter().any(|o| o == "mask") {
+            title = auth::MASKED.to_string();
+        }
+    }
+    Ok(Some(SearchHit {
+        kind,
+        pid: pid.to_string(),
+        title,
+        detail,
+    }))
 }
 
 /// The search route.

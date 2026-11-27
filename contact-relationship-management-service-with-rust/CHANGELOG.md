@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The ticket, contact, deal, activity, search and notification lists fill each page from rows the caller may see (CRM-T326), with `axa-cursor-pagination` 0.1.4's `CursorPage::fill`; before, a page could come back short, which said rows were hidden. One request reads at most ten pages' worth. Search now masks the title of a ticket read masked. `axa-cursor-pagination` 0.1.3 → 0.1.4 was taken inside the publish cooldown at the owner's word.
 - Ticket counts leave out tickets the caller may not read (CRM-T321, the owner's decision): the SLA dashboard, the SLA register's workload, the member-account insight, and tickets opened in the executive pack and the knowledge-base deflection report. The `tickets_open` metric is unchanged.
 - With enforcement on, a customer's emailed reply reopens its pending ticket again, and the SLA sweeps move tickets on their policy alone: the ticket record-level check added above had made the reply answer `401` and could have stopped a sweep part-way.
 - `GET /api/insights/executive` refuses a `from` or `to` it cannot read, and a window that ends before it starts, with a `422` naming the field (CRM-T341); before, it answered with the default window or an empty one. With no `to` the window ends at the database's `now()`, the clock that stamped what it counts.

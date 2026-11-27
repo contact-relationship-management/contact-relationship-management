@@ -435,58 +435,61 @@ async fn list_contacts(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 1000)?;
-    let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
     let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "contact", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
-    let rows = rows::contacts_page(pool, tagged.as_deref(), limit, offset).await?;
-    let (rows, more) = page.split(rows);
-    // Narrowing by tag must not show which masked records carry it, so those are left out.
-    let readable = readable_contacts(&rows, &caller, tagged.is_some());
+    let (tagged, caller_ref) = (tagged.as_deref(), &caller);
+    // Filled from rows the caller may read (CRM-T326). Narrowing by tag must not show which
+    // masked records carry it, so those are left out.
+    let filled = page
+        .fill(|limit, offset| async move {
+            let rows = rows::contacts_page(pool, tagged, limit, offset).await?;
+            Ok(rows
+                .iter()
+                .map(|row| readable_contact(row, caller_ref, tagged.is_some()))
+                .collect())
+        })
+        .await?;
     Audit::record_read_on(
         pool,
         "contact",
         Uuid::nil(),
         "contact_list_read",
         caller.actor(),
-        Some(serde_json::json!({ "returned": readable.len() })),
+        Some(serde_json::json!({ "returned": filled.rows.len() })),
     )
     .await?;
-    page.respond(readable, more)
+    page.respond_filled(filled)
 }
 
-/// Filter `rows` down to the ones `caller`'s record-level ABAC policy
-/// allows to read, masking `preferred_channel` on a row whose decision
+/// One contact as `caller`'s record-level ABAC policy allows it to be read,
+/// or `None` when it may not be: `preferred_channel` masked on a row whose decision
 /// carries the `mask` obligation. A denied row is **omitted** — with
 /// enforcement on and a policy that denies read on some contacts, a
 /// collection read must not disclose more than the equivalent single
 /// `GET /{pid}` would (CRM-T24; `agents/share/security.md` invariant 5).
 /// With enforcement off (the default) or no deny rule configured,
 /// `authorize_record` never denies, so this is a no-op.
-fn readable_contacts(
-    rows: &[contacts::Model],
+fn readable_contact(
+    row: &contacts::Model,
     caller: &MaybeAuthUser,
     drop_masked: bool,
-) -> Vec<serde_json::Value> {
-    rows.iter()
-        .filter_map(|row| {
-            let obligations = auth::authorize_record(
-                caller,
-                authentication_verifier::Action::Read,
-                &auth::contact_resource_attrs(row),
-            )
-            .ok()?;
-            let mut value = serde_json::json!(row);
-            if obligations.iter().any(|o| o == "mask") {
-                if drop_masked {
-                    return None;
-                }
-                value = auth::mask_text_json(value, &["preferred_channel"]);
-            }
-            Some(value)
-        })
-        .collect()
+) -> Option<serde_json::Value> {
+    let obligations = auth::authorize_record(
+        caller,
+        authentication_verifier::Action::Read,
+        &auth::contact_resource_attrs(row),
+    )
+    .ok()?;
+    let mut value = serde_json::json!(row);
+    if obligations.iter().any(|o| o == "mask") {
+        if drop_masked {
+            return None;
+        }
+        value = auth::mask_text_json(value, &["preferred_channel"]);
+    }
+    Some(value)
 }
 
 /// Serialize rows to JSON values for masking.
@@ -1159,7 +1162,10 @@ async fn get_account(
     // The bundled contacts and deals follow the same record-level decisions
     // as their own endpoints (CRM-T32): a denied row is omitted, a masked
     // one loses its channel detail or amount.
-    let contacts_json = readable_contacts(&contact_rows, &caller, false);
+    let contacts_json: Vec<serde_json::Value> = contact_rows
+        .iter()
+        .filter_map(|row| readable_contact(row, &caller, false))
+        .collect();
     let deals_json: Vec<serde_json::Value> = deal_rows
         .iter()
         .filter_map(|deal| {
@@ -1307,28 +1313,25 @@ async fn list_activities(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 200)?;
-    let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let rows = rows::activities_page(
-        pool,
-        params.subject_kind.as_deref(),
-        params.subject_pid,
-        limit,
-        offset,
-    )
-    .await?;
-    let (rows, more) = page.split(rows);
-    let rows = readable_activities(pool, &caller, rows).await?;
+    let (kind, subject, caller_ref) = (params.subject_kind.as_deref(), params.subject_pid, &caller);
+    // Filled from activities whose subject the caller may read (CRM-T326).
+    let filled = page
+        .fill(|limit, offset| async move {
+            let rows = rows::activities_page(pool, kind, subject, limit, offset).await?;
+            readable_activities(pool, caller_ref, rows).await
+        })
+        .await?;
     Audit::record_read_on(
         pool,
         "activity",
         Uuid::nil(),
         "activity_list_read",
         caller.actor(),
-        Some(serde_json::json!({ "returned": rows.len() })),
+        Some(serde_json::json!({ "returned": filled.rows.len() })),
     )
     .await?;
-    page.respond(rows, more)
+    page.respond_filled(filled)
 }
 
 /// The write decision on the subject `kind`/`pid` of an activity (CRM-T321): logging, editing or
@@ -1355,17 +1358,18 @@ pub(super) async fn authorize_subject_write<'e>(
     Ok(())
 }
 
-/// Leave out the activities whose subject `caller` may not read, and mask the summary of those
-/// whose subject it reads masked (CRM-T321): the feed must not show what the subject's own read
-/// would hide. One decision per subject. An activity whose subject is gone is left out, as no
-/// decision can be made on it. With enforcement off every row is returned as it is.
+/// Each activity as `caller` may see it: `None` for one whose subject it may not read, the
+/// summary masked for one whose subject it reads masked (CRM-T321), so the feed does not show
+/// what the subject's own read would hide. One decision per subject. An activity whose subject is
+/// gone is `None`, as no decision can be made on it. With enforcement off every row is shown as
+/// it is.
 async fn readable_activities(
     pool: &PgPool,
     caller: &MaybeAuthUser,
     rows: Vec<activities::Model>,
-) -> Result<Vec<activities::Model>> {
+) -> Result<Vec<Option<activities::Model>>> {
     if !auth::require_auth() {
-        return Ok(rows);
+        return Ok(rows.into_iter().map(Some).collect());
     }
     let mut decisions: HashMap<(String, Uuid), Option<bool>> = HashMap::new();
     let mut shown = Vec::with_capacity(rows.len());
@@ -1389,13 +1393,13 @@ async fn readable_activities(
             decisions.insert(key, decision);
             decision
         };
-        // `None`: denied or gone, so left out; `Some(true)`: read masked.
-        if let Some(masked) = decision {
+        // `None`: denied or gone, so not shown; `Some(true)`: read masked.
+        shown.push(decision.map(|masked| {
             if masked {
                 row.summary = auth::MASKED.to_string().into();
             }
-            shown.push(row);
-        }
+            row
+        }));
     }
     Ok(shown)
 }

@@ -449,6 +449,20 @@ async fn enforcement_gates_the_real_stack() {
             bundled_title(&unassigned_pid),
             contact_relationship_management::auth::MASKED
         );
+        // Search shows a ticket read masked without its title.
+        let found = request
+            .get("/api/search?q=Private%20concern")
+            .add_header("authorization", bearer(&reader))
+            .await
+            .json::<Value>();
+        let hit = found
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|h| h["pid"] == ticket_pid)
+            .unwrap_or_else(|| panic!("the ticket is found: {found}"))
+            .clone();
+        assert_eq!(hit["title"], contact_relationship_management::auth::MASKED);
         // A contact read masked masks the titles of its tickets too.
         let contact_as_stranger = request
             .get(&format!("/api/contacts/{owned_contact_pid}"))
@@ -2453,6 +2467,58 @@ async fn ticket_counts_leave_out_what_the_caller_may_not_read() {
             workload_open(&register_reader),
             workload_open(&register_service) - urgent_open(&as_service),
             "{register_reader}"
+        );
+        // A reader's pages of tickets are full, though urgent tickets are hidden from it among
+        // them (CRM-T326): following the links shows each of its tickets once and no urgent one.
+        for n in 0..3 {
+            for priority in ["urgent", "normal"] {
+                request
+                    .post("/api/tickets")
+                    .add_header("authorization", bearer(&service))
+                    .json(
+                        &json!({ "title": format!("Paged {priority} {n}"), "priority": priority }),
+                    )
+                    .await
+                    .assert_status_ok();
+            }
+        }
+        let mut path = "/api/tickets?limit=2".to_string();
+        let mut pages: Vec<Vec<String>> = Vec::new();
+        loop {
+            let answer = request
+                .get(&path)
+                .add_header("authorization", bearer(&reader))
+                .await;
+            let titles: Vec<String> = answer
+                .json::<Value>()
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|t| t["title"].as_str().unwrap().to_string())
+                .collect();
+            pages.push(titles);
+            let Some(link) = answer.headers().get("link") else {
+                break;
+            };
+            path = link.to_str().unwrap()[1..]
+                .split('>')
+                .next()
+                .unwrap()
+                .to_string();
+        }
+        let (last, full) = pages.split_last().unwrap();
+        assert!(full.iter().all(|p| p.len() == 2), "a short page: {pages:?}");
+        assert!(last.len() <= 2);
+        let mut seen: Vec<&String> = pages
+            .iter()
+            .flatten()
+            .filter(|t| t.starts_with("Paged"))
+            .collect();
+        seen.sort();
+        assert_eq!(
+            seen,
+            ["Paged normal 0", "Paged normal 1", "Paged normal 2"],
+            "{pages:?}"
         );
         let pack_service = get("/api/insights/executive", service.clone()).await;
         let pack_reader = get("/api/insights/executive", reader.clone()).await;

@@ -743,59 +743,64 @@ async fn list_deals(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 2000)?;
-    let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
     let tagged: Option<Vec<Uuid>> = super::tags::filter_pids(db::pool(&ctx), "deal", &tag)
         .await?
         .map(|pids| pids.into_iter().collect());
-    let rows = rows::deals_page(pool, params.pipeline, tagged.as_deref(), limit, offset).await?;
-    let (rows, more) = page.split(rows);
+    let (tagged, caller_ref, ctx_ref, pipeline) =
+        (tagged.as_deref(), &caller, &ctx, params.pipeline);
+    // Filled from deals the caller may read (CRM-T326).
+    let filled = page
+        .fill(|limit, offset| async move {
+            let rows = rows::deals_page(pool, pipeline, tagged, limit, offset).await?;
+            let rows = listed(ctx_ref, rows).await?;
+            Ok(rows
+                .iter()
+                .map(|row| readable_deal(row, caller_ref, tagged.is_some()))
+                .collect())
+        })
+        .await?;
     Audit::record_read_on(
         pool,
         "deal",
         Uuid::nil(),
         "deal_list_read",
         caller.actor(),
-        Some(serde_json::json!({ "returned": rows.len() })),
+        Some(serde_json::json!({ "returned": filled.rows.len() })),
     )
     .await?;
-    let rows = listed(&ctx, rows).await?;
-    page.respond(readable_deals(&rows, &caller, tagged.is_some()), more)
+    page.respond_filled(filled)
 }
 
-/// Filter `rows` down to the ones `caller`'s record-level ABAC policy
-/// allows to read, masking `amount_minor` on a row whose decision
+/// One deal as `caller`'s record-level ABAC policy allows it to be read, or
+/// `None` when it may not be: `amount_minor` masked on a row whose decision
 /// carries the `mask` obligation. A denied row is **omitted** — with
 /// enforcement on and a policy that denies read on some deals, a
 /// collection read must not disclose more than the equivalent single
 /// read would (CRM-T24; `agents/share/security.md` invariant 5, same
-/// reasoning `relationships.rs`'s `readable_contacts` applies to
+/// reasoning `relationships.rs`'s `readable_contact` applies to
 /// contacts). With enforcement off (the default) or no deny rule
 /// configured, `authorize_record` never denies, so this is a no-op.
-fn readable_deals(
-    rows: &[ListedDeal],
+fn readable_deal(
+    row: &ListedDeal,
     caller: &MaybeAuthUser,
     drop_masked: bool,
-) -> Vec<serde_json::Value> {
-    rows.iter()
-        .filter_map(|row| {
-            let obligations = auth::authorize_record(
-                caller,
-                authentication_verifier::Action::Read,
-                &auth::deal_resource_attrs(&row.deal),
-            )
-            .ok()?;
-            let mut value = serde_json::json!(row);
-            if obligations.iter().any(|o| o == "mask") {
-                // Narrowing by tag must not show which masked records carry it.
-                if drop_masked {
-                    return None;
-                }
-                value = auth::mask_json(value, &["amount_minor", "amount_minor_text"]);
-            }
-            Some(value)
-        })
-        .collect()
+) -> Option<serde_json::Value> {
+    let obligations = auth::authorize_record(
+        caller,
+        authentication_verifier::Action::Read,
+        &auth::deal_resource_attrs(&row.deal),
+    )
+    .ok()?;
+    let mut value = serde_json::json!(row);
+    if obligations.iter().any(|o| o == "mask") {
+        // Narrowing by tag must not show which masked records carry it.
+        if drop_masked {
+            return None;
+        }
+        value = auth::mask_json(value, &["amount_minor", "amount_minor_text"]);
+    }
+    Some(value)
 }
 
 /// `POST /api/deals/{pid}/stage` — the Kanban stage move: validates

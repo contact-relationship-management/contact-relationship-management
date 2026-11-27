@@ -40,7 +40,8 @@ owner's `person:` URN, the form a sign-in subject takes, so a `$sub` rule scopes
 | ticket (CRM-T321) | `owner` and `owner_ref` from the assignee, `status`, `priority`, `channel` | title, activity summaries |
 
 A record bundled in another's detail (a contact's deals and tickets) takes its own decision as well as the
-containing record's. A count of tickets (dashboards, insights, reports) leaves out the tickets the caller may not read; the service's
+containing record's. A list the policy filters row by row fills each page from rows the caller may see, reading on up to ten pages' worth
+a request (CRM-T326), so a short page does not say that rows were hidden. A count of tickets (dashboards, insights, reports) leaves out the tickets the caller may not read; the service's
 own `tickets_open` metric does not. An activity follows its subject: the activity feed leaves out activities whose subject the caller may not read and
 masks the summary when the subject is read masked, and logging, editing or ticking an activity asks the subject's write decision.
 

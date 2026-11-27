@@ -363,49 +363,60 @@ async fn list_tickets(
     uri: axum::http::Uri,
 ) -> Result<Response> {
     let page = Page::new(&uri, 1000)?;
-    let (limit, offset) = page.bounds();
     let pool = db::pool(&ctx);
-    let rows = rows::tickets_page(pool, params.status.as_deref(), limit, offset).await?;
-    let (rows, more) = page.split(rows);
+    let (status, caller_ref) = (params.status.as_deref(), &caller);
     let now: DateTimeWithTimeZone = crate::clock::now();
-    let rows: Vec<serde_json::Value> = rows
-        .into_iter()
-        .filter_map(|mut ticket| {
-            // A ticket the caller may not read is left out, as a single read would refuse it.
-            let obligations = authorize_ticket(&caller, Action::Read, &ticket).ok()?;
-            if masked(&obligations) {
-                ticket.title = crate::auth::MASKED.to_string();
-            }
-            Some(ticket)
+    // Filled from tickets the caller may read (CRM-T326).
+    let filled = page
+        .fill(|limit, offset| async move {
+            rows::tickets_page(pool, status, limit, offset)
+                .await?
+                .into_iter()
+                .map(|ticket| listed_ticket(caller_ref, ticket, now))
+                .collect::<Result<Vec<_>>>()
         })
-        .map(|ticket| {
-            // A ticket waiting for the customer has a stopped clock (CRM-R55).
-            let clock = sla::clock_now(now, ticket.paused_at);
-            let live_first = ticket.first_response_due_at.is_some_and(|due| {
-                sla::first_response_breached(clock, due, ticket.first_responded_at)
-            });
-            let live_resolution = ticket
-                .resolution_due_at
-                .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
-            let mut value = serde_json::to_value(&ticket)
-                .map_err(|_| Error::string("a ticket could not be shown"))?;
-            if let Some(object) = value.as_object_mut() {
-                object.insert("live_first_response_breached".into(), live_first.into());
-                object.insert("live_resolution_breached".into(), live_resolution.into());
-            }
-            Ok(value)
-        })
-        .collect::<Result<Vec<_>>>()?;
+        .await?;
     Audit::record_read_on(
         pool,
         "ticket",
         Uuid::nil(),
         "ticket_list_read",
         caller.actor(),
-        Some(serde_json::json!({ "returned": rows.len() })),
+        Some(serde_json::json!({ "returned": filled.rows.len() })),
     )
     .await?;
-    page.respond(rows, more)
+    page.respond_filled(filled)
+}
+
+/// One ticket as `GET /api/tickets` lists it, with its live breach flags, or `None` when
+/// `caller` may not read it, as a single read would refuse it (CRM-T321); a masked one has no
+/// title.
+fn listed_ticket(
+    caller: &MaybeAuthUser,
+    mut ticket: tickets::Model,
+    now: DateTimeWithTimeZone,
+) -> Result<Option<serde_json::Value>> {
+    let Ok(obligations) = authorize_ticket(caller, Action::Read, &ticket) else {
+        return Ok(None);
+    };
+    if masked(&obligations) {
+        ticket.title = crate::auth::MASKED.to_string();
+    }
+    // A ticket waiting for the customer has a stopped clock (CRM-R55).
+    let clock = sla::clock_now(now, ticket.paused_at);
+    let live_first = ticket
+        .first_response_due_at
+        .is_some_and(|due| sla::first_response_breached(clock, due, ticket.first_responded_at));
+    let live_resolution = ticket
+        .resolution_due_at
+        .is_some_and(|due| sla::resolution_breached(clock, due, ticket.resolved_at));
+    let mut value =
+        serde_json::to_value(&ticket).map_err(|_| Error::string("a ticket could not be shown"))?;
+    if let Some(object) = value.as_object_mut() {
+        object.insert("live_first_response_breached".into(), live_first.into());
+        object.insert("live_resolution_breached".into(), live_resolution.into());
+    }
+    Ok(Some(value))
 }
 
 /// `GET /api/tickets/{pid}`: the ticket and its activities, oldest first.

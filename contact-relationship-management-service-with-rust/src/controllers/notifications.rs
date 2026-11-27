@@ -98,28 +98,31 @@ async fn list(
 ) -> Result<Response> {
     let recipient = recipient_of(&caller, &query)?;
     let page = Page::new(&uri, PAGE_CAP)?;
-    let (limit, offset) = page.bounds();
-    let all = sqlx::query_as!(
-        Notification,
-        "SELECT pid, kind, subject_kind, subject_pid, created_at, read_at FROM notifications \
-         WHERE recipient_ref = $1 AND suppressed = FALSE \
-           AND ($2 = FALSE OR read_at IS NULL) \
-         ORDER BY id DESC LIMIT $3 OFFSET $4",
-        recipient,
-        query.unread,
-        limit,
-        offset,
-    )
-    .fetch_all(db::pool(&ctx))
-    .await?;
-    let (all, more) = page.split(all);
-    let mut shown = Vec::with_capacity(all.len());
-    for n in all {
-        if visible(db::pool(&ctx), &caller, &n).await? {
-            shown.push(n);
-        }
-    }
-    page.respond(shown, more)
+    let (pool, recipient, unread, caller_ref) = (db::pool(&ctx), &recipient, query.unread, &caller);
+    // Filled from notifications about records the caller may read (CRM-T326).
+    let filled = page
+        .fill(|limit, offset| async move {
+            let all = sqlx::query_as!(
+                Notification,
+                "SELECT pid, kind, subject_kind, subject_pid, created_at, read_at FROM notifications \
+                 WHERE recipient_ref = $1 AND suppressed = FALSE \
+                   AND ($2 = FALSE OR read_at IS NULL) \
+                 ORDER BY id DESC LIMIT $3 OFFSET $4",
+                recipient,
+                unread,
+                limit,
+                offset,
+            )
+            .fetch_all(pool)
+            .await?;
+            let mut shown = Vec::with_capacity(all.len());
+            for n in all {
+                shown.push(visible(pool, caller_ref, &n).await?.then_some(n));
+            }
+            Ok(shown)
+        })
+        .await?;
+    page.respond_filled(filled)
 }
 
 /// `GET /api/notifications/unread-count` response.

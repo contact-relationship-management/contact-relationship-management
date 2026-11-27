@@ -3169,8 +3169,17 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       counted in SQL load the four columns the decision reads and count in the service. The `tickets_open` metric stays
       the service's total. `ticket_counts_leave_out_what_the_caller_may_not_read` checks the dashboard, the workload and
       the executive pack for a reader kept from urgent tickets; the member-account and deflection counts are not asserted.
-      - **Not done / not verified:** the list is filtered after the page is cut (CRM-T326 asks for before), and board
-      columns as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.
+      - **Done 2026-11-27 (pages filled before they are cut, CRM-T326):** `axa-cursor-pagination` 0.1.4 (taken inside the
+      two-day publish cooldown, the owner's exception of 2026-11-27) adds `CursorPage::fill` and `next_link_at`.
+      `paging::Page::fill` reads on in batches until a page holds a page of rows the caller may see, at most
+      `SCAN_PAGES` (10) pages' worth a request; the next page starts after the last row returned. The ticket, contact,
+      deal, activity, search and notification lists use it, so a page no longer comes back short and says rows were
+      hidden. Search also masks the title of a ticket read masked, which it showed before. Unit tests walk a filtered list
+      (full pages, each row once), an unfiltered one (one read a page) and one that spends its budget (short page, link
+      on). The enforcement test follows a reader's ticket pages with urgent tickets hidden and checks a masked search hit.
+      - **Not done / not verified:** a page that spends its budget is still short; time is not hidden (a page that skipped
+      many rows answers later); the read cost under a restrictive policy on a large table was not measured. Board columns
+      as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.
 - [ ] CRM-T322 **Commitments, ownership periods, handover (ideas 4 and 5).** Commitments made to a contact with append-only date
       changes; ownership periods as a table with a row in the personal data inventory, a retention period and an erasure
       rule; a handover action; a list of records whose owner left. Needs the owner's answer on keeping ownership periods. (L)

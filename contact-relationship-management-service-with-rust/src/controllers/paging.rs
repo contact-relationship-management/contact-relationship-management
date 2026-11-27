@@ -14,11 +14,24 @@
 //! row; every order here ends in `id` so the order itself is stable. There is
 //! deliberately no total count: a total over stored rows would include rows a
 //! caller's record-level policy hides.
+//!
+//! A list the record-level policy filters row by row fills its page with
+//! [`Page::fill`] (CRM-T326): it reads on, in batches, until the page holds a
+//! page of rows the caller may see, so a page does not come back short and say
+//! that rows were hidden. The next page starts after the last row returned. One
+//! request reads at most [`SCAN_PAGES`] pages' worth of rows; a page that runs out
+//! of that budget can be short, with a next link from where the reading stopped.
+//! Time is not hidden: a page that skipped many rows is slower to answer.
 
 use std::sync::OnceLock;
 
+use std::future::Future;
+
 use axa::cursor_pagination::{CursorKey, CursorLimits, CursorPage};
+
+use crate::arith::OrOverflow;
 use axa::prelude::*;
+use axum::http::HeaderValue;
 use axum::http::Uri;
 use serde::Serialize;
 
@@ -79,6 +92,19 @@ fn key() -> Result<&'static CursorKey> {
     Ok(KEY.get_or_init(|| made))
 }
 
+/// How many pages' worth of rows one filled page may read (CRM-T326): enough that a caller who
+/// may see one row in ten still gets full pages, and few enough that one who may see almost
+/// nothing cannot make each request read a whole table.
+pub const SCAN_PAGES: u64 = 10;
+
+/// A page [`Page::fill`] filled: the rows the caller may see, and the next page's link.
+#[derive(Debug)]
+pub struct Filled<T> {
+    /// At most the page's limit.
+    pub rows: Vec<T>,
+    next: Option<HeaderValue>,
+}
+
 /// A validated page request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Page(CursorPage);
@@ -115,6 +141,47 @@ impl Page {
     #[must_use]
     pub fn split<T>(&self, rows: Vec<T>) -> (Vec<T>, bool) {
         self.0.split(rows)
+    }
+
+    /// Fill the page from `fetch(limit, offset)`, which reads rows in the list's order and gives
+    /// `None` for each row the caller may not see, as it decides it. It reads again until the page
+    /// holds a page of rows, the list ends, or [`SCAN_PAGES`] pages' worth have been read. With
+    /// every row shown this is one read of [`Page::bounds`], as before.
+    ///
+    /// # Errors
+    ///
+    /// The first error `fetch` returns.
+    pub async fn fill<T, F, Fut>(&self, fetch: F) -> Result<Filled<T>>
+    where
+        F: FnMut(i64, i64) -> Fut,
+        Fut: Future<Output = Result<Vec<Option<T>>>>,
+    {
+        let budget = self
+            .0
+            .limit()
+            .checked_mul(SCAN_PAGES)
+            .or_overflow("scan budget")?;
+        let filled = self.0.fill(budget, fetch, Option::is_some).await?;
+        Ok(Filled {
+            rows: filled.rows.into_iter().flatten().collect(),
+            next: filled.next,
+        })
+    }
+
+    /// The JSON array response to a filled page, with its `Link: rel="next"` when more may
+    /// follow.
+    ///
+    /// # Errors
+    ///
+    /// When the body cannot be serialised.
+    pub fn respond_filled<T: Serialize>(&self, filled: Filled<T>) -> Result<Response> {
+        let mut response = format::json(filled.rows)?;
+        if let Some(link) = filled.next {
+            response
+                .headers_mut()
+                .insert(axum::http::header::LINK, link);
+        }
+        Ok(response)
     }
 
     /// The JSON array response, with `Link: rel="next"` when `more`. `body` is what is left of
@@ -157,6 +224,85 @@ mod tests {
             .next()
             .unwrap()
             .to_string()
+    }
+
+    /// Walk a filled list from its first page, following each next link: the rows of every
+    /// page, and how many reads each page took.
+    async fn walk(table: &[u32], limit: u64, shown: fn(u32) -> bool) -> Vec<(Vec<u32>, usize)> {
+        let mut pages = Vec::new();
+        let mut uri = format!("/api/x?limit={limit}");
+        loop {
+            let at = page(&uri, 100).unwrap();
+            let mut reads = 0;
+            let filled = at
+                .fill(|take, from| {
+                    reads += 1;
+                    let (from, take) = (
+                        usize::try_from(from).unwrap(),
+                        usize::try_from(take).unwrap(),
+                    );
+                    let rows: Vec<Option<u32>> = table
+                        .iter()
+                        .skip(from)
+                        .take(take)
+                        .map(|&row| shown(row).then_some(row))
+                        .collect();
+                    async move { Ok(rows) }
+                })
+                .await
+                .unwrap();
+            let rows = filled.rows.clone();
+            let response = at.respond_filled(filled).unwrap();
+            let more = response.headers().contains_key(axum::http::header::LINK);
+            pages.push((rows, reads));
+            if !more {
+                return pages;
+            }
+            uri = next(&response);
+        }
+    }
+
+    /// A list filtered row by row comes back in full pages, each row once, in order, and the
+    /// last page has no next link (CRM-T326).
+    #[tokio::test]
+    async fn a_filtered_list_fills_its_pages_and_shows_every_row_once() {
+        let table: Vec<u32> = (0..20).collect();
+        let pages = walk(&table, 3, |row| row % 3 != 1).await;
+        let rows: Vec<Vec<u32>> = pages.iter().map(|(rows, _)| rows.clone()).collect();
+        assert_eq!(
+            rows,
+            [
+                vec![0, 2, 3],
+                vec![5, 6, 8],
+                vec![9, 11, 12],
+                vec![14, 15, 17],
+                vec![18]
+            ],
+        );
+    }
+
+    /// With every row shown it is one read a page, as before.
+    #[tokio::test]
+    async fn an_unfiltered_list_reads_once_a_page() {
+        let table: Vec<u32> = (0..7).collect();
+        let pages = walk(&table, 3, |_| true).await;
+        assert_eq!(
+            pages,
+            [(vec![0, 1, 2], 1), (vec![3, 4, 5], 1), (vec![6], 1)],
+        );
+    }
+
+    /// A caller who may see almost nothing reads at most the budget a request, and gets a short
+    /// page with a link on from where the reading stopped, so it still reaches every row.
+    #[tokio::test]
+    async fn a_page_that_spends_its_budget_comes_back_short_and_goes_on() {
+        let table: Vec<u32> = (0..200).collect();
+        let pages = walk(&table, 2, |row| row == 150).await;
+        let found: Vec<u32> = pages.iter().flat_map(|(rows, _)| rows.clone()).collect();
+        assert_eq!(found, [150]);
+        // Each request reads ten pages of three rows at most: twenty rows, in batches of three.
+        assert!(pages.iter().all(|(_, reads)| *reads <= 7), "{pages:?}");
+        assert!(pages.len() > 1, "the budget made it stop and go on");
     }
 
     #[test]
