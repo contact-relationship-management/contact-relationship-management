@@ -2968,8 +2968,13 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
     failed once on `566e791` (after "Route export" was selected it still showed the suggestions panel) and passed on a
     rerun of the same code; `fd7dc38`, with the same UI code, had passed. Cause not found. It is a race in the test or
     the page, not shown to be either.
+  - **Re-run 2026-11-27:** the full database suite under nextest (`--run-ignored only`, one at a time) passed three
+    times in a row, 305 of 305, the residency test included. Its failure on 2026-11-23 was most likely the clock skew
+    fixed in `e4cfde1` that day (its event was stamped with the database's clock, which lagged the host), after nextest
+    was tried; that is inferred, not shown. The runs took 151 s, 172 s and 266 s with other work on the machine, against
+    about 190 s under `cargo test`, so `test-db` was not moved to nextest.
   - **Not done:** nextest was slower than `cargo test` for the DB-free tests on this Mac (18 s against about 5 s, a
-    process per test); its time on Linux CI is not measured. Not done either: fixing the residency test; one build
+    process per test); its time on Linux CI is not measured. Not done either: moving `test-db` to nextest; one build
     fewer in `test-db` (it builds for `cargo run`, `sqlx prepare --check` and `cargo test`); a template database per
     test so the database tests can run side by side; running the patched-matcher `--lib` pass as its own job.
 

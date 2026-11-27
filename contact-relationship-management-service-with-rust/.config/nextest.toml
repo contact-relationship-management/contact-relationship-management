@@ -2,10 +2,10 @@
 # earlier test left in the process, and it prints every test's time (`cargo nextest run`, last lines).
 #
 # Used by `scripts/ci-check.sh test` and `pre-push` for the tests that need no database. The database
-# tests (`test-db`) and `coverage` still run under `cargo test`, because one of them
-# (`requests::residency::a_webhook_to_an_undeclared_host_is_refused_when_registered_and_when_sent`)
-# passes alone and fails in a full run under nextest, so it leans on something another test sets up.
-# Until that is fixed, nextest is not the gate for them.
+# tests (`test-db`) and `coverage` still run under `cargo test`. The residency test that failed in a full
+# nextest run on 2026-11-23 passed in three full runs on 2026-11-27 (305 of 305 each time), after its
+# outbox event was stamped with the service's clock (`e4cfde1`); nextest was not made the gate, as it
+# was not faster here (151 s to 266 s under load, against about 190 s).
 
 [profile.default]
 # Report every failure, not the first.
