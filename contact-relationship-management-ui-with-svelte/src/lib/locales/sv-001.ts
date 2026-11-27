@@ -791,6 +791,11 @@ export default {
   "quota.splitSet": "Dela",
   "quota.splitRemove": "Kreditera enbart ägaren",
   "ticket.suggested": "Artiklar som kan hjälpa",
+  "ticket.stuck": "Orörda ärenden",
+  "ticket.stuckDays": "Dagar utan ändring, aktivitet eller överlämning",
+  "ticket.idleDays": "Dagar utan rörelse",
+  "ticket.lastTouched": "Senast rörd",
+  "ticket.noneStuck": "Inget öppet ärende har legat orört så länge.",
   "quota.teams": "Team",
   "quota.teamsHint":
     "Ett team per namn; medarbetarnas ställning summeras per valuta och räknas aldrig om.",

@@ -781,6 +781,11 @@ export default {
   "quota.splitSet": "Chia",
   "quota.splitRemove": "Chỉ ghi nhận cho người phụ trách",
   "ticket.suggested": "Bài viết có thể hữu ích",
+  "ticket.stuck": "Phiếu chưa được xử lý",
+  "ticket.stuckDays": "Số ngày không có thay đổi, hoạt động hay bàn giao",
+  "ticket.idleDays": "Số ngày đứng yên",
+  "ticket.lastTouched": "Lần xử lý cuối",
+  "ticket.noneStuck": "Không có phiếu mở nào bị bỏ quên lâu như vậy.",
   "quota.teams": "Đội",
   "quota.teamsHint":
     "Mỗi tên một đội; thành tích của các nhân viên trong đội được cộng theo từng loại tiền, không bao giờ quy đổi.",

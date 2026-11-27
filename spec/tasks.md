@@ -3155,6 +3155,7 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       threshold, an activity taking a ticket off, a resolved ticket never shown, out-of-range days refused.
       - **Done 2026-11-27 (subject access):** the export lists `ticket_movements` and `ticket_reopenings` of the
       contact's tickets, deleted or not, each with its `ticket_pid`. Request test: a handover and a reopening appear.
+      - **Done 2026-11-27 (UI stuck list):** the tickets page lists the untouched tickets with a days box (a tour test).
       - **Done 2026-11-27 (UI handover):** the ticket queue's panel shows the assignee, a handover form (a `person:`
       reference or blank, and a required reason) and the handover list. Tests: the tour's back end in
       `demo-workflows.test.ts`, and an end-to-end tour test. The new strings in other languages are unreviewed drafts.

@@ -789,6 +789,11 @@ export default {
   "quota.splitSet": "ভাগ করুন",
   "quota.splitRemove": "কৃতিত্ব শুধু মালিককে দিন",
   "ticket.suggested": "যেসব নিবন্ধ সাহায্য করতে পারে",
+  "ticket.stuck": "অস্পৃষ্ট টিকিট",
+  "ticket.stuckDays": "পরিবর্তন, কার্যকলাপ বা হস্তান্তর ছাড়া দিন",
+  "ticket.idleDays": "নিষ্ক্রিয় দিন",
+  "ticket.lastTouched": "শেষ কাজ",
+  "ticket.noneStuck": "কোনো খোলা টিকিট এত দিন অস্পৃষ্ট থাকেনি।",
   "quota.teams": "দল",
   "quota.teamsHint":
     "প্রতি নামে একটি দল; তার কর্মীদের অবস্থান প্রতি মুদ্রায় যোগ হয়, কখনো রূপান্তর হয় না।",

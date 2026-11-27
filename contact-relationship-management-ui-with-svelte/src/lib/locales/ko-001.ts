@@ -782,6 +782,11 @@ export default {
   "quota.splitSet": "분할",
   "quota.splitRemove": "담당자에게만 실적 인정",
   "ticket.suggested": "도움이 될 수 있는 문서",
+  "ticket.stuck": "방치된 티켓",
+  "ticket.stuckDays": "변경·활동·인계가 없는 일수",
+  "ticket.idleDays": "방치 일수",
+  "ticket.lastTouched": "마지막 처리",
+  "ticket.noneStuck": "그 기간 동안 방치된 열린 티켓이 없습니다.",
   "quota.teams": "팀",
   "quota.teamsHint":
     "팀은 이름마다 하나이며, 소속 담당자들의 현황은 통화별로 합산되고 환산되지 않습니다.",

@@ -792,6 +792,12 @@ export default {
   "quota.splitSet": "Gawanya",
   "quota.splitRemove": "Mpe sifa mmiliki peke yake",
   "ticket.suggested": "Makala ambazo zinaweza kusaidia",
+  "ticket.stuck": "Tiketi zisizoguswa",
+  "ticket.stuckDays": "Siku bila mabadiliko, shughuli au makabidhiano",
+  "ticket.idleDays": "Siku bila kuguswa",
+  "ticket.lastTouched": "Iliguswa mwisho",
+  "ticket.noneStuck":
+    "Hakuna tiketi iliyo wazi iliyokaa bila kuguswa kwa muda huo.",
   "quota.teams": "Timu",
   "quota.teamsHint":
     "Timu moja kwa kila jina; hali za wafanyakazi wake hujumlishwa kwa kila sarafu, hazibadilishwi kamwe.",

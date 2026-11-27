@@ -785,6 +785,11 @@ export default {
   "quota.splitSet": "Split",
   "quota.splitRemove": "Credit the owner alone",
   "ticket.suggested": "Articles that may help",
+  "ticket.stuck": "Untouched tickets",
+  "ticket.stuckDays": "Days without a change, activity or handover",
+  "ticket.idleDays": "Days idle",
+  "ticket.lastTouched": "Last touched",
+  "ticket.noneStuck": "No open ticket has gone that long untouched.",
   "quota.teams": "Teams",
   "quota.teamsHint":
     "One team per name; its workers' standings are added per currency, never converted.",

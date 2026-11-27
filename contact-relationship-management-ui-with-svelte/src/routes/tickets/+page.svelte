@@ -12,6 +12,7 @@
     ticketStatus,
     ticketMovements,
     ticketSuggestions,
+    stuckTickets,
   } from "#lib/api/crm.js";
   import { breachedCount, slaBreached } from "#lib/format.js";
   import DataTable from "#lib/components/DataTable.svelte";
@@ -41,6 +42,25 @@
   let handTo = $state("");
   let handReason = $state("");
   let handBusy = $state(false);
+
+  // Open and pending tickets nothing has touched for a while (CRM-T317): tickets, never people.
+  let stuckDays = $state(7);
+  const stuck = resource(() => stuckTickets(stuckDays));
+  const stuckColumns = $derived([
+    { id: "title", header: t("common.name") },
+    { id: "status", kind: "chip", header: t("common.status") },
+    { id: "idle", kind: "number", header: t("ticket.idleDays") },
+    { id: "touched", header: t("ticket.lastTouched") },
+  ]);
+  const stuckRows = $derived(
+    (stuck.value?.tickets ?? []).map((s) => ({
+      id: s.pid,
+      title: s.title,
+      status: s.status,
+      idle: s.idle_days,
+      touched: formatDateTime(s.last_touched_at),
+    })),
+  );
 
   const breachedTotal = $derived(breachedCount(tickets ?? []));
   const selected = $derived((tickets ?? []).find((x) => x.pid === selectedPid) ?? null);
@@ -199,6 +219,34 @@
       {/if}
     </div>
   {/if}
+{/if}
+
+<h2>{t("ticket.stuck")}</h2>
+<label>
+  {t("ticket.stuckDays")}
+  <input
+    type="number"
+    min="1"
+    max="365"
+    value={stuckDays}
+    onchange={(event) => {
+      const n = Number(event.currentTarget.value);
+      if (Number.isInteger(n) && n >= 1 && n <= 365) stuckDays = n;
+    }}
+    data-testid="stuck-days"
+  />
+</label>
+{#if stuck.error}
+  <p class="error">{t("common.error")}: {stuck.error}</p>
+{:else if stuck.value}
+  <p class="muted small">{stuck.value.derivation}</p>
+  <DataTable
+    label={t("ticket.stuck")}
+    columns={stuckColumns}
+    rows={stuckRows}
+    testid="stuck-tickets"
+    empty={t("ticket.noneStuck")}
+  />
 {/if}
 
 

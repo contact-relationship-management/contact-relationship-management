@@ -791,6 +791,11 @@ export default {
   "quota.splitSet": "Bagi",
   "quota.splitRemove": "Kreditkan hanya ke pemilik",
   "ticket.suggested": "Artikel yang mungkin membantu",
+  "ticket.stuck": "Tiket yang terabaikan",
+  "ticket.stuckDays": "Hari tanpa perubahan, aktivitas, atau penyerahan",
+  "ticket.idleDays": "Hari diam",
+  "ticket.lastTouched": "Terakhir disentuh",
+  "ticket.noneStuck": "Tidak ada tiket terbuka yang terabaikan selama itu.",
   "quota.teams": "Tim",
   "quota.teamsHint":
     "Satu tim per nama; posisi para pekerjanya dijumlahkan per mata uang, tidak pernah dikonversi.",

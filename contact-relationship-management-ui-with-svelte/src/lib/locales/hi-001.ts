@@ -781,6 +781,11 @@ export default {
   "quota.splitSet": "बाँटें",
   "quota.splitRemove": "केवल स्वामी को श्रेय दें",
   "ticket.suggested": "लेख जो मदद कर सकते हैं",
+  "ticket.stuck": "अछूते टिकट",
+  "ticket.stuckDays": "बिना बदलाव, गतिविधि या सौंपने के दिन",
+  "ticket.idleDays": "निष्क्रिय दिन",
+  "ticket.lastTouched": "अंतिम कार्रवाई",
+  "ticket.noneStuck": "कोई खुला टिकट इतने समय तक अछूता नहीं रहा।",
   "quota.teams": "टीमें",
   "quota.teamsHint":
     "हर नाम की एक टीम; उसके कर्मचारियों के परिणाम हर मुद्रा में जोड़े जाते हैं, बदले नहीं जाते।",

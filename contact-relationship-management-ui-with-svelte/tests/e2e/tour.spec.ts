@@ -294,6 +294,27 @@ test.describe("data tables", () => {
     await expect(row).not.toContainText("Waiting too long");
   });
 
+  test("the tickets nothing has touched for a while are listed, longest idle first", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/tickets");
+    const stuck = page.getByTestId("stuck-tickets");
+    const rows = stuck.locator("tbody tr");
+    // The tour invents idle days of 12, 9, 4, 2, 1 and 0: two are at least the default 7.
+    await expect(rows).toHaveCount(2);
+    await expect(rows.first()).toContainText("12");
+    await page.getByTestId("stuck-days").fill("10");
+    await page.getByTestId("stuck-days").press("Enter");
+    await page.getByTestId("stuck-days").blur();
+    await expect(rows).toHaveCount(1);
+    await page.getByTestId("stuck-days").fill("100");
+    await page.getByTestId("stuck-days").blur();
+    await expect(stuck).toContainText(
+      "No open ticket has gone that long untouched.",
+    );
+  });
+
   test("a ticket is handed over with a reason, and the handover is listed", async ({
     page,
   }) => {

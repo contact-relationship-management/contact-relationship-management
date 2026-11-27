@@ -804,6 +804,11 @@ export default {
   "quota.splitSet": "Aufteilen",
   "quota.splitRemove": "Nur dem Eigentümer gutschreiben",
   "ticket.suggested": "Artikel, die helfen könnten",
+  "ticket.stuck": "Unberührte Tickets",
+  "ticket.stuckDays": "Tage ohne Änderung, Aktivität oder Übergabe",
+  "ticket.idleDays": "Tage ohne Bewegung",
+  "ticket.lastTouched": "Zuletzt bearbeitet",
+  "ticket.noneStuck": "Kein offenes Ticket blieb so lange unberührt.",
   "quota.teams": "Teams",
   "quota.teamsHint":
     "Ein Team pro Name; die Stände seiner Mitarbeitenden werden je Währung addiert, nie umgerechnet.",

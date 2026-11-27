@@ -793,6 +793,11 @@ export default {
   "quota.splitSet": "Del",
   "quota.splitRemove": "Giv kun ejeren æren",
   "ticket.suggested": "Artikler, der kan hjælpe",
+  "ticket.stuck": "Uberørte sager",
+  "ticket.stuckDays": "Dage uden ændring, aktivitet eller overdragelse",
+  "ticket.idleDays": "Dage uden bevægelse",
+  "ticket.lastTouched": "Sidst rørt",
+  "ticket.noneStuck": "Ingen åben sag har ligget så længe urørt.",
   "quota.teams": "Teams",
   "quota.teamsHint":
     "Ét team pr. navn; medarbejdernes stillinger lægges sammen pr. valuta og omregnes aldrig.",

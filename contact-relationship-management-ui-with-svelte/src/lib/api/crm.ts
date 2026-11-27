@@ -1142,6 +1142,25 @@ export function slaAttainment(init?: FetchLike): Promise<{
   return api("/insights/sla-attainment", init);
 }
 
+/** An open or pending ticket nothing has touched for a while (CRM-T317). */
+export interface StuckTicket {
+  pid: string;
+  title: string;
+  priority: string;
+  status: string;
+  assignee_ref: string | null;
+  last_touched_at: string;
+  idle_days: number;
+}
+
+/** The open and pending tickets untouched (no change, activity or handover) for `days` or more, 1 to 365, longest idle first. */
+export function stuckTickets(
+  days = 7,
+  init?: FetchLike,
+): Promise<{ derivation: string; days: number; tickets: StuckTicket[] }> {
+  return api(`/insights/stuck-tickets?days=${days}`, init);
+}
+
 /** The SLA breach register + per-assignee workload. */
 export function slaRegister(init?: FetchLike): Promise<{
   as_of: string;

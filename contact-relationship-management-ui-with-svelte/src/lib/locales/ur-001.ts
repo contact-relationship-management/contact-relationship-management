@@ -791,6 +791,11 @@ export default {
   "quota.splitSet": "تقسیم کریں",
   "quota.splitRemove": "صرف مالک کو کریڈٹ دیں",
   "ticket.suggested": "ممکنہ طور پر مددگار مضامین",
+  "ticket.stuck": "بغیر کارروائی کے ٹکٹ",
+  "ticket.stuckDays": "تبدیلی، سرگرمی یا حوالگی کے بغیر دن",
+  "ticket.idleDays": "غیر فعال دن",
+  "ticket.lastTouched": "آخری کارروائی",
+  "ticket.noneStuck": "کوئی کھلا ٹکٹ اتنی دیر بغیر کارروائی کے نہیں رہا۔",
   "quota.teams": "ٹیمیں",
   "quota.teamsHint":
     "ہر نام کے لیے ایک ٹیم؛ اس کے کارکنوں کی پوزیشنیں فی کرنسی جمع کی جاتی ہیں، کبھی تبدیل نہیں کی جاتیں۔",

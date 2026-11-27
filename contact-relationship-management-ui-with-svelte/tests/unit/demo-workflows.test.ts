@@ -561,6 +561,7 @@ describe("the demo supports complete editing workflows", () => {
     fails("POST", "tickets/missing/customer-reply", null, 404);
     fails("GET", "tickets/missing", null, 404);
     fails("GET", "articles/missing/versions", null, 404);
+    fails("GET", "insights/stuck-tickets?days=0");
     fails("POST", "tickets/missing/assign", { reason: "x" }, 404);
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "person:ada" });
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "ada", reason: "x" });
@@ -744,6 +745,8 @@ describe("the typed API can drive the complete demo", () => {
     await crm.executivePack();
     await crm.forecastTrends();
     await crm.slaRegister();
+    const stuck = await crm.stuckTickets(3);
+    expect(stuck.tickets.every((s) => s.idle_days >= 3)).toBe(true);
     const attained = await crm.slaAttainment();
     expect(attained.first_response.attained.denominator).toBe(
       attained.first_response.met + attained.first_response.missed,

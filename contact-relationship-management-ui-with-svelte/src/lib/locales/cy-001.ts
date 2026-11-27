@@ -832,6 +832,11 @@ export default {
   "quota.splitSet": "Hollti",
   "quota.splitRemove": "Credydu'r perchennog yn unig",
   "ticket.suggested": "Erthyglau a allai helpu",
+  "ticket.stuck": "Tocynnau heb eu cyffwrdd",
+  "ticket.stuckDays": "Dyddiau heb newid, gweithgaredd na throsglwyddo",
+  "ticket.idleDays": "Dyddiau segur",
+  "ticket.lastTouched": "Cyffyrddwyd ddiwethaf",
+  "ticket.noneStuck": "Nid oes tocyn agored wedi mynd mor hir heb ei gyffwrdd.",
   "quota.teams": "Timau",
   "quota.teamsHint":
     "Un tîm i bob enw; ychwanegir safleoedd ei weithwyr fesul arian cyfred, byth eu trosi.",

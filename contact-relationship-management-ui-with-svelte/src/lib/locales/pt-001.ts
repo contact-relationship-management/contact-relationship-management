@@ -804,6 +804,11 @@ export default {
   "quota.splitSet": "Dividir",
   "quota.splitRemove": "Creditar somente o responsável",
   "ticket.suggested": "Artigos que podem ajudar",
+  "ticket.stuck": "Tickets parados",
+  "ticket.stuckDays": "Dias sem alteração, atividade ou passagem",
+  "ticket.idleDays": "Dias parado",
+  "ticket.lastTouched": "Última ação",
+  "ticket.noneStuck": "Nenhum ticket aberto ficou tanto tempo parado.",
   "quota.teams": "Equipes",
   "quota.teamsHint":
     "Uma equipe por nome; a posição dos colaboradores dela é somada por moeda, nunca convertida.",

@@ -809,6 +809,11 @@ export default {
   "quota.splitSet": "Dividi",
   "quota.splitRemove": "Attribuisci il merito solo al responsabile",
   "ticket.suggested": "Articoli che potrebbero aiutare",
+  "ticket.stuck": "Ticket fermi",
+  "ticket.stuckDays": "Giorni senza modifiche, attività o passaggi",
+  "ticket.idleDays": "Giorni fermi",
+  "ticket.lastTouched": "Ultimo intervento",
+  "ticket.noneStuck": "Nessun ticket aperto è rimasto fermo così a lungo.",
   "quota.teams": "Team",
   "quota.teamsHint":
     "Un team per nome; i risultati dei suoi collaboratori vengono sommati per valuta, mai convertiti.",

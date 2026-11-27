@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The tickets page lists the open and pending tickets nothing has touched for at least a chosen number of days (7 by
+  default), longest idle first (CRM-T317); it lists tickets, never ranks people. Five new strings; the 20 other
+  languages are machine drafts.
 - A selected article lists its earlier published versions, read-only, each with the day it was replaced (CRM-T313).
   The tour invents the earlier wording, as it keeps no edit history. Two new strings; the 20 other languages are
   machine drafts.

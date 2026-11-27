@@ -1365,6 +1365,33 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         ],
       });
     }
+    case "stuck-tickets": {
+      const asked = Number(q.get("days") ?? "7");
+      if (!Number.isInteger(asked) || asked < 1 || asked > 365)
+        return problem(422, "days must be from 1 to 365");
+      // Invented idle days for the tour's open and pending tickets (CRM-T317).
+      const idle = [12, 9, 4, 2, 1, 0];
+      const waiting = state.tickets
+        .filter((t) => t.status === "open" || t.status === "pending")
+        .map((t, i) => ({ t, days: idle[i % idle.length]! }))
+        .filter((x) => x.days >= asked)
+        .sort((a, b) => b.days - a.days);
+      return ok({
+        as_of,
+        derivation:
+          "Stuck: an open or pending ticket whose latest change, activity or handover is at least that many days old.",
+        days: asked,
+        tickets: waiting.map(({ t, days: d }) => ({
+          pid: t.pid,
+          title: t.title,
+          priority: t.priority,
+          status: t.status,
+          assignee_ref: t.assignee_ref ?? null,
+          last_touched_at: iso(-d),
+          idle_days: d,
+        })),
+      });
+    }
     case "sla-attainment": {
       // The tour's tickets, each with a first-response deadline in the window (CRM-T315).
       const outcomes = [

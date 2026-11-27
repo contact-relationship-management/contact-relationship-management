@@ -800,6 +800,11 @@ export default {
   "quota.splitSet": "Splitsen",
   "quota.splitRemove": "Alleen de eigenaar crediteren",
   "ticket.suggested": "Artikelen die kunnen helpen",
+  "ticket.stuck": "Onaangeroerde tickets",
+  "ticket.stuckDays": "Dagen zonder wijziging, activiteit of overdracht",
+  "ticket.idleDays": "Dagen stil",
+  "ticket.lastTouched": "Laatst aangeraakt",
+  "ticket.noneStuck": "Geen open ticket is zo lang onaangeroerd gebleven.",
   "quota.teams": "Teams",
   "quota.teamsHint":
     "Eén team per naam; de standen van de medewerkers worden per valuta opgeteld en nooit omgerekend.",

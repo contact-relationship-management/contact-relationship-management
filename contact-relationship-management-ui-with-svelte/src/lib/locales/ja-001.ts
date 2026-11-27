@@ -781,6 +781,11 @@ export default {
   "quota.splitSet": "分割",
   "quota.splitRemove": "担当者のみに計上する",
   "ticket.suggested": "参考になりそうな記事",
+  "ticket.stuck": "手つかずのチケット",
+  "ticket.stuckDays": "変更・活動・引き継ぎのない日数",
+  "ticket.idleDays": "放置日数",
+  "ticket.lastTouched": "最終対応",
+  "ticket.noneStuck": "その期間放置された未完了のチケットはありません。",
   "quota.teams": "チーム",
   "quota.teamsHint":
     "チームは名前ごとにひとつで、メンバーの状況は通貨ごとに合算され、換算されることはありません。",

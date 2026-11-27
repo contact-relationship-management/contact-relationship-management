@@ -812,6 +812,12 @@ export default {
   "quota.splitSet": "Partager",
   "quota.splitRemove": "Créditer le propriétaire seul",
   "ticket.suggested": "Articles qui peuvent aider",
+  "ticket.stuck": "Tickets en souffrance",
+  "ticket.stuckDays": "Jours sans modification, activité ni transmission",
+  "ticket.idleDays": "Jours sans action",
+  "ticket.lastTouched": "Dernière action",
+  "ticket.noneStuck":
+    "Aucun ticket ouvert n'est resté aussi longtemps sans action.",
   "quota.teams": "Équipes",
   "quota.teamsHint":
     "Une équipe par nom ; les résultats de ses collaborateurs sont additionnés par devise, jamais convertis.",

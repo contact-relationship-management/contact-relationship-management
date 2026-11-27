@@ -169,6 +169,7 @@ describe("api path map", () => {
     await crm.forecastTrends();
     await crm.slaRegister();
     await crm.slaAttainment();
+    await crm.stuckTickets();
     await crm.dpo();
     await crm.followups("task");
     await crm.cadence(30);
@@ -196,6 +197,7 @@ describe("api path map", () => {
       "/api/proxy/insights/forecast-trends",
       "/api/proxy/insights/sla",
       "/api/proxy/insights/sla-attainment",
+      "/api/proxy/insights/stuck-tickets?days=7",
       "/api/proxy/insights/dpo",
       "/api/proxy/insights/followups?kind=task",
       "/api/proxy/insights/cadence?days=30",
