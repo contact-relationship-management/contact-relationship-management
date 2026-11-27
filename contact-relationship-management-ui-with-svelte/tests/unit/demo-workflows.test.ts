@@ -562,6 +562,11 @@ describe("the demo supports complete editing workflows", () => {
     fails("GET", "tickets/missing", null, 404);
     fails("GET", "articles/missing/versions", null, 404);
     fails("GET", "insights/stuck-tickets?days=0");
+    fails("GET", "insights/executive?from=2026-02-01&to=2026-01-01");
+    expect(
+      succeeds("GET", "insights/sla-attainment?from=2026-01-01&to=2026-01-31")
+        .window,
+    ).toEqual({ from: "2026-01-01", to: "2026-01-31" });
     fails("POST", "tickets/missing/assign", { reason: "x" }, 404);
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "person:ada" });
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "ada", reason: "x" });

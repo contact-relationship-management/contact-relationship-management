@@ -166,6 +166,7 @@ describe("api path map", () => {
     await crm.followups();
     await crm.pipelineHygiene();
     await crm.executivePack();
+    await crm.executivePack({ from: "2026-01-01", to: "2026-01-31" });
     await crm.forecastTrends();
     await crm.slaRegister();
     await crm.slaAttainment();
@@ -194,6 +195,7 @@ describe("api path map", () => {
       "/api/proxy/insights/followups",
       "/api/proxy/insights/pipeline-hygiene",
       "/api/proxy/insights/executive",
+      "/api/proxy/insights/executive?from=2026-01-01&to=2026-01-31",
       "/api/proxy/insights/forecast-trends",
       "/api/proxy/insights/sla",
       "/api/proxy/insights/sla-attainment",

@@ -1273,6 +1273,13 @@ function staleDeals(days: number) {
 
 const NOTE = "Fictitious data for the guided tour.";
 
+/** The window a period insight was asked for, as the service reads it: the trailing 30 days by default; `null` when it ends before it starts. */
+function demoWindow(q: URLSearchParams): { from: string; to: string } | null {
+  const to = q.get("to") || day(0);
+  const from = q.get("from") || day(-30);
+  return from > to ? null : { from, to };
+}
+
 function insight(name: string, q: URLSearchParams): DemoReply | null {
   const as_of = new Date().toISOString();
   const days = (fallback: number) => Number(q.get("days")) || fallback;
@@ -1306,10 +1313,12 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
           },
         ],
       });
-    case "executive":
+    case "executive": {
+      const window = demoWindow(q);
+      if (!window) return problem(422, "from must not be after to");
       return ok({
         as_of,
-        window: { from: day(-30), to: day(0) },
+        window,
         deals_won: 3,
         deals_lost: 1,
         won_value_by_currency_minor: { GBP: 16_750_000 },
@@ -1322,6 +1331,7 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         consent_withdrawals: 2,
         note: NOTE,
       });
+    }
     case "forecast-trends": {
       const base = forecastTotals().totals_minor;
       return ok({
@@ -1427,7 +1437,7 @@ function insight(name: string, q: URLSearchParams): DemoReply | null {
         as_of,
         derivation:
           "A deadline counts when it falls in the window; met is done on or before it, missed is done after it or past it undone.",
-        window: { from: day(-30), to: day(0) },
+        window: demoWindow(q) ?? { from: day(-30), to: day(0) },
         first_response: measure(
           count("met"),
           count("missed"),

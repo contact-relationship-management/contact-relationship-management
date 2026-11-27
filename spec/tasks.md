@@ -3137,7 +3137,8 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       and listed in order, a deleted ticket left out, an empty window with no share, bad windows refused.
       - **Done 2026-11-27 (UI):** the executive page shows both shares, the counts behind them and the deadlines, for the
       default window; Playwright smoke test with a share and a "none decided", and the page's accessibility scan.
-      - **Not done:** the page has no window picker; no split by priority or channel; a reopened ticket is judged on its
+      - **Done 2026-11-27 (window):** the executive page takes a from and to day for the pack and the attainment (a tour test).
+      - **Not done:** no split by priority or channel; a reopened ticket is judged on its
       latest resolution only.
 - [ ] CRM-T316 **Decide F4: owner change and escalation in the audit.** Owner changes record the field name only and
       escalations record `to`, not `from`. This is a question for the owner (privacy rule or fault); CRM-T322 gives an answer

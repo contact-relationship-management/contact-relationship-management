@@ -1082,7 +1082,10 @@ export function pipelineHygiene(
 }
 
 /** The period sales executive pack. */
-export function executivePack(init?: FetchLike): Promise<{
+export function executivePack(
+  window: InsightWindow = {},
+  init?: FetchLike,
+): Promise<{
   as_of: string;
   window: { from: string; to: string };
   deals_won: number;
@@ -1097,7 +1100,7 @@ export function executivePack(init?: FetchLike): Promise<{
   consent_withdrawals: number;
   note: string;
 }> {
-  return api("/insights/executive", init);
+  return api(`/insights/executive${windowQuery(window)}`, init);
 }
 
 /** The stored forecast-snapshot series (no interpolation). */
@@ -1107,6 +1110,21 @@ export function forecastTrends(init?: FetchLike): Promise<{
   series: Array<{ taken_on: string; totals: Record<string, number> }>;
 }> {
   return api("/insights/forecast-trends", init);
+}
+
+/** A window for a period insight: days (`YYYY-MM-DD`); either end may be left to the service's default. */
+export interface InsightWindow {
+  from?: string;
+  to?: string;
+}
+
+/** The `?from=&to=` of a window, or nothing when neither end is given. */
+function windowQuery(window: InsightWindow): string {
+  const params = new URLSearchParams();
+  if (window.from) params.set("from", window.from);
+  if (window.to) params.set("to", window.to);
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 /** One service level measure over a window (CRM-T315). */
@@ -1131,7 +1149,10 @@ export interface AttainmentDeadline {
 }
 
 /** First-response and resolution attainment over a window, the trailing 30 days by default (CRM-T315). */
-export function slaAttainment(init?: FetchLike): Promise<{
+export function slaAttainment(
+  window: InsightWindow = {},
+  init?: FetchLike,
+): Promise<{
   as_of: string;
   derivation: string;
   window: { from: string; to: string };
@@ -1139,7 +1160,7 @@ export function slaAttainment(init?: FetchLike): Promise<{
   resolution: AttainmentMeasure;
   deadlines: AttainmentDeadline[];
 }> {
-  return api("/insights/sla-attainment", init);
+  return api(`/insights/sla-attainment${windowQuery(window)}`, init);
 }
 
 /** An open or pending ticket nothing has touched for a while (CRM-T317). */

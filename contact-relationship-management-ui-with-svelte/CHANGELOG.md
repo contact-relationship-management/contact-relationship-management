@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The executive page takes a from and to day and shows the period pack and the service level attainment for that
+  window; a window that ends before it starts is refused, as the service refuses it (CRM-T315, CRM-T341). No new
+  strings.
 - The tickets page lists the open and pending tickets nothing has touched for at least a chosen number of days (7 by
   default), longest idle first (CRM-T317); it lists tickets, never ranks people. Five new strings; the 20 other
   languages are machine drafts.

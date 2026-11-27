@@ -1639,6 +1639,26 @@ test.describe("export, undo and search", () => {
     await expect(panel).toContainText("43 / 51");
   });
 
+  test("the executive page is shown for a chosen window, and a window that ends before it starts is refused", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/executive");
+    await page.getByTestId("exec-from").fill("2026-01-01");
+    await page.getByTestId("exec-to").fill("2026-01-31");
+    await page.getByTestId("exec-show").click();
+    const expected = await page.evaluate(() =>
+      new Intl.DateTimeFormat("en-001", { dateStyle: "medium" }).formatRange(
+        new Date("2026-01-01T12:00:00Z"),
+        new Date("2026-01-31T12:00:00Z"),
+      ),
+    );
+    await expect(page.getByTestId("exec-window")).toContainText(expected);
+    await page.getByTestId("exec-from").fill("2026-02-01");
+    await page.getByTestId("exec-show").click();
+    await expect(page.getByTestId("error")).toBeVisible();
+  });
+
   test("an article's earlier published versions are listed, read-only", async ({
     page,
   }) => {

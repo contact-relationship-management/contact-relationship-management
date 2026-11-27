@@ -31,6 +31,19 @@
   let findings = $state<Finding[]>([]);
   let trends = $state<Trends | null>(null);
   let attainment = $state<Attainment | null>(null);
+  // The window both period views are asked for; empty ends are the service's default (30 days to now).
+  let from = $state("");
+  let to = $state("");
+
+  async function showWindow() {
+    error = null;
+    try {
+      const window = { from, to };
+      [pack, attainment] = await Promise.all([executivePack(window), slaAttainment(window)]);
+    } catch (cause) {
+      error = errorMessage(cause);
+    }
+  }
   let error = $state<string | null>(null);
 
   $effect(() => {
@@ -112,6 +125,19 @@
 
 <h1>{t("nav.executive")}</h1>
 {#if error}<p class="error" data-testid="error">{error}</p>{/if}
+
+<form
+  class="panel"
+  onsubmit={(event) => {
+    event.preventDefault();
+    void showWindow();
+  }}
+  data-testid="exec-window-form"
+>
+  <label>{t("rpt.from")} <input type="date" bind:value={from} data-testid="exec-from" /></label>
+  <label>{t("rpt.to")} <input type="date" bind:value={to} data-testid="exec-to" /></label>
+  <button type="submit" data-testid="exec-show">{t("attr.run")}</button>
+</form>
 
 {#if pack}
   <p class="muted" data-testid="exec-window">
