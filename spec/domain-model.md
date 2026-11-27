@@ -119,6 +119,11 @@ name the `purpose` they are sent under (default `marketing`).
 `resolution_due_at`, `first_responded_at`, `resolved_at`, breach
 flags.
 
+**TicketMovement** (CRM-T317) — one row each time a ticket changes hands: `from_ref`, `to_ref` (`person:` URNs
+or none), `via` (`person` through `POST /api/tickets/{pid}/assign`, or `escalation` by the wait-limit sweep),
+`reason` (free text; the sweep's is fixed), `actor_ref`, `created_at`. Append-only by trigger: never changed but
+for erasure scrubbing a reason, and deleted only with its ticket. A closed ticket is not reassigned.
+
 **SlaPolicy** — per priority: `first_response_minutes`,
 `resolution_minutes`, business-hours flag (v1: 24×7 clocks).
 
@@ -209,5 +214,5 @@ whose consent has stood withdrawn since before the horizon.
 `deal_stage_changed`, `deal_won` / `deal_lost`,
 `campaign_started` / `campaign_completed`, `consent_granted` /
 `consent_withdrawn` / `consent_pending` (each for one purpose), `nurture_step_sent`, `ticket_opened`,
-`ticket_first_response`, `ticket_resolved` / `ticket_closed`,
+`ticket_first_response`, `ticket_reassigned`, `ticket_resolved` / `ticket_closed`,
 `sla_breached`, `article_published`.

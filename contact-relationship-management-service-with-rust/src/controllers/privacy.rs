@@ -200,7 +200,7 @@ async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uu
 }
 
 /// The places [`scrub_linked`] scrubs, one statement each.
-const SCRUBBED_PLACES: usize = 14;
+const SCRUBBED_PLACES: usize = 15;
 
 /// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
 /// statement each, in the order of the audit row's counts. Returns the rows each one changed.
@@ -373,6 +373,20 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
         .await?
         .rows_affected(),
     );
+    // The reasons in the movement history of the contact's tickets are free text (CRM-T317); the
+    // append-only trigger lets a reason become the tombstone and nothing else.
+    affected.push(
+        sqlx::query!(
+            "UPDATE ticket_movements SET reason = $2 WHERE reason <> $2 AND ticket_pid IN \
+             (SELECT pid FROM tickets WHERE contact_pid = $1 \
+             /* deleted_at set or not: a deleted ticket's history still names the person */)",
+            cpid,
+            ERASED,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
     // One count for each statement above; a different number is a mistake in this function, and no
     // count is invented for a place that is missing.
     <[u64; SCRUBBED_PLACES]>::try_from(affected)
@@ -468,6 +482,7 @@ async fn erase(
         employments,
         custom_field_values,
         ticket_titles,
+        movement_reasons,
     ] = affected;
     // The rows go in the transaction; the files go once it has committed.
     let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
@@ -492,6 +507,7 @@ async fn erase(
             "employment_last_events_deleted": employment_events_deleted,
             "custom_field_values_deleted": custom_field_values,
             "ticket_titles_scrubbed": ticket_titles,
+            "ticket_movement_reasons_scrubbed": movement_reasons,
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,
         })),

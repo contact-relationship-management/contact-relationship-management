@@ -13,6 +13,7 @@ pub mod encrypted;
 pub mod event_outbox;
 pub mod records;
 pub mod rows;
+pub mod ticket_movements;
 
 /// A `timestamptz` as the models carry it: the instant, in UTC (CRM-T258). The name is the one
 /// `SeaORM` gave it, kept so the records read as they did (CRM-D24).

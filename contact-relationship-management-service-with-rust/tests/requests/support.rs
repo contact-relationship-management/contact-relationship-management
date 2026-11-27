@@ -249,3 +249,105 @@ async fn a_ticket_is_offered_the_published_articles_that_share_its_words() {
     })
     .await;
 }
+
+/// A ticket is handed to someone else with a reason (CRM-T317): the move is in its append-only
+/// history, audited with the two assignees and not the reason; a move to the same assignee, of a
+/// closed ticket, or with no reason is refused; and the history cannot be rewritten.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn a_ticket_is_handed_over_with_a_reason_kept_in_its_history() {
+    request::<App, _, _>(|request, ctx| async move {
+        let (first, second) = (a_user(), a_user());
+        let made: Value = request
+            .post("/api/tickets")
+            .json(&json!({ "title": "Handover", "assignee_ref": first }))
+            .await
+            .json();
+        let pid = made["pid"].as_str().unwrap().to_string();
+        let assign = |to: Value, reason: &'static str| {
+            let (request, pid) = (&request, &pid);
+            async move {
+                request
+                    .post(&format!("/api/tickets/{pid}/assign"))
+                    .json(&json!({ "assignee_ref": to, "reason": reason }))
+                    .await
+            }
+        };
+        assign(json!(second), "first is on leave")
+            .await
+            .assert_status_ok();
+        assign(Value::Null, "back to the queue")
+            .await
+            .assert_status_ok();
+        for (to, reason) in [
+            (Value::Null, "already unassigned"),
+            (json!(second), " "),
+            (json!(second), contact_relationship_management::auth::MASKED),
+            (json!("someone"), "not a person reference"),
+        ] {
+            assert_eq!(assign(to, reason).await.status_code(), 422, "{reason}");
+        }
+        let detail: Value = request.get(&format!("/api/tickets/{pid}")).await.json();
+        assert!(detail["ticket"]["assignee_ref"].is_null(), "{detail}");
+        let moves = detail["movements"].as_array().unwrap();
+        let summary: Vec<(Value, Value, Value)> = moves
+            .iter()
+            .map(|m| {
+                (
+                    m["from_ref"].clone(),
+                    m["to_ref"].clone(),
+                    m["reason"].clone(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                (json!(first), json!(second), json!("first is on leave")),
+                (json!(second), Value::Null, json!("back to the queue")),
+            ]
+        );
+        assert!(moves.iter().all(|m| m["via"] == "person"));
+        // The audit names the assignees, never the reason.
+        let audits: Value = request.get(&format!("/api/audits/{pid}")).await.json();
+        let reassigned: Vec<&Value> = audits
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|a| a["action"] == "reassigned")
+            .collect();
+        assert_eq!(reassigned.len(), 2, "{audits}");
+        assert!(!audits.to_string().contains("on leave"), "{audits}");
+        // The history is append-only: a reason cannot be rewritten, only scrubbed to the tombstone
+        // by erasure, and a row cannot go while its ticket is there.
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let rewrite = sqlx::query(
+            "UPDATE ticket_movements SET reason = 'edited' WHERE ticket_pid = $1::uuid",
+        )
+        .bind(&pid)
+        .execute(pool)
+        .await;
+        assert!(rewrite.is_err(), "a reason is rewritten");
+        let remove = sqlx::query("DELETE FROM ticket_movements WHERE ticket_pid = $1::uuid")
+            .bind(&pid)
+            .execute(pool)
+            .await;
+        assert!(remove.is_err(), "a move is removed");
+        sqlx::query("UPDATE ticket_movements SET reason = '[erased]' WHERE ticket_pid = $1::uuid")
+            .bind(&pid)
+            .execute(pool)
+            .await
+            .expect("erasure scrubs a reason");
+        // A closed ticket is not handed on.
+        for to in ["resolved", "closed"] {
+            request
+                .post(&format!("/api/tickets/{pid}/status"))
+                .json(&json!({ "to": to }))
+                .await
+                .assert_status_ok();
+        }
+        assert_eq!(assign(json!(first), "too late").await.status_code(), 422);
+    })
+    .await;
+}

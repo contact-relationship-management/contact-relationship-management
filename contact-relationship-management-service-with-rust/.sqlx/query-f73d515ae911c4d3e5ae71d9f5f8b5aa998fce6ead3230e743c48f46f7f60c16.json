@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT from_ref, to_ref, via, reason, actor_ref, created_at FROM ticket_movements WHERE ticket_pid = $1 ORDER BY id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "from_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "from_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "to_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "to_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "via",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "via"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "actor_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "f73d515ae911c4d3e5ae71d9f5f8b5aa998fce6ead3230e743c48f46f7f60c16"
+}

@@ -463,6 +463,33 @@ async fn enforcement_gates_the_real_stack() {
             .unwrap_or_else(|| panic!("the ticket is found: {found}"))
             .clone();
         assert_eq!(hit["title"], contact_relationship_management::auth::MASKED);
+        // Handing the ticket on moves the access with it (CRM-T326): the former assignee now reads it
+        // as anyone else does, masked, and its movement reason is masked for them too.
+        let next_sub = uuid::Uuid::new_v4();
+        let next = sign_as(&kid, &next_sub.to_string(), &[]);
+        request
+            .post(&format!("/api/tickets/{ticket_pid}/assign"))
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "assignee_ref": format!("person:{next_sub}"), "reason": "shift change" }))
+            .await
+            .assert_status_ok();
+        let former = request
+            .get(&format!("/api/tickets/{ticket_pid}"))
+            .add_header("authorization", bearer(&owner))
+            .await
+            .json::<Value>();
+        assert_eq!(former["ticket"]["title"], contact_relationship_management::auth::MASKED);
+        assert_eq!(
+            former["movements"][0]["reason"],
+            contact_relationship_management::auth::MASKED
+        );
+        let current = request
+            .get(&format!("/api/tickets/{ticket_pid}"))
+            .add_header("authorization", bearer(&next))
+            .await
+            .json::<Value>();
+        assert_eq!(current["ticket"]["title"], "Private concern");
+        assert_eq!(current["movements"][0]["reason"], "shift change");
         // Saving back the placeholder a masked read showed is refused, so the real title stays.
         let saved = request
             .put(&format!("/api/tickets/{unassigned_pid}"))

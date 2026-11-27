@@ -81,6 +81,12 @@ async fn subject_rights_round_trip() {
             .await
             .json();
         let ticket_pid = ticket["pid"].as_str().unwrap().to_string();
+        // A handover whose reason names the person: erasure scrubs it (CRM-T317).
+        request
+            .post(&format!("/api/tickets/{ticket_pid}/assign"))
+            .json(&json!({ "assignee_ref": super::a_user(), "reason": "Dana Rivers asked for someone else" }))
+            .await
+            .assert_status_ok();
         // The event for the new ticket names it by pid; the title is free text and stays out of the envelope.
         let events: Vec<Value> = request.get("/api/events/recent").await.json();
         let opened = events
@@ -196,6 +202,8 @@ async fn subject_rights_round_trip() {
             "the closed ticket's free-text title is scrubbed: {ticket_after}"
         );
         assert_eq!(erased_entry["snapshot"]["ticket_titles_scrubbed"], 1);
+        assert_eq!(erased_entry["snapshot"]["ticket_movement_reasons_scrubbed"], 1);
+        assert_eq!(ticket_after["movements"][0]["reason"], "[erased]", "{ticket_after}");
         assert!(
             !ticket_after.to_string().contains("cannot sign in"),
             "the ticket activity's free text is gone: {ticket_after}"

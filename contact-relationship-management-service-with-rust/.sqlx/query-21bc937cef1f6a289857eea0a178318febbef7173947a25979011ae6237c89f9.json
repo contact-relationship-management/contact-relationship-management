@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE ticket_movements SET reason = $2 WHERE reason <> $2 AND ticket_pid IN (SELECT pid FROM tickets WHERE contact_pid = $1 /* deleted_at set or not: a deleted ticket's history still names the person */)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "21bc937cef1f6a289857eea0a178318febbef7173947a25979011ae6237c89f9"
+}

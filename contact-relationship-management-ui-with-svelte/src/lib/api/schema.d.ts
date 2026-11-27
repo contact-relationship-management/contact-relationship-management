@@ -16368,6 +16368,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tickets/{pid}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand the ticket to another person, or to no one (assignee_ref null), with a reason (CRM-T317): kept in the ticket's append-only movement history (the detail's movements) and audited with the two assignees, not the reason. The caller's record-level write decision applies. 422 for the assignee it already has, a closed ticket, a missing reason or one that is the masked placeholder */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    /** @description Opaque key, 1 to 255 visible ASCII characters. A retry with the same key and the same request replays the first successful response (header Idempotent-Replayed: true) instead of repeating the work; keys are scoped to the caller and kept 24 hours. Same key with a different request is 422; same key while the first is still running is 409 with Retry-After. */
+                    "Idempotency-Key"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AssignPayload"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Idempotency-Key: the original request is still running; retry shortly */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tickets/{pid}/customer-reply": {
         parameters: {
             query?: never;
@@ -18866,6 +18952,13 @@ export interface components {
             /** @default null */
             keywords: string | null;
             title: string;
+        };
+        /** @description `POST /api/tickets/{pid}/assign` body (CRM-T317): who takes the ticket over, and why. */
+        AssignPayload: {
+            /** @description The new assignee, a `person:` URN, or `null` to leave the ticket unassigned. */
+            assignee_ref?: string | null;
+            /** @description Why; kept in the ticket's movement history. */
+            reason: string;
         };
         /** @description One attached file's metadata. */
         Attachment: {
@@ -22398,6 +22491,8 @@ export interface components {
         /** @description `GET /api/tickets/{pid}`: the ticket and its activities, oldest first. */
         TicketDetail: {
             activities: components["schemas"]["Activity"][];
+            /** @description Who the ticket was handed to, from whom, by whom and why, oldest first (CRM-T317). */
+            movements: components["schemas"]["TicketMovement"][];
             /**
              * @description What a customer's reply puts in its subject, in square brackets, so that the reply finds
              *     this ticket (CRM-R88).
@@ -22409,6 +22504,24 @@ export interface components {
         TicketEditPayload: {
             /** @default null */
             title: string | null;
+        };
+        /** @description One move, as the ticket's page shows it. */
+        TicketMovement: {
+            /** @description Who moved it. */
+            actor_ref: string | null;
+            /**
+             * Format: date-time
+             * @description When.
+             */
+            created_at: string;
+            /** @description The assignee before, a `person:` URN, or none. */
+            from_ref: string | null;
+            /** @description Why, as the person wrote it, or the sweep's own reason. */
+            reason: string;
+            /** @description The assignee after, or none. */
+            to_ref: string | null;
+            /** @description `person` or `escalation`. */
+            via: string;
         };
         /** @description `POST /api/tickets` body. */
         TicketPayload: {

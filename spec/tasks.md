@@ -3118,6 +3118,15 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
 - [ ] CRM-T317 **Ticket movement and reopen history (idea 2).** A reassignment action with a reason, an append-only movement
       history, a "waiting with whom" value, a stuck list, and each resolution kept when a ticket is reopened with a reopen
       count. No league table of agents. Do this early: history not recorded cannot be rebuilt. (M)
+      - **Done 2026-11-27 (reassignment and its history):** `POST /api/tickets/{pid}/assign` takes the new assignee (or
+      `null`) and a reason, under the caller's record-level write decision; `ticket_movements` (migration
+      `20261127000000`) keeps each move, the wait-limit escalation's too, append-only by trigger (a reason may become
+      the erasure tombstone; a row goes only with its ticket). The ticket detail lists `movements`, reasons masked with
+      the title; the audit names the two assignees, not the reason; the event is `ticket_reassigned`. Erasure scrubs the
+      reasons of the contact's tickets. Request tests: the handover journey and its refusals, the trigger, the
+      escalation's row, the erasure count, and under enforcement the former assignee losing the unmasked read.
+      - **Not done:** "waiting with whom", the stuck list, the resolution kept on reopen and the reopen count; a UI
+      action for the handover; the movements in the subject-access export; the reason is not sealed (CRM-T279).
 - [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
       contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,
       and a "resolved and not told" measure. Tickets from before show `outcome unknown`; an auto-close (CRM-R82) is not
@@ -3279,6 +3288,9 @@ complete the ordinary production privacy, access and operational checks.
       ticket; apply the decision before pagination and counts; carry it through linked activities, search, boards, reports
       and every client. Move it ahead of any confidential intake. For a prospective health deployment, reject the insecure
       override (`CONTACT_RELATIONSHIP_MANAGEMENT_ALLOW_INSECURE`) in its deployment policy. (L)
+      - **2026-11-27:** reassignment exists (CRM-T317). The enforcement test now hands the restricted ticket on and checks
+      the former assignee reads it masked and the new one in full, with an owner rule on the person; a rule on a team
+      needs a team attribute on tickets, which does not exist.
       - **Pass when:** in a two-team test with a synthetic restricted ticket, the assigned team completes its work, the other
       team's lists and counts reveal nothing, and reassignment removes the former team's access by policy; normal and
       exceptional access are both verified, with the audit record.

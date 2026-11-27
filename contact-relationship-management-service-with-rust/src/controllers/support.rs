@@ -85,6 +85,16 @@ pub(crate) struct TicketPayload {
     assignee_ref: Option<String>,
 }
 
+/// `POST /api/tickets/{pid}/assign` body (CRM-T317): who takes the ticket over, and why.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct AssignPayload {
+    /// The new assignee, a `person:` URN, or `null` to leave the ticket unassigned.
+    assignee_ref: Option<String>,
+    /// Why; kept in the ticket's movement history.
+    reason: String,
+}
+
 /// `PUT /api/tickets/{pid}/priority` body (audited; re-derives SLA).
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -427,6 +437,8 @@ pub(crate) struct TicketDetail {
     /// this ticket (CRM-R88).
     reference: String,
     activities: Vec<activities::Model>,
+    /// Who the ticket was handed to, from whom, by whom and why, oldest first (CRM-T317).
+    movements: Vec<crate::models::ticket_movements::Movement>,
 }
 
 /// What the sweep did with the tickets past their policy's wait limit.
@@ -501,6 +513,18 @@ async fn sweep_waiting(
             .await?;
             if escalate {
                 done.escalated = done.escalated.tally(1);
+                crate::models::ticket_movements::record(
+                    &mut *txn,
+                    crate::models::ticket_movements::Move {
+                        ticket_pid: pid,
+                        from_ref: ticket.assignee_ref.as_deref(),
+                        to_ref: escalate_to.as_deref(),
+                        via: crate::models::ticket_movements::Via::Escalation,
+                        reason: "the ticket waited past its policy's limit",
+                        actor_ref: caller.actor(),
+                    },
+                )
+                .await?;
                 Audit::record_on(
                     &mut txn,
                     "ticket",
@@ -611,16 +635,21 @@ async fn get_ticket(
     )
     .await?;
     let mut activity_rows = rows::activities_of(pool, "ticket", ticket.pid).await?;
+    let mut movements = crate::models::ticket_movements::of_ticket(pool, ticket.pid).await?;
     if masked(&obligations) {
         ticket.title = crate::auth::MASKED.to_string();
         for activity in &mut activity_rows {
             activity.summary = crate::auth::MASKED.to_string().into();
+        }
+        for movement in &mut movements {
+            movement.reason = crate::auth::MASKED.to_string();
         }
     }
     format::json(TicketDetail {
         reference: reference(ticket.pid),
         ticket,
         activities: activity_rows,
+        movements,
     })
 }
 
@@ -948,6 +977,80 @@ async fn transition(
     .await?;
     txn.commit().await?;
     format::json(row)
+}
+
+/// `POST /api/tickets/{pid}/assign` — hand the ticket to another person, or to no one, with a reason
+/// (CRM-T317). The move is the caller's: their record-level write decision applies (CRM-T321). It is
+/// kept in the ticket's append-only movement history and audited with the two assignees, not the
+/// reason; a reason is free text and stays in the history alone. A move to the assignee it already
+/// has, or of a closed ticket, is `422`.
+#[debug_handler]
+async fn assign_ticket(
+    State(ctx): State<AppContext>,
+    caller: MaybeAuthUser,
+    PidPath(pid): PidPath,
+    Json(mut payload): Json<AssignPayload>,
+) -> Result<Response> {
+    let mut problems = Problems::new();
+    payload.assignee_ref = crate::rules::user_ref::normalise_opt(payload.assignee_ref.take());
+    problems.user_opt("assignee_ref", payload.assignee_ref.as_deref());
+    problems.require_text("reason", &payload.reason);
+    problems.not_masked("reason", &payload.reason);
+    problems.finish()?;
+    let mut txn = db::pool(&ctx).begin().await?;
+    let ticket = rows::ticket_for_update(&mut *txn, pid)
+        .await?
+        .ok_or(Error::NotFound)?;
+    authorize_ticket(&caller, Action::Write, &ticket)?;
+    if ticket.status == "closed" {
+        return Err(unprocessable("a closed ticket is not reassigned"));
+    }
+    if ticket.assignee_ref == payload.assignee_ref {
+        return Err(unprocessable("the ticket is already with that assignee"));
+    }
+    sqlx::query!(
+        "UPDATE tickets SET assignee_ref = $2 WHERE id = $1 AND deleted_at IS NULL",
+        ticket.id,
+        payload.assignee_ref,
+    )
+    .execute(&mut *txn)
+    .await?;
+    crate::models::ticket_movements::record(
+        &mut *txn,
+        crate::models::ticket_movements::Move {
+            ticket_pid: pid,
+            from_ref: ticket.assignee_ref.as_deref(),
+            to_ref: payload.assignee_ref.as_deref(),
+            via: crate::models::ticket_movements::Via::Person,
+            reason: payload.reason.trim(),
+            actor_ref: caller.actor(),
+        },
+    )
+    .await?;
+    let handover = serde_json::json!({ "from": ticket.assignee_ref, "to": payload.assignee_ref });
+    Audit::record_on(
+        &mut txn,
+        "ticket",
+        pid,
+        "reassigned",
+        caller.actor(),
+        Some(handover.clone()),
+    )
+    .await?;
+    streaming::emit_in(
+        &mut txn,
+        "ticket",
+        "ticket_reassigned",
+        &pid.to_string(),
+        NO_TITLE,
+        caller.actor(),
+        Some(handover),
+    )
+    .await?;
+    txn.commit().await?;
+    format::json(PidRef {
+        pid: pid.to_string(),
+    })
 }
 
 /// `PUT /api/tickets/{pid}/priority` — audited priority change;
@@ -1295,6 +1398,7 @@ pub fn routes() -> Routes {
         .add("/tickets/{pid}/status", post(ticket_status))
         .add("/tickets/{pid}/customer-reply", post(ticket_customer_reply))
         .add("/tickets/{pid}/priority", put(ticket_priority))
+        .add("/tickets/{pid}/assign", post(assign_ticket))
         .add("/sla/sweep", post(sla_sweep))
         .add("/articles", post(create_article))
         .add("/articles", get(list_articles))

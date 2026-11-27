@@ -430,10 +430,20 @@ async fn a_policy_can_resolve_or_escalate_a_ticket_left_waiting_past_its_limit()
             "{done}"
         );
         // Escalated: still waiting, handed to the worker, flagged.
-        let handed = ticket(escalated).await;
+        let handed = ticket(escalated.clone()).await;
         assert_eq!(handed["status"], "pending", "{handed}");
         assert_eq!(handed["assignee_ref"], worker.as_str(), "{handed}");
         assert!(handed["wait_limit_exceeded_at"].is_string(), "{handed}");
+        // The escalation is in the ticket's movement history, as the sweep's own move (CRM-T317).
+        let history: Value = request
+            .get(&format!("/api/tickets/{escalated}"))
+            .await
+            .json();
+        let moves = history["movements"].as_array().unwrap();
+        assert_eq!(moves.len(), 1, "{history}");
+        assert_eq!(moves[0]["via"], "escalation");
+        assert_eq!(moves[0]["to_ref"], worker.as_str());
+        assert!(moves[0]["from_ref"].is_null());
         // Flagged only: as before.
         let only = ticket(flagged).await;
         assert_eq!(only["status"], "pending", "{only}");

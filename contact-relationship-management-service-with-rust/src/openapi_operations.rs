@@ -1693,6 +1693,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         Kind::Ok,
     ),
     (
+        "post",
+        "/api/tickets/{pid}/assign",
+        "support",
+        "Hand the ticket to another person, or to no one (assignee_ref null), with a reason (CRM-T317): kept in the ticket's append-only movement history (the detail's movements) and audited with the two assignees, not the reason. The caller's record-level write decision applies. 422 for the assignee it already has, a closed ticket, a missing reason or one that is the masked placeholder",
+        Kind::Ok,
+    ),
+    (
         "put",
         "/api/tickets/{pid}/priority",
         "support",
