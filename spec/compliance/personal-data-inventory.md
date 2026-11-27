@@ -91,7 +91,7 @@ A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql
 | `email_suppressions` | Contact pid and the reason a mailbox is suppressed | Contacts | `manual` | Kept: a suppression must survive |
 | `email_templates` | None (template text) | — | `manual` | Not applicable |
 | `employment_last_events` | Person reference, employer's organization reference, whether the last event was a hire or a leave, when WPM recorded it, the day it took effect, the WPM event id (CRM-R93) | Contacts who are or were employees | `aged` | Rows of the contact's person references deleted |
-| `event_outbox` | Event payloads: record pids, actor, field values the event carries | Contacts, reps | `aged` | Kept |
+| `event_outbox` | Event payloads: record pids, actor, a label (a contact's or lead's display name, a deal, campaign or article name; none for tickets), field values the event carries | Contacts, reps | `aged` | Labels of events about the contact, its merged duplicates and its leads scrubbed (`event_labels_scrubbed`); rows kept |
 | `external_links` | URL, external id, label, who created it, by subject | Contacts, accounts, deals | `manual` | Links of the contact deleted |
 | `forecast_snapshots` | None (totals per day) | — | `swept` | Not applicable |
 | `form_submissions` | Contact pid, lead pid, form, purpose, confirmation times | Contacts | `manual` | Submissions of the contact deleted |

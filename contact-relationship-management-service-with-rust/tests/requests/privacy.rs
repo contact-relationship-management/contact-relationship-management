@@ -16,7 +16,7 @@ use super::seed_contact;
 #[serial]
 #[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
 async fn subject_rights_round_trip() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         // ── Subject access: gathers the footprint, names exclusions, audited.
         let contact_pid = seed_contact!(&request, "Dana Rivers").await;
         request
@@ -177,6 +177,19 @@ async fn subject_rights_round_trip() {
             "an active nurture enrolment is a live engagement"
         );
 
+        // A stored event about the contact carries its name as the label (the transport in tests is
+        // memory, so the outbox row is written here as the outbox transport writes it).
+        let pool = contact_relationship_management::db::pool(&ctx);
+        sqlx::query(
+            "INSERT INTO event_outbox (event_id, entity, entity_pid, kind, occurred_at, actor, \
+             schema_version, payload) VALUES (gen_random_uuid(), 'contact', $1::uuid, 'created', now(), \
+             NULL, 1, jsonb_build_object('entity', 'contact', 'kind', 'created', 'pid', $1, 'name', \
+             'Dana Rivers'))",
+        )
+        .bind(&contact_pid)
+        .execute(pool)
+        .await
+        .unwrap();
         // ── Withdraw consent (exits nurture per CRM-D6); now erasure
         // succeeds, and it anonymises the record and scrubs the linked
         // free text.
@@ -224,6 +237,15 @@ async fn subject_rights_round_trip() {
         );
         assert_eq!(erased_entry["snapshot"]["ticket_titles_scrubbed"], 1);
         assert_eq!(erased_entry["snapshot"]["ticket_movement_reasons_scrubbed"], 1);
+        assert_eq!(erased_entry["snapshot"]["event_labels_scrubbed"], 1, "{erased_entry}");
+        let label: String = sqlx::query_scalar(
+            "SELECT payload->>'name' FROM event_outbox WHERE entity_pid = $1::uuid",
+        )
+        .bind(&contact_pid)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        assert_eq!(label, "[erased]", "the stored event no longer names the person");
         assert_eq!(ticket_after["movements"][0]["reason"], "[erased]", "{ticket_after}");
         assert!(
             !ticket_after.to_string().contains("cannot sign in"),

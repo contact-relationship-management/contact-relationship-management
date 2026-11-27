@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE event_outbox SET payload = jsonb_set(payload, '{name}', to_jsonb($2::text)) WHERE payload->>'name' <> '' AND payload->>'name' <> $2 AND ( (entity = 'contact' AND (entity_pid = $1 OR entity_pid IN (SELECT pid FROM contacts WHERE merged_into_pid = $1 /* deleted_at set or not: a merged duplicate is deleted */))) OR (entity = 'lead' AND entity_pid IN (SELECT pid FROM leads WHERE contact_pid = $1 /* deleted_at set or not: a deleted lead's events still name the person */)))",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0963b1305e7828e4306c0be86544f4dcc057c40f54781f2912c94dc9ff243355"
+}

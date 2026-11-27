@@ -3278,8 +3278,15 @@ complete the ordinary production privacy, access and operational checks.
       count and passed locally against PostgreSQL 18, with the ticket and support suites. `.sqlx/` has one new query. The
       statement covers soft-deleted tickets too, and says so for the `deleted_at` census test, which the first commit failed.
       Ticket descriptions, if any column holds one, were not reviewed; a backup restore was not exercised.
+      - **Done 2026-11-27 (event labels reviewed):** webhooks send entity, kind, pid and time, never the label. The label
+      stored in `event_outbox` (and handed to the broker) is the display name for contact and lead events, the name for
+      deal and campaign events, the title for article events, the template reference for a nurture step, and empty for
+      tickets, consent, merges and workflows. Erasure now sets the label of stored events about the contact, its merged
+      duplicates and its leads to `[erased]` and counts them (`event_labels_scrubbed`); the privacy round-trip test
+      writes such a row and checks it. Events already handed to a broker are outside the service.
       - **Not done:** queue file removal durably inside the erasure transaction and verify completion after an unavailable
-      volume returns; review the labels on the remaining events; keep legally required records under a documented hold with restricted
+      volume returns; whether contact and lead events should carry a name at all (CRM-T327, the owner's decision); a deal
+      name that names a customer is kept, as the deal is; keep legally required records under a documented hold with restricted
       access. Follow distinct synthetic markers (contact, closed ticket title, ticket activity, attachment) through
       subject access, search, events, erasure and a backup restore, and record which copies are removed, retained under
       an approved schedule or awaiting action. CRM-T279 and CRM-T285

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Erasing a contact scrubs the label (the display name) of stored outbox events about the contact, its merged duplicates and its leads to `[erased]`, counted as `event_labels_scrubbed` (CRM-T325). Events already handed to a broker are not reached.
 - A published knowledge-base article's edit keeps the text it replaces (CRM-T313): a new append-only `article_versions` table, listed by `GET /api/articles/{pid}/versions`, oldest first. Old text is kept as long as its article; a shorter period is the owner's to decide.
 - `GET /api/insights/sla-attainment?from=&to=` gives first-response and resolution attainment over a window (the trailing 30 days by default): the deadlines due in it, met, missed or not yet decided, the share met of those decided, and the list behind the figures, under each ticket's record-level read decision (CRM-T315).
 - `POST /api/articles/{pid}/status` refuses an archive with no `reason` (`422`), and its audit row records the status before and after and the reason (CRM-T314). Before, it took no reason and wrote no snapshot. A client that archives must now send one.

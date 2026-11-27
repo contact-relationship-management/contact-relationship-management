@@ -207,7 +207,7 @@ async fn erase_attached(txn: &mut PgConnection, contact: Uuid) -> Result<(Vec<Uu
 }
 
 /// The places [`scrub_linked`] scrubs, one statement each.
-const SCRUBBED_PLACES: usize = 15;
+const SCRUBBED_PLACES: usize = 16;
 
 /// Scrub what is keyed to the erased contact `cpid` and to the duplicates merged into it, one
 /// statement each, in the order of the audit row's counts. Returns the rows each one changed.
@@ -394,6 +394,25 @@ async fn scrub_linked(txn: &mut PgConnection, cpid: Uuid) -> Result<[u64; SCRUBB
         .await?
         .rows_affected(),
     );
+    // The label of a stored event about the contact, a merged duplicate or the contact's leads is the
+    // person's name (contact and lead events carry `display_name`); the outbox keeps it until its log
+    // horizon (CRM-T325). Webhooks send no label, so this is the copy left in the service.
+    affected.push(
+        sqlx::query!(
+            "UPDATE event_outbox SET payload = jsonb_set(payload, '{name}', to_jsonb($2::text)) \
+             WHERE payload->>'name' <> '' AND payload->>'name' <> $2 AND ( \
+             (entity = 'contact' AND (entity_pid = $1 OR entity_pid IN \
+               (SELECT pid FROM contacts WHERE merged_into_pid = $1 \
+               /* deleted_at set or not: a merged duplicate is deleted */))) \
+             OR (entity = 'lead' AND entity_pid IN (SELECT pid FROM leads WHERE contact_pid = $1 \
+               /* deleted_at set or not: a deleted lead's events still name the person */)))",
+            cpid,
+            ERASED,
+        )
+        .execute(&mut *txn)
+        .await?
+        .rows_affected(),
+    );
     // One count for each statement above; a different number is a mistake in this function, and no
     // count is invented for a place that is missing.
     <[u64; SCRUBBED_PLACES]>::try_from(affected)
@@ -490,6 +509,7 @@ async fn erase(
         custom_field_values,
         ticket_titles,
         movement_reasons,
+        event_labels,
     ] = affected;
     // The rows go in the transaction; the files go once it has committed.
     let (files, tags_removed) = erase_attached(&mut txn, cpid).await?;
@@ -515,6 +535,7 @@ async fn erase(
             "custom_field_values_deleted": custom_field_values,
             "ticket_titles_scrubbed": ticket_titles,
             "ticket_movement_reasons_scrubbed": movement_reasons,
+            "event_labels_scrubbed": event_labels,
             "attachments_deleted": files.len(),
             "taggings_deleted": tags_removed,
         })),
