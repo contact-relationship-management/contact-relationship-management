@@ -285,8 +285,11 @@ case "${stage}" in
     (cd "${SVC}" && cargo audit && cargo deny check advisories bans licenses sources)
     # The matcher is published on its own, so it has its own gate.
     (cd "${MATCHER}" && cargo audit && cargo deny check advisories bans licenses sources)
+    # cargo cyclonedx writes one per workspace member; the domain crate's dependencies are in the
+    # service's, the one the release signs, so its own copy is removed rather than left in the tree.
     (cd "${SVC}" && cargo cyclonedx --format json --spec-version 1.5 --override-filename service.cdx \
-      && mv service.cdx.json ../sbom/service.cdx.json)
+      && mv service.cdx.json ../sbom/service.cdx.json \
+      && rm -f contact-relationship-management-domain/service.cdx.json)
     (cd "${FE}" && pnpm install --frozen-lockfile && pnpm audit --prod \
       && pnpm sbom --sbom-format cyclonedx --prod > ../sbom/ui.cdx.json)
     ;;
