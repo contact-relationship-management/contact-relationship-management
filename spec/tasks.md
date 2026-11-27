@@ -3114,8 +3114,16 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       otherwise; the audit snapshot holds `from`, `to` and `reason`. Request test: an archive without a reason, or with a
       blank one, is a `422`; the snapshot of the archive names the reason. The UI only publishes, so it is unchanged.
       **Not done:** the reason is not on the event, which carries the title only.
-- [ ] CRM-T315 **Service level attainment over a period (F3).** `analytics-reporting.md` promises attainment; `sla_dashboard`
+- [x] CRM-T315 **Service level attainment over a period (F3).** `analytics-reporting.md` promises attainment; `sla_dashboard`
       returns open and breached counts for now. Add a period parameter and the attained share, with the list behind it. (S)
+      - **Done 2026-11-27:** `GET /api/insights/sla-attainment?from=&to=` (the trailing 30 days by default; a bound that
+      cannot be read, or a start after the end, is a `422`). A first-response or resolution deadline counts when it is due
+      in the window: met (done on or before it), missed (done after, or past it undone on the SLA clock) or undecided (a
+      waiting ticket's stopped clock short of it); `attained` is met over met plus missed, with no value when nothing was
+      decided. The deadlines behind the figures are listed, each ticket under its record-level read decision. The rule is
+      `rules::sla::outcome`, unit-tested to agree with the breach rules. Request test: met, missed and undecided counted
+      and listed in order, a deleted ticket left out, an empty window with no share, bad windows refused.
+      - **Not done:** no UI; no split by priority or channel; a reopened ticket is judged on its latest resolution only.
 - [ ] CRM-T316 **Decide F4: owner change and escalation in the audit.** Owner changes record the field name only and
       escalations record `to`, not `from`. This is a question for the owner (privacy rule or fault); CRM-T322 gives an answer
       that keeps the rule. Decide, then record it in `audit.md`. (S)

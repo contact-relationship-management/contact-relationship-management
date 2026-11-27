@@ -632,3 +632,95 @@ async fn the_stuck_list_shows_tickets_nothing_has_touched_for_the_days_asked() {
     })
     .await;
 }
+
+/// Service level attainment over a window (CRM-T315): a deadline due in the window is met, missed or,
+/// while a waiting ticket's clock is stopped short of it, not yet decided; the share met is of those
+/// decided, a deleted ticket is not counted, and a window that cannot be read is refused.
+#[tokio::test]
+#[serial]
+#[ignore = "requires PostgreSQL (DB_URL); run with `cargo test -- --ignored`"]
+async fn attainment_counts_the_deadlines_due_in_the_window() {
+    request::<App, _, _>(|request, ctx| async move {
+        let pool = contact_relationship_management::db::pool(&ctx);
+        let made = |title: &'static str| {
+            let request = &request;
+            async move {
+                let made: Value = request.post("/api/tickets").json(&json!({ "title": title })).await.json();
+                made["pid"].as_str().unwrap().to_string()
+            }
+        };
+        let (answered, late, waiting, gone) =
+            (made("Answered").await, made("Late").await, made("Waiting").await, made("Gone").await);
+        // A window in 2025, before any other test's deadlines.
+        for (pid, set) in [
+            (&answered, "first_response_due_at = '2025-01-10T12:00:00Z', first_responded_at = '2025-01-09T12:00:00Z', \
+                         resolution_due_at = '2025-01-20T12:00:00Z'"),
+            (&late, "first_response_due_at = '2025-01-11T12:00:00Z', first_responded_at = '2025-01-12T12:00:00Z', \
+                     resolution_due_at = '2025-03-01T12:00:00Z'"),
+            (&waiting, "status = 'pending', paused_at = '2025-01-05T12:00:00Z', \
+                        first_response_due_at = '2025-01-15T12:00:00Z', resolution_due_at = '2025-03-01T12:00:00Z'"),
+            (&gone, "first_response_due_at = '2025-01-12T12:00:00Z', deleted_at = now()"),
+        ] {
+            sqlx::raw_sql(sqlx::AssertSqlSafe(format!(
+                "ALTER TABLE tickets DISABLE TRIGGER USER; \
+                 UPDATE tickets SET {set} WHERE pid = '{pid}'; \
+                 ALTER TABLE tickets ENABLE TRIGGER USER;"
+            )))
+            .execute(pool)
+            .await
+            .unwrap();
+        }
+        let view: Value = request
+            .get("/api/insights/sla-attainment?from=2025-01-01&to=2025-01-31")
+            .await
+            .json();
+        assert_eq!(view["first_response"]["met"], 1, "{view}");
+        assert_eq!(view["first_response"]["missed"], 1, "{view}");
+        assert_eq!(view["first_response"]["undecided"], 1, "the waiting ticket's clock stopped: {view}");
+        assert_eq!(view["first_response"]["attained"]["numerator"], 1);
+        assert_eq!(view["first_response"]["attained"]["denominator"], 2);
+        assert_eq!(view["first_response"]["attained"]["value"], 0.5);
+        assert_eq!(view["resolution"]["met"], 0, "{view}");
+        assert_eq!(view["resolution"]["missed"], 1, "{view}");
+        assert_eq!(view["resolution"]["attained"]["value"], 0.0);
+        let listed: Vec<(String, String, String)> = view["deadlines"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|d| {
+                (
+                    d["pid"].as_str().unwrap().to_string(),
+                    d["measure"].as_str().unwrap().to_string(),
+                    d["outcome"].as_str().unwrap().to_string(),
+                )
+            })
+            .collect();
+        let row = |pid: &String, measure: &str, outcome: &str| {
+            (pid.clone(), measure.to_string(), outcome.to_string())
+        };
+        assert_eq!(
+            listed,
+            [
+                row(&answered, "first_response", "met"),
+                row(&late, "first_response", "missed"),
+                row(&waiting, "first_response", "undecided"),
+                row(&answered, "resolution", "missed"),
+            ],
+            "earliest due first, the deleted ticket not counted"
+        );
+        // Nothing decided is no share at all, never 0% or 100%.
+        let empty: Value = request
+            .get("/api/insights/sla-attainment?from=2024-01-01&to=2024-01-31")
+            .await
+            .json();
+        assert!(empty["first_response"]["attained"]["value"].is_null(), "{empty}");
+        assert_eq!(empty["deadlines"], json!([]));
+        for bad in ["from=2025-02-01&to=2025-01-01", "from=yesterday", "to=2025-13-01"] {
+            request
+                .get(&format!("/api/insights/sla-attainment?{bad}"))
+                .await
+                .assert_status(axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    })
+    .await;
+}

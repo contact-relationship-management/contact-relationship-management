@@ -45,7 +45,7 @@ use compliance::{consent_by_account, dpo};
 use outreach::{cadence, engagement, funnel, members};
 use relationships::{memberships_view, partnerships_register, stakeholders};
 use sales::{executive, followups, forecast_trends, pipeline_hygiene, stale_deals};
-use support::{sla_register, stuck_tickets};
+use support::{sla_attainment, sla_register, stuck_tickets};
 
 /// A `?days=` recency threshold: `default` when absent, a `422` when outside 1 to 365.
 fn days_or(query_days: Option<u32>, default: u32) -> Result<i64> {
@@ -114,6 +114,7 @@ pub fn routes() -> Routes {
         .add("/insights/forecast-trends", get(forecast_trends))
         .add("/insights/sla", get(sla_register))
         .add("/insights/stuck-tickets", get(stuck_tickets))
+        .add("/insights/sla-attainment", get(sla_attainment))
         .add("/insights/dpo", get(dpo))
         .add("/insights/cadence", get(cadence))
         .add("/insights/engagement", get(engagement))

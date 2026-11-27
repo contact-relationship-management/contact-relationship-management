@@ -1477,6 +1477,13 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
     ),
     (
         "get",
+        "/api/insights/sla-attainment",
+        "insights",
+        "Service level attainment over a window (?from=&to=, dates or RFC 3339; the trailing 30 days by default, CRM-T315): for the first-response and resolution deadlines due in it, how many were met, missed or are not yet decided, the share met of those decided, and the deadlines behind the figures; each ticket takes its record-level read decision",
+        Kind::Ok,
+    ),
+    (
+        "get",
         "/api/insights/stuck-tickets",
         "insights",
         "Open and pending tickets nothing has touched (a change, an activity or a handover) for days (7 by default, 1 to 365), the longest idle first (CRM-T317); each ticket takes its record-level read decision. It names tickets and never ranks the people who hold them",

@@ -10654,6 +10654,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/insights/sla-attainment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Service level attainment over a window (?from=&to=, dates or RFC 3339; the trailing 30 days by default, CRM-T315): for the first-response and resolution deadlines due in it, how many were met, missed or are not yet decided, the share met of those decided, and the deadlines behind the figures; each ticket takes its record-level read decision */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SlaAttainment"];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/insights/stakeholders": {
         parameters: {
             query?: never;
@@ -22099,6 +22171,53 @@ export interface components {
             active_enrollments: number;
             sequence: components["schemas"]["NurtureSequence"];
             steps: components["schemas"]["NurtureStep"][];
+        };
+        /** @description `GET /api/insights/sla-attainment`. */
+        SlaAttainment: {
+            /** Format: date-time */
+            as_of?: string;
+            /** @description Every deadline counted, earliest due first. */
+            deadlines: components["schemas"]["SlaAttainmentDeadline"][];
+            derivation: string;
+            first_response: components["schemas"]["SlaAttainmentMeasure"];
+            resolution: components["schemas"]["SlaAttainmentMeasure"];
+            window: components["schemas"]["SlaAttainmentWindow"];
+        };
+        /** @description One deadline counted in the window. */
+        SlaAttainmentDeadline: {
+            /** Format: date-time */
+            due_at: string;
+            /** @description `first_response` or `resolution`. */
+            measure: string;
+            /** @description `met`, `missed` or `undecided`. */
+            outcome: string;
+            /** Format: uuid */
+            pid: string;
+            priority: string;
+            status: string;
+            title: string;
+        };
+        /** @description One measure's attainment over the window (CRM-T315). */
+        SlaAttainmentMeasure: {
+            /** @description `met / (met + missed)`; no value when nothing was decided. */
+            attained: components["schemas"]["Ratio"];
+            /** Format: uint64 */
+            met: number;
+            /** Format: uint64 */
+            missed: number;
+            /**
+             * Format: uint64
+             * @description Due in the window but neither done nor past due on the SLA clock (a waiting ticket's clock
+             *     is stopped); counted apart, never as met or missed.
+             */
+            undecided: number;
+        };
+        /** @description The window the attainment covers. */
+        SlaAttainmentWindow: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
         };
         /** @description An open ticket past a due stamp. */
         SlaBreach: {

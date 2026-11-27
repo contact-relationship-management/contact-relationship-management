@@ -149,9 +149,64 @@ pub fn resolution_breached(now: Timestamp, due: Timestamp, resolved_at: Option<T
     }
 }
 
+/// What became of one deadline, as attainment counts it (CRM-T315).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Outcome {
+    /// Done on or before the deadline.
+    Met,
+    /// Done after it, or not done and the clock is past it.
+    Missed,
+    /// Not done and the clock has not reached it (a waiting ticket's clock is stopped).
+    Undecided,
+}
+
+/// What became of a deadline `due` met by `done_at`, read at the SLA clock `clock` (see
+/// [`clock_now`]). Agrees with [`first_response_breached`] and [`resolution_breached`]: `Missed` is
+/// exactly what they call breached.
+#[must_use]
+pub fn outcome(clock: Timestamp, due: Timestamp, done_at: Option<Timestamp>) -> Outcome {
+    match done_at {
+        Some(done) if done <= due => Outcome::Met,
+        Some(_) => Outcome::Missed,
+        None if clock > due => Outcome::Missed,
+        None => Outcome::Undecided,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Met on the deadline itself, missed a moment after, and undecided while the clock is short of
+    /// it; `Missed` is what the breach rules call breached.
+    #[test]
+    fn a_deadline_is_met_missed_or_not_yet_decided() {
+        let due: Timestamp = "2026-11-01T12:00:00Z".parse().unwrap();
+        let before: Timestamp = "2026-11-01T11:00:00Z".parse().unwrap();
+        let after: Timestamp = "2026-11-01T13:00:00Z".parse().unwrap();
+        assert_eq!(outcome(after, due, Some(due)), Outcome::Met);
+        assert_eq!(outcome(after, due, Some(before)), Outcome::Met);
+        assert_eq!(outcome(after, due, Some(after)), Outcome::Missed);
+        assert_eq!(outcome(after, due, None), Outcome::Missed);
+        assert_eq!(outcome(before, due, None), Outcome::Undecided);
+        assert_eq!(outcome(due, due, None), Outcome::Undecided);
+        for (clock, done) in [
+            (after, Some(due)),
+            (after, Some(after)),
+            (after, None),
+            (before, None),
+        ] {
+            assert_eq!(
+                outcome(clock, due, done) == Outcome::Missed,
+                first_response_breached(clock, due, done),
+                "{clock} {done:?}"
+            );
+            assert_eq!(
+                outcome(clock, due, done) == Outcome::Missed,
+                resolution_breached(clock, due, done),
+            );
+        }
+    }
 
     // The rules answer `None` on overflow; most tests are about the figures.
     fn deadlines(opened_at: Timestamp, targets: Targets) -> Deadlines {
