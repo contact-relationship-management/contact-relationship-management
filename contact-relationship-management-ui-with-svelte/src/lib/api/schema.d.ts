@@ -2074,7 +2074,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Edit (published edits bump the version) */
+        /** Edit (published edits bump the version, and keep the text they replace) */
         put: {
             parameters: {
                 query?: never;
@@ -2229,6 +2229,78 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/articles/{pid}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The published versions later edits replaced, oldest first, read-only (CRM-T313) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArticleVersion"][];
+                    };
+                };
+                /** @description Missing, expired or invalid bearer token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Denied by the authorization policy */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Unsupported Accepts-version */
+                406: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out; see Retry-After */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -19105,6 +19177,20 @@ export interface components {
              */
             reason: string | null;
             to: string;
+        };
+        /** @description One earlier published version of an article (CRM-T313). */
+        ArticleVersion: {
+            body: string;
+            keywords: string | null;
+            /**
+             * Format: date-time
+             * @description When a published edit replaced this text, and who made the edit.
+             */
+            replaced_at: string;
+            replaced_by: string | null;
+            title: string;
+            /** Format: int32 */
+            version: number;
         };
         /** @description `POST /api/tickets/{pid}/assign` body (CRM-T317): who takes the ticket over, and why. */
         AssignPayload: {

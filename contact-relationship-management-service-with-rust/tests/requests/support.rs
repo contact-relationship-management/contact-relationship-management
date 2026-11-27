@@ -125,7 +125,7 @@ async fn ticket_sla_journey() {
 // Knowledge base: draft → published; published edits bump the
 // version; archived is read-only; search filters by keyword.
 async fn knowledge_base_versions() {
-    request::<App, _, _>(|request, _ctx| async move {
+    request::<App, _, _>(|request, ctx| async move {
         let article: Value = request
             .post("/api/articles")
             .json(&json!({
@@ -155,6 +155,57 @@ async fn knowledge_base_versions() {
             .await
             .json();
         assert_eq!(edited["version"], 2, "published edits bump the version");
+        // The published text an edit replaced is kept, read-only; a draft's edits are not versions
+        // (CRM-T313).
+        request
+            .put(&format!("/api/articles/{article_pid}"))
+            .json(&json!({ "title": "Reset a password", "body": "Use the newest reset link." }))
+            .await
+            .assert_status_ok();
+        let versions: Value = request
+            .get(&format!("/api/articles/{article_pid}/versions"))
+            .await
+            .json();
+        let kept: Vec<(Value, Value, Value)> = versions
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| (v["version"].clone(), v["title"].clone(), v["body"].clone()))
+            .collect();
+        assert_eq!(
+            kept,
+            [
+                (
+                    json!(1),
+                    json!("Reset your password"),
+                    json!("Use the reset link.")
+                ),
+                (
+                    json!(2),
+                    json!("Reset your password"),
+                    json!("Use the new reset link.")
+                ),
+            ],
+            "{versions}"
+        );
+        let pool = contact_relationship_management::db::pool(&ctx);
+        for statement in [
+            "UPDATE article_versions SET body = 'rewritten' WHERE article_pid = $1::uuid",
+            "DELETE FROM article_versions WHERE article_pid = $1::uuid",
+        ] {
+            assert!(
+                sqlx::query(statement)
+                    .bind(&article_pid)
+                    .execute(pool)
+                    .await
+                    .is_err(),
+                "{statement}"
+            );
+        }
+        request
+            .get(&format!("/api/articles/{}/versions", uuid::Uuid::new_v4()))
+            .await
+            .assert_status(axum::http::StatusCode::NOT_FOUND);
         // Search matches the keyword; a miss returns empty.
         let hits: Value = request.get("/api/articles?q=password").await.json();
         assert_eq!(hits.as_array().unwrap().len(), 1);

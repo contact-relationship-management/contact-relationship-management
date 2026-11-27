@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO article_versions (article_pid, version, title, body, keywords, replaced_by) VALUES ($1, $2, $3, $4, $5, $6)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Varchar",
+        "Text",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5c0d12fa8141ac2325e70c09137e7f9a87f63c07050397005cf2fb241ea8a6aa"
+}

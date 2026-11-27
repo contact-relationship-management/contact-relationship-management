@@ -141,7 +141,14 @@ pub(crate) const OPERATIONS: &[(&str, &str, &str, &str, Kind)] = &[
         "put",
         "/api/articles/{pid}",
         "support",
-        "Edit (published edits bump the version)",
+        "Edit (published edits bump the version, and keep the text they replace)",
+        Kind::Ok,
+    ),
+    (
+        "get",
+        "/api/articles/{pid}/versions",
+        "support",
+        "The published versions later edits replaced, oldest first, read-only (CRM-T313)",
         Kind::Ok,
     ),
     (

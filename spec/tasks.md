@@ -3107,7 +3107,12 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       [lessons/20261124](lessons/20261124/index.md). `service-support.md` says prior versions are kept read-only;
       `update_article` overwrites title and body. Add an `article_versions` table, write the old text in the update's
       transaction, and a read-only list endpoint. (S)
-      - **Not done / not verified:** nothing built; the retention period for old text needs the owner.
+      - **Done 2026-11-27:** migration `20261127000002_article_versions` (append-only by trigger; a row goes only with its
+      article); a published edit writes the text it replaces, with the version and the editor, in its own transaction;
+      `GET /api/articles/{pid}/versions` lists them oldest first. A draft's edits are not versions. Request test: two
+      published edits keep versions 1 and 2, the trigger refuses an edit and a delete, an unknown article is a `404`.
+      - **Not done / not verified:** the retention period for old text needs the owner; until then it is kept as long as
+      the article. No UI shows the versions.
 - [x] CRM-T314 **Take and record a reason when an article is archived (F2).** `audit.md` says the reason is in the snapshot;
       `article_status` writes no snapshot and takes no reason. (S)
       - **Done 2026-11-27:** `POST /api/articles/{pid}/status` takes `reason`, required (and not blank) to archive, optional

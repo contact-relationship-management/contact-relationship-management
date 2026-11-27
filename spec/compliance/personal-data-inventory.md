@@ -63,6 +63,7 @@ A database the `SeaORM` migrations built before CRM-T229 also keeps their `seaql
 | `accounts` | Organization reference, display name, owner reference, stakeholder role | Organizations; a rep (owner) | `swept` | Kept: an organization is not a person |
 | `activities` | Free-text summary, actor and assignee references, sentiment | Contacts, reps | `swept` | Summaries about the contact scrubbed; actor and assignee references kept |
 | `articles` | None (authored help text) | — | `swept` | Not applicable |
+| `article_versions` | None (the help text a published edit replaced, and who edited; CRM-T313); append-only | Reps | `manual` | Not applicable; the rows go with their article, which the sweep hard-deletes |
 | `attachments` | File name, content type, size, hash, uploader reference; the file itself on disk | Contacts, accounts, deals, tickets | `manual` | Files of the contact deleted with the rows |
 | `audit_logs` | Actor, record pid, snapshots of field values at the time | Reps; whoever a changed record was about | `evidence` | Never altered: rows are hash-chained |
 | `break_glass_grants` | Subject (a rep) and the reason, reviewer | Reps | `evidence` | Never altered |

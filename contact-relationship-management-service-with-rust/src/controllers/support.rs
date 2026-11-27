@@ -1258,6 +1258,19 @@ async fn update_article(
         return Err(unprocessable("archived articles are read-only"));
     }
     let version = if article.status == "published" {
+        // The published text this edit replaces is kept, read-only (CRM-T313).
+        sqlx::query!(
+            "INSERT INTO article_versions (article_pid, version, title, body, keywords, replaced_by) \
+             VALUES ($1, $2, $3, $4, $5, $6)",
+            article.pid,
+            article.version,
+            article.title,
+            article.body,
+            article.keywords,
+            caller.actor(),
+        )
+        .execute(&mut *txn)
+        .await?;
         article.version.tally(1_i32)
     } else {
         article.version
@@ -1361,6 +1374,40 @@ async fn article_status(
     format::json(row)
 }
 
+/// One earlier published version of an article (CRM-T313).
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub(crate) struct ArticleVersion {
+    version: i32,
+    title: String,
+    body: String,
+    keywords: Option<String>,
+    /// When a published edit replaced this text, and who made the edit.
+    #[schemars(with = "crate::time::Timestamp")]
+    replaced_at: crate::time::Timestamp,
+    replaced_by: Option<String>,
+}
+
+/// `GET /api/articles/{pid}/versions` — the published versions later edits replaced, oldest first
+/// (CRM-T313). Read-only: nothing changes or removes one while its article is there. A draft's edits
+/// are not versions; the current text is the article itself.
+#[debug_handler]
+async fn article_versions(
+    State(ctx): State<AppContext>,
+    PidPath(pid): PidPath,
+) -> Result<Response> {
+    let pool = db::pool(&ctx);
+    rows::article(pool, pid).await?.ok_or(Error::NotFound)?;
+    let versions = sqlx::query_as!(
+        ArticleVersion,
+        "SELECT version, title, body, keywords, replaced_at, replaced_by FROM article_versions \
+         WHERE article_pid = $1 ORDER BY version",
+        pid,
+    )
+    .fetch_all(pool)
+    .await?;
+    format::json(versions)
+}
+
 /// `GET /api/articles?q=` — keyword search (ILIKE-style contains over
 /// title/keywords; published first).
 #[derive(Debug, Deserialize)]
@@ -1461,6 +1508,7 @@ pub fn routes() -> Routes {
         .add("/articles", get(list_articles))
         .add("/articles/{pid}", put(update_article))
         .add("/articles/{pid}/status", post(article_status))
+        .add("/articles/{pid}/versions", get(article_versions))
 }
 
 #[cfg(test)]
