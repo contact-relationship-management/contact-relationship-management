@@ -19910,6 +19910,49 @@ export interface components {
             /** @default null */
             role: string | null;
         };
+        /** @description A move of one of a contact's tickets, as the subject-access export shows it. */
+        ContactTicketMovement: {
+            /** @description Who moved it. */
+            actor_ref: string | null;
+            /**
+             * Format: date-time
+             * @description When.
+             */
+            created_at: string;
+            /** @description The assignee before, a `person:` URN, or none. */
+            from_ref: string | null;
+            /** @description Why, as the person wrote it, or the sweep's own reason. */
+            reason: string;
+            /**
+             * Format: uuid
+             * @description The ticket moved.
+             */
+            ticket_pid: string;
+            /** @description The assignee after, or none. */
+            to_ref: string | null;
+            /** @description `person` or `escalation`. */
+            via: string;
+        };
+        /** @description A reopening of one of a contact's tickets, as the subject-access export shows it. */
+        ContactTicketReopening: {
+            /** @description Who reopened it. */
+            actor_ref: string | null;
+            /**
+             * Format: date-time
+             * @description When it was reopened.
+             */
+            reopened_at: string;
+            /**
+             * Format: date-time
+             * @description When the ticket had been resolved.
+             */
+            resolved_at: string;
+            /**
+             * Format: uuid
+             * @description The ticket reopened.
+             */
+            ticket_pid: string;
+        };
         /** @description `POST /api/contacts/{pid}/unmerge`: what came back and what could not. */
         ContactUnmerge: {
             consent: components["schemas"]["ContactUnmergeConsent"];
@@ -22356,6 +22399,10 @@ export interface components {
             nurture_enrollments: components["schemas"]["NurtureEnrollment"][];
             /** @description The names of the tags on the contact, on contacts merged into it and on its leads (CRM-R47). */
             tags: string[];
+            /** @description Each handover of the contact's tickets, with its reason (CRM-T317). */
+            ticket_movements: components["schemas"]["ContactTicketMovement"][];
+            /** @description Each resolution a reopen undid on the contact's tickets (CRM-T317). */
+            ticket_reopenings: components["schemas"]["ContactTicketReopening"][];
             tickets: components["schemas"]["Ticket"][];
         };
         /** @description An article that may answer a ticket. */

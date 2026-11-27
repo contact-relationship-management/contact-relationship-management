@@ -53,6 +53,10 @@ pub(crate) struct SubjectAccessExport {
     leads: Vec<leads::Model>,
     deals_as_primary_contact: Vec<deals::Model>,
     tickets: Vec<tickets::Model>,
+    /// Each handover of the contact's tickets, with its reason (CRM-T317).
+    ticket_movements: Vec<crate::models::ticket_movements::ContactMovement>,
+    /// Each resolution a reopen undid on the contact's tickets (CRM-T317).
+    ticket_reopenings: Vec<crate::models::ticket_movements::ContactReopening>,
     nurture_enrollments: Vec<nurture_enrollments::Model>,
     email_deliveries: Vec<email_deliveries::Model>,
     external_links: Vec<external_links::Model>,
@@ -116,6 +120,9 @@ async fn subject_access(
         leads: rows::all_leads_of_contact(&mut *conn, cpid).await?,
         deals_as_primary_contact: rows::all_deals_of_contact(&mut *conn, cpid).await?,
         tickets: rows::all_tickets_of_contact(&mut *conn, cpid).await?,
+        ticket_movements: crate::models::ticket_movements::of_contact(&mut *conn, cpid).await?,
+        ticket_reopenings: crate::models::ticket_movements::reopenings_of_contact(&mut *conn, cpid)
+            .await?,
         nurture_enrollments: rows::all_enrollments_of_contact(&mut *conn, cpid).await?,
         email_deliveries: rows::all_deliveries_of_contact(&mut *conn, cpid).await?,
         external_links: rows::all_links_of_subject(&mut *conn, cpid).await?,

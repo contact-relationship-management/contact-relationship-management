@@ -199,8 +199,9 @@ only), the partnership register, membership renewals; follow-ups
 ## Subject rights & retention (CRM-R20 — CRM-D14)
 
 Not record types but the lifecycle over all of them: the
-**subject-access export** gathers every table keyed to one contact
-(exclusions named in the payload); **erasure anonymises** (identity
+**subject-access export** gathers every table keyed to one contact,
+the handovers and reopenings of its tickets among them (exclusions
+named in the payload); **erasure anonymises** (identity
 fields scrubbed to a tombstone `person:` URN, linked free text
 scrubbed, row soft-deleted; deals/tickets/consent history remain —
 CRM has no monetary field on Contact itself, so nothing analogous to

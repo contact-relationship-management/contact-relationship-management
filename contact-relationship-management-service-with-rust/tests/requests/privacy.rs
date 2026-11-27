@@ -128,11 +128,32 @@ async fn subject_rights_round_trip() {
             .json(&json!({ "to": "resolved" }))
             .await
             .assert_status_ok();
+        // Reopened once, so the export has a reopening to show.
+        for to in ["open", "resolved"] {
+            request
+                .post(&format!("/api/tickets/{ticket_pid}/status"))
+                .json(&json!({ "to": to }))
+                .await
+                .assert_status_ok();
+        }
         request
             .post(&format!("/api/tickets/{ticket_pid}/status"))
             .json(&json!({ "to": "closed" }))
             .await
             .assert_status_ok();
+        // The ticket's handover and its history are the subject's too (CRM-T317).
+        let export: Value = request
+            .get(&format!("/api/contacts/{contact_pid}/subject-access"))
+            .await
+            .json();
+        let movements = export["ticket_movements"].as_array().expect("ticket_movements");
+        assert_eq!(movements.len(), 1, "{export}");
+        assert_eq!(movements[0]["ticket_pid"], ticket_pid);
+        assert_eq!(movements[0]["reason"], "Dana Rivers asked for someone else");
+        assert_eq!(movements[0]["via"], "person");
+        let reopenings = export["ticket_reopenings"].as_array().expect("ticket_reopenings");
+        assert_eq!(reopenings.len(), 1, "{export}");
+        assert_eq!(reopenings[0]["ticket_pid"], ticket_pid);
         let sequence: Value = request
             .post("/api/nurture-sequences")
             .json(&json!({ "name": "Welcome",

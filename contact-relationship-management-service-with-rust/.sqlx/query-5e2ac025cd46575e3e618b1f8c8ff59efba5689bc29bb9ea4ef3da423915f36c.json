@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT r.ticket_pid, r.resolved_at, r.reopened_at, r.actor_ref FROM ticket_reopenings r JOIN tickets t ON t.pid = r.ticket_pid /* deleted_at set or not: a soft-deleted ticket is still the subject's */ WHERE t.contact_pid = $1 ORDER BY t.id, r.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ticket_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "ticket_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "resolved_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "resolved_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "reopened_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "reopened_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_reopenings",
+            "name": "actor_ref"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "5e2ac025cd46575e3e618b1f8c8ff59efba5689bc29bb9ea4ef3da423915f36c"
+}

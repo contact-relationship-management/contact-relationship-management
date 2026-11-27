@@ -3132,8 +3132,10 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       open and pending tickets whose latest change, activity or handover is that many whole days old, longest idle
       first, each under its record-level read decision; it names tickets and ranks no one. Request test: idle order, the
       threshold, an activity taking a ticket off, a resolved ticket never shown, out-of-range days refused.
+      - **Done 2026-11-27 (subject access):** the export lists `ticket_movements` and `ticket_reopenings` of the
+      contact's tickets, deleted or not, each with its `ticket_pid`. Request test: a handover and a reopening appear.
       - **Not done:** "waiting with whom" (needs the owner's vocabulary: customer, another organization, a colleague?); a UI
-      action for the handover; the movements in the subject-access export; the reason is not sealed (CRM-T279).
+      action for the handover; the reason is not sealed (CRM-T279).
 - [ ] CRM-T318 **Ticket outcome and told-on (idea 1).** Needs the owner's answer to whether a ticket carries an outcome the
       contact can read. An outcome on resolving, a told-on date and channel apart from `resolved_at`, the person's answer,
       and a "resolved and not told" measure. Tickets from before show `outcome unknown`; an auto-close (CRM-R82) is not

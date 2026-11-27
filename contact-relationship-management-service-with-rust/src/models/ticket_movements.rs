@@ -155,3 +155,83 @@ pub async fn reopenings_of<'e>(
     .fetch_all(db)
     .await?)
 }
+
+/// A move of one of a contact's tickets, as the subject-access export shows it.
+#[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactTicketMovement")]
+pub struct ContactMovement {
+    /// The ticket moved.
+    pub ticket_pid: Uuid,
+    /// The assignee before, a `person:` URN, or none.
+    pub from_ref: Option<String>,
+    /// The assignee after, or none.
+    pub to_ref: Option<String>,
+    /// `person` or `escalation`.
+    pub via: String,
+    /// Why, as the person wrote it, or the sweep's own reason.
+    pub reason: String,
+    /// Who moved it.
+    pub actor_ref: Option<String>,
+    /// When.
+    #[schemars(with = "crate::time::Timestamp")]
+    pub created_at: crate::time::Timestamp,
+}
+
+/// The moves of every ticket the contact raised, deleted or not, by ticket and then oldest first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact_pid: Uuid,
+) -> Result<Vec<ContactMovement>> {
+    Ok(sqlx::query_as!(
+        ContactMovement,
+        "SELECT m.ticket_pid, m.from_ref, m.to_ref, m.via, m.reason, m.actor_ref, m.created_at \
+         FROM ticket_movements m JOIN tickets t ON t.pid = m.ticket_pid \
+         /* deleted_at set or not: a soft-deleted ticket is still the subject's */ \
+         WHERE t.contact_pid = $1 ORDER BY t.id, m.id",
+        contact_pid,
+    )
+    .fetch_all(db)
+    .await?)
+}
+
+/// A reopening of one of a contact's tickets, as the subject-access export shows it.
+#[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
+#[schemars(rename = "ContactTicketReopening")]
+pub struct ContactReopening {
+    /// The ticket reopened.
+    pub ticket_pid: Uuid,
+    /// When the ticket had been resolved.
+    #[schemars(with = "crate::time::Timestamp")]
+    pub resolved_at: crate::time::Timestamp,
+    /// When it was reopened.
+    #[schemars(with = "crate::time::Timestamp")]
+    pub reopened_at: crate::time::Timestamp,
+    /// Who reopened it.
+    pub actor_ref: Option<String>,
+}
+
+/// The reopenings of every ticket the contact raised, deleted or not, by ticket and then oldest
+/// first.
+///
+/// # Errors
+///
+/// When the query fails.
+pub async fn reopenings_of_contact<'e>(
+    db: impl PgExecutor<'e>,
+    contact_pid: Uuid,
+) -> Result<Vec<ContactReopening>> {
+    Ok(sqlx::query_as!(
+        ContactReopening,
+        "SELECT r.ticket_pid, r.resolved_at, r.reopened_at, r.actor_ref \
+         FROM ticket_reopenings r JOIN tickets t ON t.pid = r.ticket_pid \
+         /* deleted_at set or not: a soft-deleted ticket is still the subject's */ \
+         WHERE t.contact_pid = $1 ORDER BY t.id, r.id",
+        contact_pid,
+    )
+    .fetch_all(db)
+    .await?)
+}

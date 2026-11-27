@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.ticket_pid, m.from_ref, m.to_ref, m.via, m.reason, m.actor_ref, m.created_at FROM ticket_movements m JOIN tickets t ON t.pid = m.ticket_pid /* deleted_at set or not: a soft-deleted ticket is still the subject's */ WHERE t.contact_pid = $1 ORDER BY t.id, m.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ticket_pid",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "ticket_pid"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "from_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "from_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "to_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "to_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "via",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "via"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "reason"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "actor_ref",
+        "type_info": "Varchar",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "actor_ref"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "ticket_movements",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "08d0b7183f3bdca2533537eae28a94874d5279735a066e44ed3ebbf4f6b79d2d"
+}
