@@ -296,6 +296,7 @@ async fn edit_ticket(
         return Err(unprocessable("nothing to change"));
     };
     problems.require_text("title", &title);
+    problems.not_masked("title", &title);
     problems.finish()?;
     let mut txn = db::pool(&ctx).begin().await?;
     // The record-level decision on the locked row comes before the change (CRM-T321).
@@ -439,6 +440,7 @@ async fn edit_activity(
     let mut problems = Problems::new();
     if let Some(summary) = &payload.summary {
         problems.require_text("summary", summary);
+        problems.not_masked("summary", summary);
         problems.cap_text("summary", summary);
     }
     payload.assignee_ref = crate::rules::user_ref::normalise_opt(payload.assignee_ref.take());

@@ -80,6 +80,18 @@ impl Problems {
         self.cap_text(field, value);
     }
 
+    /// `field` must not be the placeholder a masked read shows ([`crate::auth::MASKED`]): a client that
+    /// saves what it was shown would put the placeholder in place of the text it could not see
+    /// (CRM-T321).
+    pub fn not_masked(&mut self, field: &str, value: &str) {
+        if value.trim() == crate::auth::MASKED {
+            self.push_field(
+                field,
+                format!("{field} is the placeholder a masked read shows; send the text itself"),
+            );
+        }
+    }
+
     /// `field`, when present, must be within [`MAX_TEXT_LEN`].
     pub fn cap_text(&mut self, field: &str, value: &str) {
         if value.len() > MAX_TEXT_LEN {
@@ -198,6 +210,20 @@ impl Problems {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The masked placeholder, with or without spaces about it, is refused as text; text that only
+    /// holds the bullet among other characters is not.
+    #[test]
+    fn the_masked_placeholder_is_not_text() {
+        let mut p = Problems::new();
+        p.not_masked("title", crate::auth::MASKED);
+        p.not_masked("summary", &format!("  {}  ", crate::auth::MASKED));
+        assert_eq!(p.into_vec().len(), 2);
+        let mut p = Problems::new();
+        p.not_masked("title", &format!("{} and more", crate::auth::MASKED));
+        p.not_masked("title", "Printer");
+        assert!(p.into_vec().is_empty());
+    }
 
     #[test]
     fn text_rules() {

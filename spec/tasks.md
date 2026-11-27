@@ -3177,6 +3177,11 @@ hosting an open-source application for NHS Wales). None is started. Sizes are es
       hidden. Search also masks the title of a ticket read masked, which it showed before. Unit tests walk a filtered list
       (full pages, each row once), an unfiltered one (one read a page) and one that spends its budget (short page, link
       on). The enforcement test follows a reader's ticket pages with urgent tickets hidden and checks a masked search hit.
+      - **Done 2026-11-27 (the placeholder is not text):** a ticket title edit and an activity summary edit refuse the
+      masked placeholder (`•••`) with a `422`, so a client that saves what a masked read showed (the board's inline
+      rename starts from the shown title) cannot put the placeholder over the real text. Unit test on the rule; the
+      enforcement test sends it as a writer who reads the ticket masked. The UI still offers the rename on a masked
+      title; it was not changed.
       - **Not done / not verified:** a page that spends its budget is still short; time is not hidden (a page that skipped
       many rows answers later); the read cost under a restrictive policy on a large table was not measured. Board columns
       as read, reports, reply, exports and the clients were not touched. The web-form wording was not written.

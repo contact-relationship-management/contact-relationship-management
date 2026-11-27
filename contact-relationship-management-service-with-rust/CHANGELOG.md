@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A ticket title or activity summary edit refuses the masked placeholder (`•••`) with a `422` (CRM-T321), so saving back what a masked read showed cannot overwrite the real text.
 - `axa` 0.23.0 → 0.24.1 and `axa-test` 0.14.0 → 0.15.1, inside the publish cooldown at the owner's word. axa's changelog lists nothing a service calls as changed; no code change was needed.
 - The executive pack's default window ends at the later of the database's and the service's clocks (CRM-T341): ending it on the database's alone could miss a ticket opened a moment before, whose `opened_at` is the service's.
 - The ticket, contact, deal, activity, search and notification lists fill each page from rows the caller may see (CRM-T326), with `axa-cursor-pagination` 0.1.4's `CursorPage::fill`; before, a page could come back short, which said rows were hidden. One request reads at most ten pages' worth. Search now masks the title of a ticket read masked. `axa-cursor-pagination` 0.1.3 → 0.1.4 was taken inside the publish cooldown at the owner's word.

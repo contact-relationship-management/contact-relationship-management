@@ -463,6 +463,13 @@ async fn enforcement_gates_the_real_stack() {
             .unwrap_or_else(|| panic!("the ticket is found: {found}"))
             .clone();
         assert_eq!(hit["title"], contact_relationship_management::auth::MASKED);
+        // Saving back the placeholder a masked read showed is refused, so the real title stays.
+        let saved = request
+            .put(&format!("/api/tickets/{unassigned_pid}"))
+            .add_header("authorization", bearer(&writer))
+            .json(&json!({ "title": contact_relationship_management::auth::MASKED }))
+            .await;
+        assert_eq!(saved.status_code(), 422, "{}", saved.text());
         // A contact read masked masks the titles of its tickets too.
         let contact_as_stranger = request
             .get(&format!("/api/contacts/{owned_contact_pid}"))
