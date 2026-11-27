@@ -1618,6 +1618,28 @@ test.describe("export, undo and search", () => {
     await expect(panel).toContainText("43 / 51");
   });
 
+  test("an article's earlier published versions are listed, read-only", async ({
+    page,
+  }) => {
+    await startTour(page);
+    await page.goto("/articles");
+    const list = page.getByTestId("articles");
+    await list
+      .locator("tbody tr", { hasText: "How the forecast is calculated" })
+      .click();
+    // Version 2 now, so one earlier version is kept (CRM-T313).
+    const versions = page.getByTestId("article-versions");
+    await expect(versions.locator("li")).toHaveCount(1);
+    await expect(versions).toContainText("v1");
+    await versions.locator("summary").click();
+    await expect(versions).toContainText("An earlier wording (version 1)");
+    // A first version has none.
+    await list
+      .locator("tbody tr", { hasText: "Handling a consent withdrawal" })
+      .click();
+    await expect(page.getByTestId("article-versions")).toHaveCount(0);
+  });
+
   test("the forecast can also be shown in one currency, naming the rate it used", async ({
     page,
   }) => {

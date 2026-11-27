@@ -321,6 +321,8 @@ export default {
   "kb.deflection": "আনুমানিক ডিফ্লেকশন",
   "ticket.paused": "SLA ঘড়ি থামানো",
   "article.version": "সংস্করণ",
+  "article.earlier": "আগের সংস্করণ",
+  "article.replacedOn": "{date} তারিখে বদলানো হয়েছে",
   "article.publish": "প্রকাশ করুন",
   "article.search": "নিবন্ধ খুঁজুন",
   "auth.signin": "সাইন ইন",

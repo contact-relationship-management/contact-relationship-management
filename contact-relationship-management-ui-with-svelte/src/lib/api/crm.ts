@@ -966,6 +966,24 @@ export function listArticles(q?: string, init?: FetchLike): Promise<Article[]> {
   return apiAll(`/articles${q ? `?q=${encodeURIComponent(q)}` : ""}`, init);
 }
 
+/** One earlier published version of an article, kept when an edit replaced it (CRM-T313). */
+export interface ArticleVersion {
+  version: number;
+  title: string;
+  body: string;
+  keywords: string | null;
+  replaced_at: string;
+  replaced_by: string | null;
+}
+
+/** The published versions later edits replaced, oldest first. */
+export function articleVersions(
+  pid: string,
+  init?: FetchLike,
+): Promise<ArticleVersion[]> {
+  return api(`/articles/${pid}/versions`, init);
+}
+
 /** Publish / archive an article. */
 export function articleStatus(pid: string, to: string): Promise<Article> {
   return api(`/articles/${pid}/status`, { method: "POST", body: { to } });

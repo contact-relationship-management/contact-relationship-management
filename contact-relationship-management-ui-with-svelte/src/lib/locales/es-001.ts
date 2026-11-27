@@ -333,6 +333,8 @@ export default {
   "kb.deflection": "Desvío estimado",
   "ticket.paused": "Reloj SLA detenido",
   "article.version": "Versión",
+  "article.earlier": "Versiones anteriores",
+  "article.replacedOn": "Sustituida el {date}",
   "article.publish": "Publicar",
   "article.search": "Buscar artículos",
   "auth.signin": "Iniciar sesión",

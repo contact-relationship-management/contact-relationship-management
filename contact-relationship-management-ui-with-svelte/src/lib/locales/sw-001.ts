@@ -323,6 +323,8 @@ export default {
   "kb.deflection": "Makadirio ya kupunguza tiketi",
   "ticket.paused": "Saa ya SLA imesimamishwa",
   "article.version": "Toleo",
+  "article.earlier": "Matoleo ya awali",
+  "article.replacedOn": "Ilibadilishwa {date}",
   "article.publish": "Chapisha",
   "article.search": "Tafuta makala",
   "auth.signin": "Ingia",

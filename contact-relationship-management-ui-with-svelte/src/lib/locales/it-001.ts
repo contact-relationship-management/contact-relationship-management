@@ -339,6 +339,8 @@ export default {
   "kb.deflection": "Deviazione stimata",
   "ticket.paused": "Timer SLA fermo",
   "article.version": "Versione",
+  "article.earlier": "Versioni precedenti",
+  "article.replacedOn": "Sostituita il {date}",
   "article.publish": "Pubblica",
   "article.search": "Cerca articoli",
   "auth.signin": "Accedi",

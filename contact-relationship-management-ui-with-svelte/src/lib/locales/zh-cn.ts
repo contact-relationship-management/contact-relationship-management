@@ -306,6 +306,8 @@ export default {
   "kb.deflection": "估计分流",
   "ticket.paused": "SLA 计时已暂停",
   "article.version": "版本",
+  "article.earlier": "早期版本",
+  "article.replacedOn": "于 {date} 被替换",
   "article.publish": "发布",
   "article.search": "搜索文章",
   "auth.signin": "登录",

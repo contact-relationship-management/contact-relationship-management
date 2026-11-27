@@ -560,6 +560,7 @@ describe("the demo supports complete editing workflows", () => {
     );
     fails("POST", "tickets/missing/customer-reply", null, 404);
     fails("GET", "tickets/missing", null, 404);
+    fails("GET", "articles/missing/versions", null, 404);
     fails("POST", "tickets/missing/assign", { reason: "x" }, 404);
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "person:ada" });
     fails("POST", "tickets/tkt-1/assign", { assignee_ref: "ada", reason: "x" });
@@ -733,6 +734,8 @@ describe("the typed API can drive the complete demo", () => {
     ]);
     await crm.listArticles("forecast");
     await crm.articleStatus("kb-1", "published");
+    const kept = await crm.articleVersions("kb-2");
+    expect(kept.map((v) => v.version)).toEqual([1]);
     await crm.salesDashboard();
     await crm.slaDashboard();
     await crm.staleDeals(14);

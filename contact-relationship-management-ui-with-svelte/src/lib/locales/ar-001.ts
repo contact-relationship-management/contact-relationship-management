@@ -357,6 +357,8 @@ export default {
   "kb.deflection": "الاحتواء المقدَّر",
   "ticket.paused": "تم إيقاف ساعة اتفاقية مستوى الخدمة",
   "article.version": "الإصدار",
+  "article.earlier": "الإصدارات السابقة",
+  "article.replacedOn": "استُبدلت في {date}",
   "article.publish": "نشر",
   "article.search": "بحث المقالات",
   "auth.signin": "تسجيل الدخول",

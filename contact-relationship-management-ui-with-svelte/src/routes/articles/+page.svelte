@@ -1,9 +1,9 @@
 <script lang="ts">
   import { resource } from "#lib/resource.svelte.js";
   import DataTable from "#lib/components/DataTable.svelte";
-  import { articleStatus, kbDeflection, listArticles } from "#lib/api/crm.js";
-  import { t } from "#lib/i18n.svelte.js";
-  import { formatPercent } from "#lib/locale-format.js";
+  import { articleStatus, articleVersions, kbDeflection, listArticles } from "#lib/api/crm.js";
+  import { t, tf } from "#lib/i18n.svelte.js";
+  import { formatDate, formatPercent } from "#lib/locale-format.js";
   import type { Article } from "#lib/api/crm.js";
 
   let query = $state("");
@@ -28,6 +28,14 @@
   const selected = $derived(
     (articles ?? []).find((a) => a.pid === selectedPid) ?? null,
   );
+
+  // The published text later edits replaced, read-only (CRM-T313); a first version has none.
+  const history = resource(() =>
+    selected && selected.version > 1
+      ? articleVersions(selected.pid)
+      : Promise.resolve([]),
+  );
+  const earlier = $derived(history.value ?? []);
 
   const columns = $derived([
     { id: "title", header: t("common.name") },
@@ -99,6 +107,22 @@
       <span class="chip">{selected.status}</span>
       {#if selected.status === "draft"}
         <button onclick={() => void publish(selected)}>{t("article.publish")}</button>
+      {/if}
+      {#if earlier.length > 0}
+        <h2>{t("article.earlier")}</h2>
+        <ol data-testid="article-versions">
+          {#each earlier as v (v.version)}
+            <li>
+              <details>
+                <summary>
+                  v{v.version} · {v.title}
+                  <span class="muted small">{tf("article.replacedOn", { date: formatDate(v.replaced_at) })}</span>
+                </summary>
+                <p>{v.body}</p>
+              </details>
+            </li>
+          {/each}
+        </ol>
       {/if}
     </div>
   {/if}

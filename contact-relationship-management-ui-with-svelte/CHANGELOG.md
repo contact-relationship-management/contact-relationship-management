@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A selected article lists its earlier published versions, read-only, each with the day it was replaced (CRM-T313).
+  The tour invents the earlier wording, as it keeps no edit history. Two new strings; the 20 other languages are
+  machine drafts.
 - The executive page shows service level attainment over the window (CRM-T315): the share of first responses and of
   resolutions on time, of those decided, with how many are not yet decided, and the deadlines behind the figures. The
   13 new strings in the 20 other languages are drafts written by Claude, not reviewed. The tour's back end answers
   `GET /insights/sla-attainment`.
-
 - The ticket queue's panel shows who holds the selected ticket, hands it to another person (or to no one) with a reason,
   and lists its handovers (CRM-T317). The five new strings in the 20 other languages are drafts written by Claude, not
   reviewed. The tour's back end answers `GET /tickets/{pid}` and `POST /tickets/{pid}/assign`.

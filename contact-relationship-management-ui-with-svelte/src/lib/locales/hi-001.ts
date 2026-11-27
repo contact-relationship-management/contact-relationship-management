@@ -317,6 +317,8 @@ export default {
   "kb.deflection": "अनुमानित विचलन",
   "ticket.paused": "SLA घड़ी रुकी हुई",
   "article.version": "संस्करण",
+  "article.earlier": "पिछले संस्करण",
+  "article.replacedOn": "{date} को बदला गया",
   "article.publish": "प्रकाशित करें",
   "article.search": "लेख खोजें",
   "auth.signin": "साइन इन करें",

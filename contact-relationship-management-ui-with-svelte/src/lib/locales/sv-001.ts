@@ -322,6 +322,8 @@ export default {
   "kb.deflection": "Beräknad avledning",
   "ticket.paused": "SLA-klockan stoppad",
   "article.version": "Version",
+  "article.earlier": "Tidigare versioner",
+  "article.replacedOn": "Ersatt {date}",
   "article.publish": "Publicera",
   "article.search": "Sök artiklar",
   "auth.signin": "Logga in",

@@ -317,6 +317,8 @@ export default {
   "kb.deflection": "Estimated deflection",
   "ticket.paused": "SLA clock stopped",
   "article.version": "Version",
+  "article.earlier": "Earlier versions",
+  "article.replacedOn": "Replaced {date}",
   "article.publish": "Publish",
   "article.search": "Search articles",
   "auth.signin": "Sign in",

@@ -2995,6 +2995,22 @@ export function demoHandle(
           : state.articles,
       );
     }
+    if (tail === "versions" && get) {
+      // The tour keeps no edit history, so each earlier version is invented from the current one
+      // (CRM-T313): the service keeps the real text.
+      const a = state.articles.find((x) => x.pid === id);
+      if (!a) return problem(404, "article not found");
+      return ok(
+        Array.from({ length: Math.max(0, a.version - 1) }, (_, i) => ({
+          version: i + 1,
+          title: a.title,
+          body: `An earlier wording (version ${i + 1}). ${a.body}`,
+          keywords: null,
+          replaced_at: `${day(-40 + i * 7)}T09:00:00Z`,
+          replaced_by: "person:demo-editor",
+        })),
+      );
+    }
     if (tail === "status" && post) {
       const reply = transition(state.articles, id!, body, "article");
       const a = state.articles.find((x) => x.pid === id);

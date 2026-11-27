@@ -331,6 +331,8 @@ export default {
   "kb.deflection": "Geschätzte Entlastung",
   "ticket.paused": "SLA-Uhr angehalten",
   "article.version": "Version",
+  "article.earlier": "Frühere Fassungen",
+  "article.replacedOn": "Ersetzt am {date}",
   "article.publish": "Veröffentlichen",
   "article.search": "Artikel suchen",
   "auth.signin": "Anmelden",

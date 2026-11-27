@@ -330,6 +330,8 @@ export default {
   "kb.deflection": "Geschatte deflectie",
   "ticket.paused": "SLA-klok gestopt",
   "article.version": "Versie",
+  "article.earlier": "Eerdere versies",
+  "article.replacedOn": "Vervangen op {date}",
   "article.publish": "Publiceren",
   "article.search": "Artikelen zoeken",
   "auth.signin": "Aanmelden",

@@ -343,6 +343,8 @@ export default {
   "kb.deflection": "Оценка снижения нагрузки",
   "ticket.paused": "Отсчёт SLA остановлен",
   "article.version": "Версия",
+  "article.earlier": "Предыдущие версии",
+  "article.replacedOn": "Заменена {date}",
   "article.publish": "Опубликовать",
   "article.search": "Поиск статей",
   "auth.signin": "Войти",

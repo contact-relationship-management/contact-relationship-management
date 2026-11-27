@@ -20,27 +20,27 @@ counts differ by locale; `tests/unit/plurals.test.ts` checks each holds exactly 
 
 | Locale | Language | Status | Method | Reviewer | Reviewed on | Strings | Identical to English |
 |---|---|---|---|---|---|---|---|
-| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 926 | 1 |
-| `bn-001` | Bengali | `draft` | Written by Claude | — | — | 858 | 5 |
-| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 926 | 10 |
-| `da-001` | Danish | `draft` | Written by Claude | — | — | 858 | 23 |
-| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 858 | 34 |
-| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 858 | 0 |
-| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 875 | 13 |
-| `fr-001` | French | `draft` | Written by Claude | — | — | 875 | 36 |
-| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 858 | 2 |
-| `id-001` | Indonesian | `draft` | Written by Claude | — | — | 841 | 18 |
-| `it-001` | Italian | `draft` | Written by Claude | — | — | 875 | 15 |
-| `ja-001` | Japanese | `draft` | Written by Claude | — | — | 841 | 5 |
-| `ko-001` | Korean | `draft` | Written by Claude | — | — | 841 | 5 |
-| `nl-001` | Dutch | `draft` | Written by Claude | — | — | 858 | 40 |
-| `pt-001` | Portuguese | `draft` | Written by Claude | — | — | 875 | 20 |
-| `ru-001` | Russian | `draft` | Written by Claude | — | — | 892 | 4 |
-| `sv-001` | Swedish | `draft` | Written by Claude | — | — | 858 | 17 |
-| `sw-001` | Swahili | `draft` | Written by Claude | — | — | 858 | 6 |
-| `ur-001` | Urdu (right-to-left) | `draft` | Written by Claude | — | — | 858 | 4 |
-| `vi-001` | Vietnamese | `draft` | Written by Claude | — | — | 841 | 7 |
-| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 841 | 1 |
+| `ar-001` | Arabic (Modern Standard, right-to-left) | `draft` | Written by Claude | — | — | 928 | 1 |
+| `bn-001` | Bengali | `draft` | Written by Claude | — | — | 860 | 5 |
+| `cy-001` | Welsh | `draft` | Written by Claude | — | — | 928 | 10 |
+| `da-001` | Danish | `draft` | Written by Claude | — | — | 860 | 23 |
+| `de-de` | German (Germany) | `draft` | Written by Claude | — | — | 860 | 34 |
+| `en-001` | English (international, Oxford spelling) | `source` | Written by the maintainers | — | — | 860 | 0 |
+| `es-001` | Spanish (Latin America and Spain) | `draft` | Written by Claude | — | — | 877 | 13 |
+| `fr-001` | French | `draft` | Written by Claude | — | — | 877 | 36 |
+| `hi-001` | Hindi | `draft` | Written by Claude | — | — | 860 | 2 |
+| `id-001` | Indonesian | `draft` | Written by Claude | — | — | 843 | 18 |
+| `it-001` | Italian | `draft` | Written by Claude | — | — | 877 | 15 |
+| `ja-001` | Japanese | `draft` | Written by Claude | — | — | 843 | 5 |
+| `ko-001` | Korean | `draft` | Written by Claude | — | — | 843 | 5 |
+| `nl-001` | Dutch | `draft` | Written by Claude | — | — | 860 | 40 |
+| `pt-001` | Portuguese | `draft` | Written by Claude | — | — | 877 | 20 |
+| `ru-001` | Russian | `draft` | Written by Claude | — | — | 894 | 4 |
+| `sv-001` | Swedish | `draft` | Written by Claude | — | — | 860 | 17 |
+| `sw-001` | Swahili | `draft` | Written by Claude | — | — | 860 | 6 |
+| `ur-001` | Urdu (right-to-left) | `draft` | Written by Claude | — | — | 860 | 4 |
+| `vi-001` | Vietnamese | `draft` | Written by Claude | — | — | 843 | 7 |
+| `zh-cn` | Chinese (Simplified, China) | `draft` | Written by Claude | — | — | 843 | 1 |
 
 ## How a locale becomes `reviewed`
 

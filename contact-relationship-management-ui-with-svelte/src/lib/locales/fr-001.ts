@@ -338,6 +338,8 @@ export default {
   "kb.deflection": "Déflexion estimée",
   "ticket.paused": "Horloge SLA arrêtée",
   "article.version": "Version",
+  "article.earlier": "Versions antérieures",
+  "article.replacedOn": "Remplacée le {date}",
   "article.publish": "Publier",
   "article.search": "Rechercher des articles",
   "auth.signin": "Se connecter",

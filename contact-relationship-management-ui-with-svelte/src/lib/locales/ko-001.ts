@@ -315,6 +315,8 @@ export default {
   "kb.deflection": "예상 문의 감소 효과",
   "ticket.paused": "SLA 타이머 중지됨",
   "article.version": "버전",
+  "article.earlier": "이전 버전",
+  "article.replacedOn": "{date}에 대체됨",
   "article.publish": "게시",
   "article.search": "문서 검색",
   "auth.signin": "로그인",

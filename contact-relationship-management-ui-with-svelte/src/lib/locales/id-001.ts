@@ -319,6 +319,8 @@ export default {
   "kb.deflection": "Perkiraan pengalihan",
   "ticket.paused": "Jam SLA dihentikan",
   "article.version": "Versi",
+  "article.earlier": "Versi sebelumnya",
+  "article.replacedOn": "Diganti {date}",
   "article.publish": "Terbitkan",
   "article.search": "Cari artikel",
   "auth.signin": "Masuk",

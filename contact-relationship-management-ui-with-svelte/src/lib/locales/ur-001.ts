@@ -323,6 +323,8 @@ export default {
   "kb.deflection": "تخمینہ شدہ ٹکٹ میں کمی",
   "ticket.paused": "SLA گھڑی رکی ہوئی ہے",
   "article.version": "ورژن",
+  "article.earlier": "پچھلے نسخے",
+  "article.replacedOn": "{date} کو بدلا گیا",
   "article.publish": "شائع کریں",
   "article.search": "مضامین تلاش کریں",
   "auth.signin": "سائن اِن کریں",

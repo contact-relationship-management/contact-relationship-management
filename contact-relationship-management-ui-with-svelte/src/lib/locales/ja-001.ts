@@ -314,6 +314,8 @@ export default {
   "kb.deflection": "推定の問い合わせ削減効果",
   "ticket.paused": "SLA タイマー停止中",
   "article.version": "バージョン",
+  "article.earlier": "以前の版",
+  "article.replacedOn": "{date} に置き換え",
   "article.publish": "公開",
   "article.search": "記事を検索",
   "auth.signin": "サインイン",

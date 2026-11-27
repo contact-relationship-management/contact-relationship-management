@@ -312,6 +312,8 @@ export default {
   "kb.deflection": "Ước tính số phiếu giảm được",
   "ticket.paused": "Đồng hồ SLA đã dừng",
   "article.version": "Phiên bản",
+  "article.earlier": "Các phiên bản trước",
+  "article.replacedOn": "Được thay ngày {date}",
   "article.publish": "Xuất bản",
   "article.search": "Tìm bài viết",
   "auth.signin": "Đăng nhập",

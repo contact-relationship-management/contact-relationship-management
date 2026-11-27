@@ -362,6 +362,8 @@ export default {
   "kb.deflection": "Dargyfeirio amcangyfrifedig",
   "ticket.paused": "Cloc SLA wedi'i stopio",
   "article.version": "Fersiwn",
+  "article.earlier": "Fersiynau cynharach",
+  "article.replacedOn": "Disodlwyd {date}",
   "article.publish": "Cyhoeddi",
   "article.search": "Chwilio erthyglau",
   "auth.signin": "Mewngofnodi",

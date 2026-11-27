@@ -324,6 +324,8 @@ export default {
   "kb.deflection": "Anslået afværgelse",
   "ticket.paused": "SLA-uret er stoppet",
   "article.version": "Version",
+  "article.earlier": "Tidligere versioner",
+  "article.replacedOn": "Erstattet {date}",
   "article.publish": "Udgiv",
   "article.search": "Søg i artikler",
   "auth.signin": "Log ind",
